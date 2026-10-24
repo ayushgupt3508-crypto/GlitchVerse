@@ -8,6 +8,7 @@ export class MainMenuScene extends Phaser.Scene {
   private activeModal: Phaser.GameObjects.Container | null = null;
   private pointerIndicator!: Phaser.GameObjects.Text;
   private buttons: Phaser.GameObjects.Container[] = [];
+  private matrixGlitch!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super(GAME_CONFIG.sceneKeys.MainMenu);
@@ -46,7 +47,7 @@ export class MainMenuScene extends Phaser.Scene {
       : (this.textures.exists('GraphVerse') ? 'GraphVerse' : 'proto_tile');
 
     const titleLogo = this.add.image(titleX, titleY, logoKey)
-      .setDisplaySize(186, 62)
+      .setDisplaySize(220, 72)
       .setOrigin(0.5);
 
     if (!this.textures.exists('graphverse_logo') && !this.textures.exists('GraphVerse')) {
@@ -57,16 +58,19 @@ export class MainMenuScene extends Phaser.Scene {
       });
       this.load.start();
     }
-
-    this.tweens.add({
-    targets: titleLogo,
-    x: '+=7',
-    y: '+=2',
-    duration: 40,
-    yoyo: true,
-    repeat: -1,
-    repeatDelay: 2000,
-    ease: 'Stepped'
+this.time.addEvent({
+    delay: 2000,
+    loop: true,
+    callback: () => {
+        this.tweens.add({
+            targets: titleLogo,
+            x: titleLogo.x + Phaser.Math.Between(-7, 7),
+            y: titleLogo.y + Phaser.Math.Between(-2, 2),
+            duration: 40,
+            yoyo: true,
+            ease: 'Stepped'
+        });
+    }
 });
 
     // Subtitle
@@ -138,6 +142,87 @@ export class MainMenuScene extends Phaser.Scene {
       fontSize: '7px',
       color: '#8b9bb4'
     }).setOrigin(1, 1);
+
+    // Matrix Glitch Event
+    this.matrixGlitch = this.add.graphics();
+    this.matrixGlitch.setScrollFactor(0);
+    this.matrixGlitch.setDepth(50);
+
+    const triggerMatrixGlitch = () => {
+      if (this.activeModal) {
+        this.time.delayedCall(1500, triggerMatrixGlitch);
+        return;
+      }
+
+      const w = this.scale.width;
+      const h = this.scale.height;
+
+      this.matrixGlitch.clear();
+      this.matrixGlitch.setAlpha(1);
+
+      // Random horizontal green pixel strips
+      const strips = Phaser.Math.Between(5, 12);
+
+      for (let i = 0; i < strips; i++) {
+        const x = Phaser.Math.Between(0, w);
+        const y = Phaser.Math.Between(0, h);
+
+        const stripWidth = Phaser.Math.Between(20, w * 0.7);
+        const stripHeight = Phaser.Math.Between(2, 8);
+
+        // Different shades of Matrix green
+        const green = Phaser.Utils.Array.GetRandom([
+          0x00ff41,
+          0x00cc33,
+          0x39ff14,
+          0x008f11
+        ]);
+
+        this.matrixGlitch.fillStyle(
+          green,
+          Phaser.Math.FloatBetween(0.3, 0.9)
+        );
+
+        this.matrixGlitch.fillRect(
+          x + Phaser.Math.Between(-8, 8),
+          y,
+          stripWidth,
+          stripHeight
+        );
+      }
+
+      // Larger digital interference blocks
+      for (let i = 0; i < 3; i++) {
+        this.matrixGlitch.fillStyle(0x00ff41, 0.65);
+
+        this.matrixGlitch.fillRect(
+          Phaser.Math.Between(0, w),
+          Phaser.Math.Between(0, h),
+          Phaser.Math.Between(5, 25),
+          Phaser.Math.Between(5, 18)
+        );
+      }
+
+      // Quickly disappear
+      this.tweens.add({
+        targets: this.matrixGlitch,
+        alpha: 0,
+        duration: Phaser.Math.Between(70, 120),
+        onComplete: () => {
+          this.matrixGlitch.clear();
+          this.matrixGlitch.setAlpha(1);
+        }
+      });
+
+      // Random interval before next glitch
+      this.time.delayedCall(
+        Phaser.Math.Between(2500, 4000),
+        triggerMatrixGlitch
+      );
+    };
+
+    // Start effect
+    this.time.delayedCall(1500, triggerMatrixGlitch);
   }
 
   private startLevel3(): void {

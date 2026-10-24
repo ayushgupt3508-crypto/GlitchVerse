@@ -24,6 +24,7 @@ export class GameScene extends Phaser.Scene {
   private pauseMenu: PauseMenu | null = null;
   private gameOverScreen: GameOverScreen | null = null;
   private isPaused = false;
+  private matrixGlitch!: Phaser.GameObjects.Graphics;
 
   // Checkpoint & Progression
   private checkpointX = 60;
@@ -66,6 +67,8 @@ export class GameScene extends Phaser.Scene {
     this.waterTiles = this.physics.add.staticGroup();
     this.icePlatforms = this.physics.add.staticGroup();
     this.hazards = this.physics.add.staticGroup();
+
+    
 
     // Build geometry — conduits/crystals/drones returned for post-player overlap registration
     const { conduits, crystals, drones } = this.buildLevelGeometry();
@@ -223,6 +226,88 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.createScanlineOverlay();
+
+    // Matrix Glitch Event
+    this.matrixGlitch = this.add.graphics();
+    this.matrixGlitch.setScrollFactor(0);
+    this.matrixGlitch.setDepth(10000);
+
+    const triggerMatrixGlitch = () => {
+      if (this.isPaused) {
+        this.time.delayedCall(1500, triggerMatrixGlitch);
+        return;
+      }
+
+      const width = this.scale.width;
+      const height = this.scale.height;
+
+      this.matrixGlitch.clear();
+      this.matrixGlitch.setAlpha(1);
+
+      // Random horizontal green pixel strips
+      const strips = Phaser.Math.Between(5, 12);
+
+      for (let i = 0; i < strips; i++) {
+        const x = Phaser.Math.Between(0, width);
+        const y = Phaser.Math.Between(0, height);
+
+        const stripWidth = Phaser.Math.Between(20, width * 0.7);
+        const stripHeight = Phaser.Math.Between(2, 8);
+
+        // Different shades of Matrix green
+        const green = Phaser.Utils.Array.GetRandom([
+          0x00ff41,
+          0x00cc33,
+          0x39ff14,
+          0x008f11
+        ]);
+
+        this.matrixGlitch.fillStyle(
+          green,
+          Phaser.Math.FloatBetween(0.3, 0.9)
+        );
+
+        this.matrixGlitch.fillRect(
+          x + Phaser.Math.Between(-8, 8),
+          y,
+          stripWidth,
+          stripHeight
+        );
+      }
+
+      // Larger digital interference blocks
+      for (let i = 0; i < 3; i++) {
+        this.matrixGlitch.fillStyle(0x00ff41, 0.65);
+
+        this.matrixGlitch.fillRect(
+          Phaser.Math.Between(0, width),
+          Phaser.Math.Between(0, height),
+          Phaser.Math.Between(5, 25),
+          Phaser.Math.Between(5, 18)
+        );
+      }
+
+      // Quickly disappear
+      this.tweens.add({
+        targets: this.matrixGlitch,
+        alpha: 0,
+        duration: Phaser.Math.Between(70, 120),
+        onComplete: () => {
+          this.matrixGlitch.clear();
+          this.matrixGlitch.setAlpha(1);
+        }
+      });
+
+      // Random interval before next glitch
+      this.time.delayedCall(
+        Phaser.Math.Between(2500, 4000),
+        triggerMatrixGlitch
+      );
+    };
+
+    // Start effect
+    this.time.delayedCall(2000, triggerMatrixGlitch);
+
     this.levelStartTime = Date.now();
     this.cameras.main.fadeIn(400, 7, 11, 20);
   }
