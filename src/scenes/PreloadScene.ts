@@ -74,10 +74,13 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('pause_icon', 'assets/bi_pause-circle-fill.png');
     this.load.image('profile_icon', 'assets/icon_profile.png');
     this.load.image('game_over_screen', 'assets/game_over_screen.png');
-    this.load.image(
-    'dead_scientist',
-    'assets/dead_scientist.png'
-);
+    this.load.image('dead_scientist', 'assets/dead_scientist.png');
+    // Story intro slides
+    this.load.image('story_1', 'assets/story_1.png');
+    this.load.image('story_2', 'assets/story_2.png');
+    this.load.image('story_3', 'assets/story_3.png');
+    // Game ending (only shown after all 5 levels)
+    this.load.image('game_ending', 'assets/game_ending.png');
 
     // Create initial procedural textures for placeholder testing (prevents asset 404s in Phase 1)
     this.createPlaceholderTextures();

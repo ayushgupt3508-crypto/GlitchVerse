@@ -3,6 +3,7 @@ import { GAME_CONFIG } from './config';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
+import { StoryScene } from './scenes/StoryScene';
 import { GameScene } from './scenes/GameScene';
 import { LevelCompleteScene } from './scenes/LevelCompleteScene';
 import { Sector2Scene } from './scenes/Sector2Scene';
@@ -34,6 +35,7 @@ const config: Phaser.Types.Core.GameConfig = {
     BootScene,
     PreloadScene,
     MainMenuScene,
+    StoryScene,
     GameScene,
     LevelCompleteScene,
     Sector2Scene,

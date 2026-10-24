@@ -41,13 +41,19 @@ export class EndingScene extends Phaser.Scene {
     const W = this.cameras.main.width;
     const H = this.cameras.main.height;
 
-    // Background — void transitioning into physical lab
+    // ── Game ending background image (shown only after all 5 levels) ─────
+    if (this.textures.exists('game_ending')) {
+      const endImg = this.add.image(W / 2, H / 2, 'game_ending');
+      endImg.setScale(Math.max(W / endImg.width, H / endImg.height));
+    }
+
+    // Dark overlay so stats text remains readable over the image
     const bg = this.add.graphics();
-    bg.fillGradientStyle(0x050710, 0x050710, 0x0c1322, 0x0c1322, 1);
+    bg.fillStyle(0x050710, 0.72);
     bg.fillRect(0, 0, W, H);
 
     // Subtle matrix cyber-grid fading out
-    bg.lineStyle(1, 0x0d2038, 0.4);
+    bg.lineStyle(1, 0x0d2038, 0.25);
     for (let x = 0; x < W; x += 20) bg.lineBetween(x, 0, x, H);
     for (let y = 0; y < H; y += 20) bg.lineBetween(0, y, W, y);
 

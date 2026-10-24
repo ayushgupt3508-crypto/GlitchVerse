@@ -49,6 +49,11 @@ export class CreditsModal extends Phaser.GameObjects.Container {
       'PROJECT GLITCHVERSE',
       'A 2D Reality-Manipulation Platformer',
       '------------------------------------',
+      'GAME DEVS:',
+      'Ayush Gupta - Programmer',
+      'Neel Patel -  Game Designer',
+      'Prachi Khamkar - UI/UX Designer',
+
       'SIMULATION CREATOR:',
       'The Faceless Scientist',
       '',
@@ -66,12 +71,7 @@ export class CreditsModal extends Phaser.GameObjects.Container {
       'Sector 4: Modern City',
       'Sector 5: Futuristic Core',
       '',
-      'SPECIAL TRANSMISSIONS:',
-      'Lorem ipsum dolor sit amet, consectetur',
-      'adipiscing elit. Curabitur sed leo vel',
-      'sapien lacinia euismod non vel erat.',
-      'Integer pretium ligula nec nisl fermentum.',
-      '',
+      
       'END OF TRANSMISSION'
     ];
 

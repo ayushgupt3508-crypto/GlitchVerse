@@ -108,40 +108,8 @@ export class MainMenuScene extends Phaser.Scene {
     // Default pointer position to the first button (PLAY)
     this.setPointerToButton(this.buttons[0]);
 
-    // Quick Sector 3 launcher button (gold pill)
-    const sec3Btn = this.add.container(width - 110, height - 32);
-    const sec3Bg = this.add.graphics();
-    sec3Bg.fillStyle(0x0e1320, 0.9);
-    sec3Bg.fillRoundedRect(-85, -12, 170, 24, 6);
-    sec3Bg.lineStyle(1.5, 0xd4af37, 0.9);
-    sec3Bg.strokeRoundedRect(-85, -12, 170, 24, 6);
 
-    const sec3Label = this.add.text(0, 0, '▶ SECTOR 3: PALACE [3]', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '9px',
-      fontStyle: 'bold',
-      color: '#ffd166'
-    }).setOrigin(0.5);
 
-    const sec3Zone = this.add.zone(0, 0, 170, 24).setInteractive({ useHandCursor: true });
-    sec3Zone.on('pointerover', () => {
-      sec3Bg.clear();
-      sec3Bg.fillStyle(0x28200e, 0.95);
-      sec3Bg.fillRoundedRect(-85, -12, 170, 24, 6);
-      sec3Bg.lineStyle(1.5, 0xffe082, 1);
-      sec3Bg.strokeRoundedRect(-85, -12, 170, 24, 6);
-      sec3Label.setColor('#ffffff');
-    });
-    sec3Zone.on('pointerout', () => {
-      sec3Bg.clear();
-      sec3Bg.fillStyle(0x0e1320, 0.9);
-      sec3Bg.fillRoundedRect(-85, -12, 170, 24, 6);
-      sec3Bg.lineStyle(1.5, 0xd4af37, 0.9);
-      sec3Bg.strokeRoundedRect(-85, -12, 170, 24, 6);
-      sec3Label.setColor('#ffd166');
-    });
-    sec3Zone.on('pointerdown', () => this.startLevel3());
-    sec3Btn.add([sec3Bg, sec3Label, sec3Zone]);
 
     // Keyboard shortcuts for level testing: [1] S1, [2] S2, [3] S3, [4] S4 (Ancient Forest), [5] S5 (Futuristic Core)
     if (this.input.keyboard) {
@@ -162,7 +130,7 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     // Version label
-    this.add.text(width - 12, height - 8, 'GLITCHVERSE v0.1.0 [PHASER 3 + VITE] · KEYS [1-5] QUICK SELECT', {
+    this.add.text(width - 12, height - 8, 'GlitchVerse v0.1.0', {
       fontFamily: 'Courier New, monospace',
       fontSize: '7px',
       color: '#8b9bb4'
@@ -293,7 +261,7 @@ export class MainMenuScene extends Phaser.Scene {
     if (this.activeModal) return;
     this.cameras.main.fade(300, 7, 11, 20, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
       if (progress === 1) {
-        this.scene.start(GAME_CONFIG.sceneKeys.Game);
+        this.scene.start('StoryScene');
       }
     });
   }
