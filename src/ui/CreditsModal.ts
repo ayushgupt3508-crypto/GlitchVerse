@@ -66,9 +66,9 @@ export class CreditsModal extends Phaser.GameObjects.Container {
       '',
       'SIMULATION REALMS:',
       'Sector 1: Frozen Age',
-      'Sector 2: Ancient Forest',
+      'Sector 2: Heat Age',
       'Sector 3: Medieval Palace',
-      'Sector 4: Modern City',
+      'Sector 4: Ancient Forest',
       'Sector 5: Futuristic Core',
       '',
       

@@ -8,18 +8,22 @@ export class SettingsModal extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, onClose: () => void) {
     super(scene, 0, 0);
+    this.setScrollFactor(0);
+    this.setDepth(2100);
 
     const width = scene.cameras.main.width;
     const height = scene.cameras.main.height;
 
     // Dark backdrop overlay
     const backdrop = scene.add.rectangle(width / 2, height / 2, width, height, 0x040711, 0.8)
+      .setScrollFactor(0)
       .setInteractive(); // Blocks clicks to buttons behind
 
     this.add(backdrop);
 
     // Modal Frame
     const panel = scene.add.graphics();
+    panel.setScrollFactor(0);
     const px = (width - this.panelWidth) / 2;
     const py = (height - this.panelHeight) / 2;
 
@@ -42,7 +46,7 @@ export class SettingsModal extends Phaser.GameObjects.Container {
       fontFamily: 'Courier New, monospace',
       fontSize: '13px',
       color: '#00f0ff'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setScrollFactor(0);
     this.add(headerText);
 
     // Volume Sliders
@@ -72,8 +76,8 @@ export class SettingsModal extends Phaser.GameObjects.Container {
     });
     this.add(backBtn);
 
+    this.setScrollFactor(0, 0, true);
     scene.add.existing(this);
-    this.setDepth(100);
 
     // Entrance animation
     this.setAlpha(0);
@@ -102,7 +106,7 @@ export class SettingsModal extends Phaser.GameObjects.Container {
       fontFamily: 'Courier New, monospace',
       fontSize: '10px',
       color: '#8b9bb4'
-    }).setOrigin(0, 0.5);
+    }).setOrigin(0, 0.5).setScrollFactor(0);
     this.add(lbl);
 
     // Value percentage text
@@ -110,11 +114,12 @@ export class SettingsModal extends Phaser.GameObjects.Container {
       fontFamily: 'Courier New, monospace',
       fontSize: '10px',
       color: '#00f0ff'
-    }).setOrigin(0, 0.5);
+    }).setOrigin(0, 0.5).setScrollFactor(0);
     this.add(valText);
 
     // Slider track
     const track = scene.add.graphics();
+    track.setScrollFactor(0);
     const updateTrack = (pct: number) => {
       track.clear();
       // Background bar
@@ -131,6 +136,7 @@ export class SettingsModal extends Phaser.GameObjects.Container {
 
     // Interactive handle
     const handle = scene.add.rectangle(leftX + sliderWidth * initialVal, y, 10, 16, 0xffffff)
+      .setScrollFactor(0)
       .setInteractive({ useHandCursor: true });
     this.add(handle);
 
@@ -148,7 +154,9 @@ export class SettingsModal extends Phaser.GameObjects.Container {
 
   private createButton(scene: Phaser.Scene, x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Container {
     const btn = scene.add.container(x, y);
+    btn.setScrollFactor(0);
     const bg = scene.add.graphics();
+    bg.setScrollFactor(0);
     const w = 90;
     const h = 24;
 
@@ -165,9 +173,11 @@ export class SettingsModal extends Phaser.GameObjects.Container {
       fontFamily: 'Courier New, monospace',
       fontSize: '11px',
       color: '#e0fbfc'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setScrollFactor(0);
 
-    const hit = scene.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true });
+    const hit = scene.add.zone(0, 0, w, h)
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true });
     hit.on('pointerover', () => {
       draw(0x1f3554, 0x00f0ff);
       txt.setColor('#00f0ff');
@@ -185,6 +195,7 @@ export class SettingsModal extends Phaser.GameObjects.Container {
     });
 
     btn.add([bg, txt, hit]);
+    btn.setScrollFactor(0, 0, true);
     return btn;
   }
 }

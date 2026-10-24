@@ -10,7 +10,7 @@ export interface GameOverCallbacks {
 
 export class GameOverScreen extends Phaser.GameObjects.Container {
 
-    private keys: Phaser.Input.Keyboard.Key[] = [];
+    private keyboardListener?: (event: KeyboardEvent) => void;
 
     constructor(
         scene: Phaser.Scene,
@@ -32,7 +32,7 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
 
         const backdrop = scene.add.rectangle(
             cx, H / 2, W, H, 0x04060d, 0.88
-        ).setInteractive();
+        ).setScrollFactor(0).setInteractive();
 
         this.add(backdrop);
 
@@ -267,7 +267,7 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
 
             const hit = scene.add.zone(
                 x, y, width, height
-            ).setInteractive({
+            ).setScrollFactor(0).setInteractive({
                 useHandCursor: true
             });
 
@@ -359,46 +359,39 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
         // 8. KEYBOARD SHORTCUTS
         // ==========================================
 
-        if (scene.input.keyboard) {
+        let handled = false;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (handled || !this.active) return;
 
-            const keyboard = scene.input.keyboard;
+            const code = event.code;
+            if (code === 'Space' || code === 'Enter') {
+                handled = true;
+                event.preventDefault();
+                event.stopPropagation();
+                AudioManager.playMenuSelect();
+                this.scene?.input?.keyboard?.resetKeys();
+                callbacks.onRespawn();
+            } else if (code === 'KeyR') {
+                handled = true;
+                event.preventDefault();
+                event.stopPropagation();
+                AudioManager.playMenuSelect();
+                this.scene?.input?.keyboard?.resetKeys();
+                callbacks.onRestart();
+            } else if (code === 'Escape' || code === 'KeyM') {
+                handled = true;
+                event.preventDefault();
+                event.stopPropagation();
+                AudioManager.playMenuSelect();
+                this.scene?.input?.keyboard?.resetKeys();
+                callbacks.onMainMenu();
+            }
+        };
 
-            const shortcuts = [
-                {
-                    code: Phaser.Input.Keyboard.KeyCodes.SPACE,
-                    action: callbacks.onRespawn
-                },
-                {
-                    code: Phaser.Input.Keyboard.KeyCodes.ENTER,
-                    action: callbacks.onRespawn
-                },
-                {
-                    code: Phaser.Input.Keyboard.KeyCodes.R,
-                    action: callbacks.onRestart
-                },
-                {
-                    code: Phaser.Input.Keyboard.KeyCodes.ESC,
-                    action: callbacks.onMainMenu
-                },
-                {
-                    code: Phaser.Input.Keyboard.KeyCodes.M,
-                    action: callbacks.onMainMenu
-                }
-            ];
+        this.keyboardListener = onKeyDown;
+        window.addEventListener('keydown', onKeyDown);
 
-            shortcuts.forEach(shortcut => {
-
-                const key = keyboard.addKey(shortcut.code);
-
-                key.once('down', () => {
-                    AudioManager.playMenuSelect();
-                    shortcut.action();
-                });
-
-                this.keys.push(key);
-            });
-        }
-
+        this.setScrollFactor(0, 0, true);
         scene.add.existing(this);
     }
 
@@ -407,14 +400,12 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
     // ==========================================
 
     public override destroy(fromScene?: boolean): void {
-
-        if (this.scene?.input?.keyboard) {
-            this.keys.forEach(key => {
-                this.scene.input.keyboard!.removeKey(key);
-            });
+        if (this.keyboardListener) {
+            window.removeEventListener('keydown', this.keyboardListener);
+            this.keyboardListener = undefined;
         }
 
-        this.keys = [];
+        this.scene?.input?.keyboard?.resetKeys();
 
         super.destroy(fromScene);
     }

@@ -21,7 +21,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
   private bannerText!: Phaser.GameObjects.Text;
   private componentCountText!: Phaser.GameObjects.Text;
   private chargeCrystals: Phaser.GameObjects.Rectangle[] = [];
-  private integrityHearts: Phaser.GameObjects.Graphics[] = [];
+  private integrityHearts: Phaser.GameObjects.Image[] = [];
   private readonly accent: number;
 
   constructor(
@@ -122,12 +122,29 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
       color: hex
     }).setOrigin(0.5));
 
-    // Hearts row
+    // Ensure heart_pixel texture is loaded if HUD is mounted directly
+    if (!scene.textures.exists('heart_pixel')) {
+      scene.load.image('heart_pixel', 'assets/heart_pixel.png');
+      scene.load.once('complete', () => {
+        this.integrityHearts.forEach(h => {
+          if (h.active) {
+            h.setTexture('heart_pixel');
+            h.setDisplaySize(20, 20);
+          }
+        });
+      });
+      scene.load.start();
+    }
+
+    // Hearts row using heart_pixel image
     for (let i = 0; i < 3; i++) {
-      const g = scene.add.graphics();
-      this.drawHeart(g, 88 + i * 26, 30, true, accentColor);
-      this.integrityHearts.push(g);
-      this.add(g);
+      const tex = scene.textures.exists('heart_pixel') ? 'heart_pixel' : 'proto_tile';
+      const heart = scene.add.image(88 + i * 26, 30, tex)
+        .setDisplaySize(20, 20)
+        .setOrigin(0.5);
+      this.setHeartVisual(heart, true);
+      this.integrityHearts.push(heart);
+      this.add(heart);
     }
 
     // "HP" label
@@ -139,36 +156,18 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
   }
 
   /**
-   * Draw a heart shape using two circles (bumps) + downward triangle (point).
+   * Sets the visual appearance of a heart_pixel sprite:
+   * When filled, displays the bright red pixel heart.
+   * When depleted, displays a dark translucent silhouette.
    */
-  private drawHeart(
-    g: Phaser.GameObjects.Graphics,
-    x: number, y: number,
-    filled: boolean,
-    accentColor: number
-  ): void {
-    g.clear();
-    const fillCol = filled ? accentColor : 0x1a0a10;
-    const alpha   = filled ? 1 : 0.35;
-
-    g.fillStyle(fillCol, alpha);
-    // Left lobe
-    g.fillCircle(x - 5, y - 2, 7);
-    // Right lobe
-    g.fillCircle(x + 5, y - 2, 7);
-    // Bottom point
-    g.fillTriangle(x - 11, y + 4, x + 11, y + 4, x, y + 14);
-
+  private setHeartVisual(heart: Phaser.GameObjects.Image, filled: boolean): void {
     if (filled) {
-      // Specular highlight on active heart
-      g.fillStyle(0xffffff, 0.4);
-      g.fillCircle(x - 5, y - 5, 3);
+      heart.clearTint();
+      heart.setAlpha(1);
     } else {
-      // Distinct empty heart outline for depleted state
-      g.lineStyle(1.5, 0x5a1828, 0.85);
-      g.strokeCircle(x - 5, y - 2, 7);
-      g.strokeCircle(x + 5, y - 2, 7);
-      g.strokeTriangle(x - 11, y + 4, x + 11, y + 4, x, y + 14);
+      // Depleted empty heart state
+      heart.setTint(0x331015);
+      heart.setAlpha(0.28);
     }
   }
 
@@ -359,9 +358,8 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
   // ── Public API ────────────────────────────────────────────────────────────
 
   public updateIntegrity(current: number): void {
-    this.integrityHearts.forEach((g, idx) => {
-      const hx = 88 + idx * 26;
-      this.drawHeart(g, hx, 30, idx < current, this.accent);
+    this.integrityHearts.forEach((heart, idx) => {
+      this.setHeartVisual(heart, idx < current);
     });
   }
 

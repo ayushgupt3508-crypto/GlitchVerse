@@ -81,6 +81,11 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('story_3', 'assets/story_3.png');
     // Game ending (only shown after all 5 levels)
     this.load.image('game_ending', 'assets/game_ending.png');
+    // HUD pixel heart icon
+    this.load.image('heart_pixel', 'assets/heart_pixel.png');
+    // Main Menu Title Logo
+    this.load.image('graphverse_logo', 'assets/GraphVerse.png');
+    this.load.image('GraphVerse', 'assets/GraphVerse.png');
 
     // Create initial procedural textures for placeholder testing (prevents asset 404s in Phase 1)
     this.createPlaceholderTextures();

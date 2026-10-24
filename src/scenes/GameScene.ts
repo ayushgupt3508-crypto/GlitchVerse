@@ -42,6 +42,7 @@ export class GameScene extends Phaser.Scene {
   // Phase 4: Stats tracking
   private deathCount = 0;
   private levelStartTime = 0;
+  private isRespawning = false;
 
   // Level boundaries
   private readonly levelWidth = 1600;
@@ -168,9 +169,9 @@ export class GameScene extends Phaser.Scene {
     // Drone overlaps — use integrity system instead of instant kill
     this.drones.forEach(drone => {
       this.physics.add.overlap(this.player, drone, () => {
-        if (!drone.isLethal || this.player.isDead) return;
+        if (!drone.isLethal || this.isRespawning) return;
         const lethal = this.player.takeDamage();
-        if (lethal) {
+        if (lethal || this.player.integrity <= 0 || this.player.isDead) {
           this.handleHazardCollision('SENTINEL DRONE CONTACT');
         } else {
           AudioManager.playDeath(); // short hit sound
@@ -228,6 +229,13 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (this.isPaused) return;
+
+    if (this.player.isDead && !this.isRespawning) {
+      this.handleHazardCollision('SYSTEM RECOVERY');
+      return;
+    }
+    if (this.isRespawning) return;
+
     this.player.update(time, delta);
 
     // Update sentinel drones
@@ -629,7 +637,8 @@ export class GameScene extends Phaser.Scene {
   // ── Hazard / Death ─────────────────────────────────────────────────────
 
   private handleHazardCollision(reason = 'COLLISION HAZARD'): void {
-    if (this.player.isDead) return;
+    if (this.isRespawning) return;
+    this.isRespawning = true;
     this.player.die();
     this.hud.updateIntegrity(0);
     this.deathCount++;
@@ -648,17 +657,23 @@ export class GameScene extends Phaser.Scene {
           this.physics.resume();
           this.player.restoreIntegrity();
           this.player.respawnAt(this.checkpointX, this.checkpointY);
+          this.player.restoreStaffCharges(this.player.maxStaffCharges);
+          this.hud.updateIntegrity(this.player.integrity);
+          this.hud.updateCharges(this.player.staffCharges);
           this.cameras.main.fadeIn(400, 0, 0, 0);
+          this.isRespawning = false;
         },
         onRestart: () => {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
+          this.isRespawning = false;
           this.physics.resume();
           this.scene.restart();
         },
         onMainMenu: () => {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
+          this.isRespawning = false;
           this.physics.resume();
           this.cameras.main.fadeOut(300, 0, 0, 0, () => {
             this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);

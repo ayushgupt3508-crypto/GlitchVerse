@@ -37,28 +37,30 @@ export class MainMenuScene extends Phaser.Scene {
       scanlines.lineBetween(0, y, width, y);
     }
 
-    // 2. Title: "TITLE" (per Master Prompt specification)
-    // Positioned in top-left matching reference image layout
+    // 2. Title: GraphVerse Logo Image
     const titleX = 135;
-    const titleY = 62;
+    const titleY = 60;
 
-    const titleShadow = this.add.text(titleX + 2, titleY + 2, 'GlitchVerse', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '32px',
-      fontStyle: 'bold',
-      color: '#9d4edd'
-    }).setOrigin(0.5);
+    const logoKey = this.textures.exists('graphverse_logo')
+      ? 'graphverse_logo'
+      : (this.textures.exists('GraphVerse') ? 'GraphVerse' : 'proto_tile');
 
-    const titleText = this.add.text(titleX, titleY, 'GlitchVerse', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '32px',
-      fontStyle: 'bold',
-      color: '#ffffff'
-    }).setOrigin(0.5);
+    const titleLogo = this.add.image(titleX, titleY, logoKey)
+      .setDisplaySize(186, 62)
+      .setOrigin(0.5);
 
-    // Subtle glitch pulse on Title
+    if (!this.textures.exists('graphverse_logo') && !this.textures.exists('GraphVerse')) {
+      this.load.image('graphverse_logo', 'assets/GraphVerse.png');
+      this.load.once('complete', () => {
+        titleLogo.setTexture('graphverse_logo');
+        titleLogo.setDisplaySize(186, 62);
+      });
+      this.load.start();
+    }
+
+    // Subtle glitch pulse on Title Logo
     this.tweens.add({
-      targets: [titleText, titleShadow],
+      targets: titleLogo,
       x: '+=1',
       duration: 80,
       yoyo: true,
@@ -67,7 +69,7 @@ export class MainMenuScene extends Phaser.Scene {
     });
 
     // Subtitle
-    this.add.text(titleX, titleY + 24, '// GLITCHVERSE SIMULATION //', {
+    this.add.text(titleX, titleY + 34, '// GLITCHVERSE SIMULATION //', {
       fontFamily: 'Courier New, monospace',
       fontSize: '8px',
       color: '#70e000'

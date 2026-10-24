@@ -46,6 +46,7 @@ export class Sector2Scene extends Phaser.Scene {
   private deathCount = 0;
   private levelStartTime = 0;
   private staffStunRange = 90;
+  private isRespawning = false;
 
   // Level dimensions — floor at y=330 (lava surface)
   private readonly levelWidth  = 2000;
@@ -55,6 +56,7 @@ export class Sector2Scene extends Phaser.Scene {
   constructor() { super('Sector2Scene'); }
 
   create(): void {
+    this.isRespawning = false;
     // Generate all textures first
     TextureGenerator.generatePlayerTextures(this);
     TextureGenerator.generateEnvironmentTextures(this);
@@ -85,15 +87,15 @@ export class Sector2Scene extends Phaser.Scene {
 
     // Lava = instant death
     this.physics.add.overlap(this.player, this.lavaTiles, () => {
-      if (!this.player.isDead) this.handleDeath('LAVA SUBMERSION');
+      if (!this.isRespawning) this.handleDeath('LAVA SUBMERSION');
     });
 
     // Fire jets (SEPARATE group — integrity-aware)
     this.physics.add.overlap(this.player, this.fireHazards, (_p, body) => {
       const jetSprite = body as Phaser.Physics.Arcade.Sprite;
-      if (!jetSprite.active || this.player.isDead) return;
+      if (!jetSprite.active || this.isRespawning) return;
       const lethal = this.player.takeDamage();
-      if (lethal) {
+      if (lethal || this.player.integrity <= 0 || this.player.isDead) {
         this.handleDeath('FIRE JET INCINERATION');
       } else {
         AudioManager.playDeath();
@@ -106,9 +108,9 @@ export class Sector2Scene extends Phaser.Scene {
     // Drone contact
     drones.forEach(drone => {
       this.physics.add.overlap(this.player, drone, () => {
-        if (!drone.isLethal || this.player.isDead) return;
+        if (!drone.isLethal || this.isRespawning) return;
         const lethal = this.player.takeDamage();
-        if (lethal) {
+        if (lethal || this.player.integrity <= 0 || this.player.isDead) {
           this.handleDeath('EMBER DRONE CONTACT');
         } else {
           AudioManager.playDeath();
@@ -205,6 +207,13 @@ export class Sector2Scene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (this.isPaused) return;
+
+    // Safety net: if player is dead but death sequence hasn't started, trigger it
+    if (this.player.isDead && !this.isRespawning) {
+      this.handleDeath('EMBER CORRUPTION');
+      return;
+    }
+    if (this.isRespawning) return;
 
     this.player.update(time, delta);
     this.drones.forEach(d => d.update(time, delta, this.player.x, this.player.y));
@@ -767,7 +776,9 @@ export class Sector2Scene extends Phaser.Scene {
   // ── Death / Respawn ────────────────────────────────────────────────────
 
   private handleDeath(reason = 'THERMAL HAZARD'): void {
-    if (this.player.isDead) return;
+    if (this.isRespawning) return;
+    this.isRespawning = true;
+
     this.player.die();
     this.hud.updateIntegrity(0);
     this.deathCount++;
@@ -786,17 +797,23 @@ export class Sector2Scene extends Phaser.Scene {
           this.physics.resume();
           this.player.restoreIntegrity();
           this.player.respawnAt(this.checkpointX, this.checkpointY);
+          this.player.restoreStaffCharges(this.player.maxStaffCharges);
+          this.hud.updateIntegrity(this.player.integrity);
+          this.hud.updateCharges(this.player.staffCharges);
           this.cameras.main.fadeIn(400, 0, 0, 0);
+          this.isRespawning = false;
         },
         onRestart: () => {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
+          this.isRespawning = false;
           this.physics.resume();
           this.scene.restart();
         },
         onMainMenu: () => {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
+          this.isRespawning = false;
           this.physics.resume();
           this.cameras.main.fadeOut(300, 0, 0, 0, () => {
             this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);

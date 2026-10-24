@@ -82,7 +82,7 @@ export class Level4Scene extends Phaser.Scene {
   private swingingLogs: Phaser.GameObjects.Sprite[] = [];
 
   // Collectibles & Exit
-  private component4Sprite?: Phaser.GameObjects.Sprite;
+  private component4Sprite?: Phaser.Physics.Arcade.Sprite;
   private exitPortalSprite?: Phaser.GameObjects.Sprite;
   private conduitCrystals: Phaser.GameObjects.Sprite[] = [];
 
@@ -544,9 +544,13 @@ export class Level4Scene extends Phaser.Scene {
     });
 
     // 2. Component 04: The Ancient Chrono-Matrix Core (Goal Checkpoint)
-    this.component4Sprite = this.add.sprite(pz.component4.x, pz.component4.y, 'failsafe_component')
+    this.component4Sprite = this.physics.add.sprite(pz.component4.x, pz.component4.y, 'failsafe_component')
       .setScale(1.8)
       .setDepth(15);
+    const c4Body = this.component4Sprite.body as Phaser.Physics.Arcade.Body;
+    c4Body.setAllowGravity(false);
+    c4Body.setImmovable(true);
+    c4Body.setSize(32, 32);
 
     this.tweens.add({
       targets: this.component4Sprite,
@@ -877,6 +881,19 @@ export class Level4Scene extends Phaser.Scene {
     // Void fall check (The Great Ravine)
     if (this.player.y > LEVEL4_DATA.dimensions.floorY + 45 && !this.player.isDead) {
       this.handleDeath('PLUNGED INTO THE WATERFALL GORGE');
+    }
+
+    // Proximity fallback for collecting Component 4
+    if (this.component4Sprite && !this.hasCollectedComponent4 && !this.player.isDead) {
+      const dist = Phaser.Math.Distance.Between(
+        this.player.x,
+        this.player.y,
+        this.component4Sprite.x,
+        this.component4Sprite.y
+      );
+      if (dist < 50) {
+        this.collectComponent4();
+      }
     }
 
     // Checkpoint activation checks

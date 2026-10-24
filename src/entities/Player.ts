@@ -53,15 +53,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setMaxVelocity(this.moveSpeed, 600);
 
     // Setup input keys (A/D or Arrows to move, Space/W/Up to jump, E/J to interact)
-    if (scene.input.keyboard) {
-      this.cursors = scene.input.keyboard.createCursorKeys();
-      this.keyA = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-      this.keyD = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-      this.keyW = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-      this.keySpace = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-      this.keyInteractE = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-      this.keyInteractJ = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J);
-    }
+    this.ensureKeys();
   }
 
   public update(time: number, _delta: number): void {
@@ -273,6 +265,26 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  public ensureKeys(): void {
+    if (!this.scene.input.keyboard) return;
+    const kb = this.scene.input.keyboard;
+    if (!this.cursors) {
+      this.cursors = kb.createCursorKeys();
+    }
+    const checkAndAdd = (key: Phaser.Input.Keyboard.Key | undefined, code: number) => {
+      if (!key || !kb.keys.some(k => k.keyCode === code)) {
+        return kb.addKey(code);
+      }
+      return key;
+    };
+    this.keyA = checkAndAdd(this.keyA, Phaser.Input.Keyboard.KeyCodes.A);
+    this.keyD = checkAndAdd(this.keyD, Phaser.Input.Keyboard.KeyCodes.D);
+    this.keyW = checkAndAdd(this.keyW, Phaser.Input.Keyboard.KeyCodes.W);
+    this.keySpace = checkAndAdd(this.keySpace, Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.keyInteractE = checkAndAdd(this.keyInteractE, Phaser.Input.Keyboard.KeyCodes.E);
+    this.keyInteractJ = checkAndAdd(this.keyInteractJ, Phaser.Input.Keyboard.KeyCodes.J);
+  }
+
   public respawnAt(x: number, y: number): void {
     this.isDead = false;
     this.invincibleTimer = 0;
@@ -280,6 +292,27 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setPosition(x, y);
     this.setVelocity(0, 0);
     this.setAlpha(1);
+    this.isJumpKeyHeld = false;
+    this.jumpBufferTimer = 0;
+    this.coyoteTimer = 0;
+    this.wasInAir = false;
+
+    // Reset input states and ensure keys are registered in the keyboard plugin
+    if (this.scene.input.keyboard) {
+      this.scene.input.keyboard.resetKeys();
+      this.ensureKeys();
+      this.keySpace?.reset();
+      this.keyW?.reset();
+      this.keyA?.reset();
+      this.keyD?.reset();
+      if (this.cursors) {
+        this.cursors.up?.reset();
+        this.cursors.down?.reset();
+        this.cursors.left?.reset();
+        this.cursors.right?.reset();
+      }
+    }
+
     if (this.staffController) {
       this.staffController.chargeManager.refillMax('respawn');
     } else {

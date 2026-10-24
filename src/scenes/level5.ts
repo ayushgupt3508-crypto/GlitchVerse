@@ -88,6 +88,7 @@ export class Level5Scene extends Phaser.Scene {
   private pauseMenu: PauseMenu | null = null;
   private gameOverScreen: GameOverScreen | null = null;
   private isPaused = false;
+  private isRespawning = false;
 
   // Visuals
   private dataStreamGfx?: Phaser.GameObjects.Graphics;
@@ -189,12 +190,21 @@ export class Level5Scene extends Phaser.Scene {
       this.collapseWallGfx?.destroy();
     });
 
+    this.isRespawning = false;
+
     // Fade in
     this.cameras.main.fadeIn(600, 0, 0, 0);
   }
 
   update(time: number, delta: number): void {
-    if (this.isPaused || this.player.isDead) return;
+    if (this.isPaused) return;
+
+    // Safety net: if player is dead but death sequence hasn't started, trigger it
+    if (this.player.isDead && !this.isRespawning) {
+      this.handleDeath('SYSTEM RECOVERY');
+      return;
+    }
+    if (this.isRespawning) return;
 
     // Update Player
     this.player.update(time, delta);
@@ -494,9 +504,9 @@ export class Level5Scene extends Phaser.Scene {
     // Player vs Drones
     this.drones.forEach(drone => {
       this.physics.add.overlap(this.player, drone, () => {
-        if (drone.isLethal && !this.player.isDead) {
+        if (drone.isLethal && !this.isRespawning) {
           const lethal = this.player.takeDamage();
-          if (lethal) {
+          if (lethal || this.player.integrity <= 0 || this.player.isDead) {
             this.handleDeath('VAPORIZED BY SINGULARITY DRONE');
           } else {
             AudioManager.playDeath();
@@ -665,7 +675,9 @@ export class Level5Scene extends Phaser.Scene {
   // ── Death & Respawn ───────────────────────────────────────────────────────
 
   private handleDeath(reason = 'DIMENSIONAL PARADOX'): void {
-    if (this.player.isDead) return;
+    if (this.isRespawning) return;
+    this.isRespawning = true;
+
     this.player.die();
     this.hud.updateIntegrity(0);
     this.deathCount++;
@@ -691,16 +703,19 @@ export class Level5Scene extends Phaser.Scene {
           this.isChamberCollapsing = false;
           this.collapseWallGfx?.clear();
           this.cameras.main.fadeIn(400, 0, 0, 0);
+          this.isRespawning = false;
         },
         onRestart: () => {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
+          this.isRespawning = false;
           this.physics.resume();
           this.scene.restart();
         },
         onMainMenu: () => {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
+          this.isRespawning = false;
           this.physics.resume();
           this.cameras.main.fadeOut(300, 0, 0, 0, () => {
             this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);

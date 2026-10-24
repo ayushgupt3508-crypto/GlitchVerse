@@ -23,6 +23,7 @@ export class PauseMenu extends Phaser.GameObjects.Container {
 
     // Dark backdrop overlay that blocks world inputs
     const backdrop = scene.add.rectangle(width / 2, height / 2, width, height, 0x040711, 0.78)
+      .setScrollFactor(0)
       .setInteractive();
     this.add(backdrop);
 
@@ -30,6 +31,7 @@ export class PauseMenu extends Phaser.GameObjects.Container {
     const py = (height - this.panelHeight) / 2;
 
     const panel = scene.add.graphics();
+    panel.setScrollFactor(0);
     panel.fillStyle(0x0a101d, 0.95);
     panel.fillRect(px, py, this.panelWidth, this.panelHeight);
     panel.lineStyle(2, 0x00f0ff, 0.85);
@@ -47,7 +49,7 @@ export class PauseMenu extends Phaser.GameObjects.Container {
       fontSize: '12px',
       color: '#00f0ff',
       fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setScrollFactor(0);
     this.add(header);
 
     const buttons = [
@@ -75,6 +77,7 @@ export class PauseMenu extends Phaser.GameObjects.Container {
       const bx = width / 2;
 
       const bg = scene.add.graphics();
+      bg.setScrollFactor(0);
       const draw = (color: number, stroke: number) => {
         bg.clear();
         bg.fillStyle(color, 1);
@@ -89,9 +92,11 @@ export class PauseMenu extends Phaser.GameObjects.Container {
         fontSize: '11px',
         color: '#e0fbfc',
         fontStyle: 'bold'
-      }).setOrigin(0.5);
+      }).setOrigin(0.5).setScrollFactor(0);
 
-      const hit = scene.add.zone(bx, by, w, h).setInteractive({ useHandCursor: true });
+      const hit = scene.add.zone(bx, by, w, h)
+        .setScrollFactor(0)
+        .setInteractive({ useHandCursor: true });
 
       hit.on('pointerover', () => {
         draw(0x192a45, 0x00f0ff);
@@ -113,6 +118,15 @@ export class PauseMenu extends Phaser.GameObjects.Container {
       this.add([bg, txt, hit]);
     });
 
+    this.setScrollFactor(0, 0, true);
     scene.add.existing(this);
+  }
+
+  override destroy(fromScene?: boolean): void {
+    if (this.subModal) {
+      this.subModal.destroy(fromScene);
+      this.subModal = null;
+    }
+    super.destroy(fromScene);
   }
 }
