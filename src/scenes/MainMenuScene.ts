@@ -58,15 +58,16 @@ export class MainMenuScene extends Phaser.Scene {
       this.load.start();
     }
 
-    // Subtle glitch pulse on Title Logo
     this.tweens.add({
-      targets: titleLogo,
-      x: '+=1',
-      duration: 80,
-      yoyo: true,
-      repeat: -1,
-      repeatDelay: 3000
-    });
+    targets: titleLogo,
+    x: '+=7',
+    y: '+=2',
+    duration: 40,
+    yoyo: true,
+    repeat: -1,
+    repeatDelay: 2000,
+    ease: 'Stepped'
+});
 
     // Subtitle
     this.add.text(titleX, titleY + 34, '// GLITCHVERSE SIMULATION //', {
