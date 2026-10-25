@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { Player } from '../entities/Player';
 import { SentinelDrone } from '../entities/SentinelDrone';
 import { HUD } from '../ui/HUD';
@@ -399,6 +399,7 @@ export class GameScene extends Phaser.Scene {
 
     // Audio init (needs user gesture — the Play button click counts)
     AudioManager.init();
+    AudioManager.startMatrixMusic();
 
     // Player event → audio + game logic hooks
     this.player.on('staff_used', (chargesLeft: number) => {
@@ -715,11 +716,13 @@ export class GameScene extends Phaser.Scene {
     this.platforms.create(472, 220, 'tile_snow_top').refreshBody();
 
     // Hint sign
-    this.add.text(418, 182, '[E / J]: USE STAFF -> FREEZE WATER', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
+    this.add.text(418, 180, '[E / J]: USE STAFF -> FREEZE WATER', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
       color: '#00f0ff',
-      backgroundColor: '#070b14'
+      backgroundColor: '#070b14',
+      padding: { x: 4, y: 2 }
     });
 
     // Segment 3: Water Chasm — deep dark water with floor spikes
@@ -738,10 +741,13 @@ export class GameScene extends Phaser.Scene {
       (spike.body as Phaser.Physics.Arcade.StaticBody).setOffset(8, 0);
     }
     // Danger label above chasm
-    this.add.text(570, 280, '⚠ ABYSSAL WATER', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '7px',
-      color: '#00b4d8'
+    this.add.text(570, 276, '⚠ ABYSSAL WATER', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#00b4d8',
+      stroke: '#040711',
+      strokeThickness: 2
     });
 
     // Segment 4: Mid-level Vault
@@ -766,7 +772,14 @@ export class GameScene extends Phaser.Scene {
     fs1.setImmovable(true);
     (fs1.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.tweens.add({ targets: fs1, y: 230, yoyo: true, repeat: -1, duration: 1200, ease: 'Sine.easeInOut' });
-    this.add.text(936, 210, 'FAILSAFE 01', { fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166' });
+    this.add.text(936, 206, 'FAILSAFE 01', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#040711',
+      strokeThickness: 2
+    });
     this.failsafeItems.push(fs1);
 
     // Energy Conduit #2 (before final climb)
@@ -817,8 +830,13 @@ export class GameScene extends Phaser.Scene {
         (movPlat.body as Phaser.Physics.Arcade.StaticBody).reset(movPlat.x, movPlat.y);
       }
     });
-    this.add.text(555, 236, '← MOVING PLATFORM →', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#48cae4'
+    this.add.text(555, 234, '← MOVING PLATFORM →', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#48cae4',
+      stroke: '#040711',
+      strokeThickness: 2
     });
 
     // ── Sentinel Drones (Phase 3) ──────────────────────────────────────
@@ -828,11 +846,13 @@ export class GameScene extends Phaser.Scene {
     drones.push(new SentinelDrone(this, 1200, 170, 1150, 1310));
 
     // Danger sign near first drone
-    this.add.text(785, 225, '! SENTINEL PATROL ZONE !', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '7px',
-      color: '#ff2222',
-      backgroundColor: '#070b14'
+    this.add.text(785, 222, '! SENTINEL PATROL ZONE !', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ff4444',
+      backgroundColor: '#070b14',
+      padding: { x: 3, y: 2 }
     });
 
     return { conduits, crystals, drones };
@@ -865,7 +885,14 @@ export class GameScene extends Phaser.Scene {
     (conduit.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     conduit.setData('used', false);
     this.tweens.add({ targets: conduit, alpha: 0.6, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.easeInOut' });
-    this.add.text(x - 22, y - 24, 'ENERGY CONDUIT', { fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#70e000' });
+    this.add.text(x - 22, y - 24, 'ENERGY CONDUIT', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#70e000',
+      stroke: '#040711',
+      strokeThickness: 2
+    });
     return conduit;
   }
 
@@ -877,7 +904,14 @@ export class GameScene extends Phaser.Scene {
     crystal.setImmovable(true);
     (crystal.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     crystal.setData('activated', false);
-    this.add.text(x - 24, y - 24, 'CHECKPOINT', { fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#d85ef5' });
+    this.add.text(x - 24, y - 24, 'CHECKPOINT', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#d85ef5',
+      stroke: '#040711',
+      strokeThickness: 2
+    });
     this.tweens.add({ targets: crystal, y: y - 4, yoyo: true, repeat: -1, duration: 1400, ease: 'Sine.easeInOut' });
     return { sprite: crystal, cx: x, cy: y };
   }
@@ -1100,20 +1134,45 @@ export class GameScene extends Phaser.Scene {
     (decoyPuddle as Phaser.GameObjects.Sprite).setAlpha(0.85);
 
     // Decorative labels & signposts
-    this.add.text(1450, 195, 'ZONE 2: FROZEN LAKE\nSELECTIVE SLAB CONVERSION', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#00f0ff', backgroundColor: '#070b14'
+    this.add.text(1450, 192, 'ZONE 2: FROZEN LAKE\nSELECTIVE SLAB CONVERSION', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      backgroundColor: '#070b14',
+      padding: { x: 4, y: 2 }
     });
     this.add.text(z2.slab1.x - 16, z2.slab1.y - 18, 'SLAB A', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#48cae4'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#48cae4',
+      stroke: '#040711',
+      strokeThickness: 2
     });
     this.add.text(z2.slab2Trap.x - 24, z2.slab2Trap.y - 18, '⚠ LOW SLAB B', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ff6b35'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ff6b35',
+      stroke: '#040711',
+      strokeThickness: 2
     });
     this.add.text(z2.slab3.x - 16, z2.slab3.y - 18, 'SLAB C', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#48cae4'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#48cae4',
+      stroke: '#040711',
+      strokeThickness: 2
     });
     this.add.text(z2.decoyValve.x - 28, z2.decoyValve.y - 20, 'DECOY RESERVOIR', {
-      fontFamily: 'Courier New, monospace', fontSize: '6px', color: '#bde0fe'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#bde0fe',
+      stroke: '#040711',
+      strokeThickness: 2
     });
   }
 
@@ -1183,7 +1242,12 @@ export class GameScene extends Phaser.Scene {
     this.pressurePlateSprite.setImmovable(true);
     (this.pressurePlateSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.add.text(z3.pressurePlate.x - 38, z3.pressurePlate.y + 8, 'PRESSURE LOCK', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166', backgroundColor: '#070b14'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      backgroundColor: '#070b14',
+      padding: { x: 3, y: 1 }
     });
 
     // Glowing cyan conduit cable running along the floor from pressure plate to Barrier 1
@@ -1203,7 +1267,12 @@ export class GameScene extends Phaser.Scene {
       frequency: 250
     }).setDepth(5);
     this.add.text(z3.suspendedWater.x - 48, z3.suspendedWater.y - 34, 'SUSPENDED AQUIFER\n[E/J] FREEZE MASS', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#00f0ff', backgroundColor: '#070b14'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      backgroundColor: '#070b14',
+      padding: { x: 3, y: 2 }
     });
 
     // ── Cryo-Barrier 1 (Impenetrable floor-to-ceiling pillar, 24x130) ──
@@ -1211,7 +1280,12 @@ export class GameScene extends Phaser.Scene {
     this.iceBarrier1Sprite.setImmovable(true);
     (this.iceBarrier1Sprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.add.text(z3.iceBarrier1.x - 30, z3.iceBarrier1.y - 75, 'CRYO-BARRIER 1\n[LOCKED]', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#00f0ff', backgroundColor: '#070b14'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      backgroundColor: '#070b14',
+      padding: { x: 3, y: 2 }
     });
 
     // ── Cavern Hazard Section (Spikes, Crumbling Platforms, Hazards) ──
@@ -1261,7 +1335,12 @@ export class GameScene extends Phaser.Scene {
     this.iceBarrier2Sprite.setImmovable(true);
     (this.iceBarrier2Sprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.add.text(z3.iceBarrier2.x - 26, z3.iceBarrier2.y - 75, 'FROST BULWARK\n[E/J] MELT', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ff6b35', backgroundColor: '#070b14'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ff6b35',
+      backgroundColor: '#070b14',
+      padding: { x: 3, y: 2 }
     });
   }
 
@@ -1297,7 +1376,12 @@ export class GameScene extends Phaser.Scene {
       (spike.body as Phaser.Physics.Arcade.StaticBody).setOffset(8, 0);
     }
     this.add.text(z4.iceRunway.startX + 10, z4.iceRunway.y - 20, 'SLIPPERY RUNWAY ⚠ JUMP BEFORE SPIKES', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ff2222'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ff4444',
+      stroke: '#040711',
+      strokeThickness: 2
     });
 
     // ── Wide Approach & Airlock Floor Platform (Level 240 floor, seamless running transition) ──
@@ -1317,7 +1401,12 @@ export class GameScene extends Phaser.Scene {
 
     // Bunker sign above doorway
     this.add.text(z4.timedDoor.x - 44, 138, 'FACILITY AIRLOCK', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#00f0ff', backgroundColor: '#070b14'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      backgroundColor: '#070b14',
+      padding: { x: 3, y: 1 }
     });
 
     // Timed Ice Door (Fills the opening from y=134 to y=226, 24x92)
@@ -1325,7 +1414,12 @@ export class GameScene extends Phaser.Scene {
     this.timedDoorSprite.setImmovable(true);
     (this.timedDoorSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.add.text(z4.timedDoor.x - 32, z4.timedDoor.y - 56, 'TIMED CRYO-LOCK\n[E/J] MELT (4.5s)', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166', backgroundColor: '#070b14'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      backgroundColor: '#070b14',
+      padding: { x: 3, y: 2 }
     });
 
     // Final Exit Platform
@@ -1342,7 +1436,12 @@ export class GameScene extends Phaser.Scene {
     (fs2.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.tweens.add({ targets: fs2, y: z4.failsafe2.spriteY - 5, yoyo: true, repeat: -1, duration: 1000, ease: 'Sine.easeInOut' });
     this.add.text(z4.failsafe2.spriteX - 33, z4.failsafe2.spriteY - 25, 'FAILSAFE 02', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#040711',
+      strokeThickness: 2
     });
     // Small jump platform to reach shelf
     this.platforms.create(z4.failsafe2.shelfX, z4.failsafe2.shelfY + 8, 'tile_snow_top').refreshBody();
@@ -1360,7 +1459,12 @@ export class GameScene extends Phaser.Scene {
     this.exitPortal = this.add.sprite(z4.exitPortal.x, z4.exitPortal.y, 'exit_portal');
     this.tweens.add({ targets: this.exitPortal, scaleX: 1.1, scaleY: 1.1, yoyo: true, repeat: -1, duration: 800 });
     this.add.text(z4.exitPortal.x - 50, z4.exitPortal.y - 45, 'EXIT GATE', {
-      fontFamily: 'Courier New, monospace', fontSize: '9px', color: '#70e000'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#70e000',
+      stroke: '#040711',
+      strokeThickness: 2
     });
   }
 

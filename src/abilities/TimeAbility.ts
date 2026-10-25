@@ -98,10 +98,12 @@ export class TimeAbility {
     bg.strokeRoundedRect(0, 0, 144, 26, 6);
 
     this.hudText = this.scene.add.text(72, 13, '[T/E] CHRONO CONDUIT', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '10px',
       fontStyle: 'bold',
-      color: '#00f0ff'
+      color: '#00f0ff',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     this.hudWidget.add([bg, this.hudText]);

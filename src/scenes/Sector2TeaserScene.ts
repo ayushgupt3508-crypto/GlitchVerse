@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 
 /**
@@ -45,9 +45,12 @@ export class Sector2TeaserScene extends Phaser.Scene {
     header.lineBetween(0, 50, W, 50);
 
     this.add.text(W / 2, 25, 'INCOMING TRANSMISSION', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '10px',
-      color: '#ff6b35'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#ff6b35',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     // ── Giant locked door visual ────────────────────────────────────────
@@ -85,24 +88,31 @@ export class Sector2TeaserScene extends Phaser.Scene {
 
     // SECTOR label above door
     this.add.text(doorX, doorY - 62, 'SECTOR 2', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '14px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '18px',
+      fontStyle: 'bold',
       color: '#ff6b35',
       stroke: '#000000',
       strokeThickness: 3
     }).setOrigin(0.5);
 
     this.add.text(doorX, doorY - 46, 'HEAT AGE', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '9px',
-      color: '#8b4513'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     // LOCKED label on door
     this.add.text(doorX, doorY + 30, '[ LOCKED ]', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
-      color: '#ff2222'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ff2222',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     // ── Lore scroll text ────────────────────────────────────────────────
@@ -124,9 +134,12 @@ export class Sector2TeaserScene extends Phaser.Scene {
     const loreContainer = this.add.container(0, 0);
     loreLines.forEach((line, i) => {
       const t = this.add.text(W / 2, H - 185 + i * 13, line, {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '7px',
+        fontFamily: GAME_FONTS.primary,
+        fontSize: '10px',
+        fontStyle: 'bold',
         color: i === 0 || i === 1 || i === 2 || i === 3 ? '#ff6b35' : '#8b9bb4',
+        stroke: '#040711',
+        strokeThickness: 2
       }).setOrigin(0.5).setAlpha(0);
       loreContainer.add(t);
 
@@ -139,9 +152,12 @@ export class Sector2TeaserScene extends Phaser.Scene {
     this.time.delayedCall(1400, () => {
       // Enter Sector 2 button
       const enterBtn = this.add.text(W / 2, H - 36, '[ ENTER SECTOR 2: HEAT AGE ]', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '10px',
-        color: '#ff8c00'
+        fontFamily: GAME_FONTS.primary,
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color: '#ff8c00',
+        stroke: '#040711',
+        strokeThickness: 2
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
       this.tweens.add({ targets: enterBtn, alpha: 0.5, yoyo: true, repeat: -1, duration: 700 });
@@ -158,9 +174,12 @@ export class Sector2TeaserScene extends Phaser.Scene {
       });
 
       const backBtn = this.add.text(W / 2, H - 14, 'RETURN TO MAIN MENU', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '8px',
-        color: '#8b9bb4'
+        fontFamily: GAME_FONTS.primary,
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: '#8b9bb4',
+        stroke: '#040711',
+        strokeThickness: 2
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
       backBtn.on('pointerover', () => {

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 
 interface EndingData {
@@ -66,8 +66,8 @@ export class EndingScene extends Phaser.Scene {
 
     // Title: SIMULATION ESCAPED
     const title = this.add.text(W / 2, 26, 'GLITCHVERSE ESCAPED', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '18px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '22px',
       fontStyle: 'bold',
       color: '#00f0ff',
       stroke: '#001a33',
@@ -78,9 +78,12 @@ export class EndingScene extends Phaser.Scene {
 
     // Sub-title
     this.add.text(W / 2, 44, '// ALL 5 SECTORS LIBERATED //', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
-      color: '#ffd166'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#001a33',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     // ── Center Stats Panel ────────────────────────────────────────────────
@@ -104,16 +107,21 @@ export class EndingScene extends Phaser.Scene {
     stats.forEach(([label, value, color], i) => {
       const y = panelY + 14 + i * 24;
       this.add.text(panelX + 14, y, label, {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '9px',
-        color: '#8b9bb4'
+        fontFamily: GAME_FONTS.primary,
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: '#8b9bb4',
+        stroke: '#040711',
+        strokeThickness: 2
       });
 
       this.add.text(panelX + 246, y, value, {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '9px',
+        fontFamily: GAME_FONTS.primary,
+        fontSize: '13px',
         fontStyle: 'bold',
-        color
+        color,
+        stroke: '#040711',
+        strokeThickness: 2
       }).setOrigin(1, 0);
     });
 
@@ -126,10 +134,11 @@ export class EndingScene extends Phaser.Scene {
     termBox.strokeRoundedRect(panelX, termY, 260, 80, 6);
 
     const termText = this.add.text(panelX + 10, termY + 8, '', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '7px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
       color: '#ff007f',
-      lineSpacing: 3
+      lineSpacing: 4
     });
 
     this.startTypewriter(termText);
@@ -190,10 +199,12 @@ export class EndingScene extends Phaser.Scene {
 
   private makeButton(x: number, y: number, label: string, color: string, onClick: () => void): void {
     const btn = this.add.text(x, y, label, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '9px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
       fontStyle: 'bold',
-      color
+      color,
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     btn.on('pointerover', () => {

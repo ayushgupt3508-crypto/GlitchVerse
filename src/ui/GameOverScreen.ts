@@ -1,6 +1,7 @@
 
 import Phaser from 'phaser';
 import { AudioManager } from '../systems/AudioManager';
+import { GAME_FONTS } from '../config';
 
 export interface GameOverCallbacks {
     onRespawn: () => void;
@@ -21,6 +22,7 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
 
         this.setScrollFactor(0);
         this.setDepth(3000);
+        AudioManager.setMusicDucked(true);
 
         const W = scene.scale.width;
         const H = scene.scale.height;
@@ -61,7 +63,7 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
             titleY,
             'GAME OVER',
             {
-                fontFamily: 'Pixel Operator, monospace',
+                fontFamily: GAME_FONTS.primary,
                 fontSize: `${Math.min(98, W * 0.07)}px`,
                 color: '#ff315c',
                 fontStyle: 'bold',
@@ -153,9 +155,12 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
                 scientistY,
                 '[ SCIENTIST DOWN ]',
                 {
-                    fontFamily: 'monospace',
-                    fontSize: '14px',
-                    color: '#00eaff'
+                    fontFamily: GAME_FONTS.primary,
+                    fontSize: '15px',
+                    fontStyle: 'bold',
+                    color: '#00eaff',
+                    stroke: '#040711',
+                    strokeThickness: 2
                 }
             ).setOrigin(0.5);
 
@@ -197,10 +202,12 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
             reasonY,
             `[ ! ] ${reason.toUpperCase()}`,
             {
-                fontFamily: 'Pixel Operator, monospace',
-                fontSize: '13px',
+                fontFamily: GAME_FONTS.primary,
+                fontSize: '14px',
                 color: '#ff6680',
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                stroke: '#1a0008',
+                strokeThickness: 2
             }
         ).setOrigin(0.5);
 
@@ -258,10 +265,12 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
             const text = scene.add.text(
                 x, y, label,
                 {
-                    fontFamily: 'Pixel Operator, monospace',
+                    fontFamily: GAME_FONTS.primary,
                     fontSize,
                     color: normalText,
-                    fontStyle: 'bold'
+                    fontStyle: 'bold',
+                    stroke: '#040711',
+                    strokeThickness: 2
                 }
             ).setOrigin(0.5);
 
@@ -400,6 +409,7 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
     // ==========================================
 
     public override destroy(fromScene?: boolean): void {
+        AudioManager.setMusicDucked(false);
         if (this.keyboardListener) {
             window.removeEventListener('keydown', this.keyboardListener);
             this.keyboardListener = undefined;

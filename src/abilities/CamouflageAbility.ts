@@ -414,10 +414,11 @@ export class CamouflageAbility {
 
     // Status text
     this.hudStatusText = this.scene.add.text(69, 9, '[C] ILLUSION: READY', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '10px',
+      fontStyle: 'bold',
       color: '#ffd166',
-      stroke: '#000000',
+      stroke: '#040711',
       strokeThickness: 2
     }).setOrigin(0.5);
     this.hudWidget.add(this.hudStatusText);

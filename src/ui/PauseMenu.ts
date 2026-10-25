@@ -18,6 +18,7 @@ export class PauseMenu extends Phaser.GameObjects.Container {
     super(scene, 0, 0);
     this.setScrollFactor(0);
     this.setDepth(2000);
+    AudioManager.setMusicDucked(true);
 
     const hasCheckpoint = !!callbacks.onCheckpoint;
     if (hasCheckpoint) {
@@ -51,10 +52,12 @@ export class PauseMenu extends Phaser.GameObjects.Container {
     this.add(panel);
 
     const header = scene.add.text(width / 2, py + 15, 'SIMULATION PAUSED', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '12px',
+      fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
+      fontSize: '14px',
       color: '#00f0ff',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 2
     }).setOrigin(0.5).setScrollFactor(0);
     this.add(header);
 
@@ -80,8 +83,8 @@ export class PauseMenu extends Phaser.GameObjects.Container {
 
     const startY = hasCheckpoint ? py + 52 : py + 60;
     const spacingY = hasCheckpoint ? 35 : 36;
-    const w = 160;
-    const h = 26;
+    const w = 175;
+    const h = 28;
 
     buttons.forEach((btn, idx) => {
       const by = startY + idx * spacingY;
@@ -99,10 +102,12 @@ export class PauseMenu extends Phaser.GameObjects.Container {
       draw(0x142033, 0x243b59);
 
       const txt = scene.add.text(bx, by, btn.label, {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '11px',
+        fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
+        fontSize: '13px',
         color: '#e0fbfc',
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2
       }).setOrigin(0.5).setScrollFactor(0);
 
       const hit = scene.add.zone(bx, by, w, h)
@@ -134,6 +139,7 @@ export class PauseMenu extends Phaser.GameObjects.Container {
   }
 
   override destroy(fromScene?: boolean): void {
+    AudioManager.setMusicDucked(false);
     if (this.subModal) {
       this.subModal.destroy(fromScene);
       this.subModal = null;

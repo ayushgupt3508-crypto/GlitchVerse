@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { Player } from '../entities/Player';
 import { SentinelDrone } from '../entities/SentinelDrone';
 import { FireJet } from '../entities/FireJet';
@@ -169,6 +169,7 @@ export class Sector2Scene extends Phaser.Scene {
 
     // Audio
     AudioManager.init();
+    AudioManager.startMatrixMusic();
 
     // Player events
     this.player.on('staff_used', (chargesLeft: number) => {
@@ -387,11 +388,21 @@ export class Sector2Scene extends Phaser.Scene {
     for (let y = 0; y < 220; y += 32) {
       this.platforms.create(0, y, 'tile_metal').refreshBody();
     }
-    this.add.text(14, 258, 'HEAT AGE — SECTOR 2', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ff8800'
+    this.add.text(14, 256, 'HEAT AGE — SECTOR 2', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ff8800',
+      stroke: '#040711',
+      strokeThickness: 2
     });
     this.add.text(14, 270, '[E/J] = STAFF  [ESC] = PAUSE', {
-      fontFamily: 'Courier New, monospace', fontSize: '6px', color: '#886644'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#a08866',
+      stroke: '#040711',
+      strokeThickness: 2
     });
 
     // Heat conduit #1
@@ -427,14 +438,22 @@ export class Sector2Scene extends Phaser.Scene {
     this.platforms.create(660, 270, 'tile_metal').refreshBody();
     this.platforms.create(692, 270, 'tile_metal').refreshBody();
 
-    this.add.text(306, 220, '↔ LAVA RAFT', {
-      fontFamily: 'Courier New, monospace', fontSize: '6px', color: '#ff8800'
+    this.add.text(306, 218, '↔ LAVA RAFT', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ff8800',
+      stroke: '#040711',
+      strokeThickness: 2
     });
 
     // Solidification ability hint (floats above chasm entrance)
-    const hintTxt = this.add.text(290, 205, '[E/J] STAFF = SOLIDIFY LAVA', {
-      fontFamily: 'Courier New, monospace', fontSize: '6px',
-      color: '#00c8ff', backgroundColor: '#0a0412cc',
+    const hintTxt = this.add.text(290, 203, '[E/J] STAFF = SOLIDIFY LAVA', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#00c8ff',
+      backgroundColor: '#0a0412cc',
       padding: { x: 4, y: 2 }
     });
     this.tweens.add({ targets: hintTxt, alpha: 0.4, yoyo: true, repeat: -1, duration: 900 });
@@ -456,9 +475,13 @@ export class Sector2Scene extends Phaser.Scene {
       this.fireJets.push(jet);
     });
 
-    this.add.text(708, 250, '⚠ FIRE JET MAZE  [E/J] STAFF = STUN', {
-      fontFamily: 'Courier New, monospace', fontSize: '6px',
-      color: '#ff6600', backgroundColor: '#0a0402'
+    this.add.text(708, 248, '⚠ FIRE JET MAZE  [E/J] STAFF = STUN', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ff6600',
+      backgroundColor: '#0a0402',
+      padding: { x: 4, y: 2 }
     });
 
     // ── Segment 4: Mid Ember Vault (x=1060-1380) ─────────────────────
@@ -487,8 +510,13 @@ export class Sector2Scene extends Phaser.Scene {
     fs3.setImmovable(true);
     (fs3.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.tweens.add({ targets: fs3, y: 237, yoyo: true, repeat: -1, duration: 1100 });
-    this.add.text(1196, 218, 'FAILSAFE 03', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166'
+    this.add.text(1196, 216, 'FAILSAFE 03', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#040711',
+      strokeThickness: 2
     });
     this.failsafeItems.push(fs3);
 
@@ -551,8 +579,13 @@ export class Sector2Scene extends Phaser.Scene {
     fs4.setImmovable(true);
     (fs4.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.tweens.add({ targets: fs4, y: 202, yoyo: true, repeat: -1, duration: 950 });
-    this.add.text(1862, 186, 'FAILSAFE 04', {
-      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166'
+    this.add.text(1862, 184, 'FAILSAFE 04', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#040711',
+      strokeThickness: 2
     });
     this.failsafeItems.push(fs4);
 
@@ -614,7 +647,12 @@ export class Sector2Scene extends Phaser.Scene {
       yoyo: true, repeat: -1, duration: 700
     });
     this.add.text(x - 24, y - 36, 'EXIT GATE', {
-      fontFamily: 'Courier New, monospace', fontSize: '8px', color: '#ff8800'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ff8800',
+      stroke: '#040711',
+      strokeThickness: 2
     });
   }
 

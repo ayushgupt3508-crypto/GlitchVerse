@@ -116,6 +116,7 @@ export class Level4Scene extends Phaser.Scene {
 
   create(): void {
     AudioManager.init();
+    AudioManager.startMatrixMusic();
     this.physics.resume();
     this.isPaused = false;
     this.pauseMenu = null;

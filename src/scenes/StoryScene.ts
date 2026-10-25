@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
+import { AudioManager } from '../systems/AudioManager';
 
 const SLIDES = [
   {
@@ -61,6 +62,15 @@ export class StoryScene extends Phaser.Scene {
   }
 
   create(): void {
+    AudioManager.init();
+    AudioManager.startStoryMusic();
+
+    this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (AudioManager.getCurrentTrack() === 'story') {
+        AudioManager.stopMusic();
+      }
+    });
+
     this.slideIndex = 0;
     this.isAdvancing = false;
     this.showSlide(0);
@@ -96,38 +106,45 @@ export class StoryScene extends Phaser.Scene {
 
     // ── Chapter pill (top-left)
     const pill = this.add.graphics();
-    pill.fillStyle(0x00f0ff, 0.12);
-    pill.fillRoundedRect(20, 16, 54, 20, 4);
-    pill.lineStyle(1, 0x00f0ff, 0.6);
-    pill.strokeRoundedRect(20, 16, 54, 20, 4);
-    this.add.text(47, 26, '// 0' + (index + 1), {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '9px',
+    pill.fillStyle(0x0a101d, 0.75);
+    pill.fillRoundedRect(20, 16, 62, 22, 5);
+    pill.lineStyle(1.5, 0x00f0ff, 0.8);
+    pill.strokeRoundedRect(20, 16, 62, 22, 5);
+    this.add.text(51, 27, '// 0' + (index + 1), {
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '12px',
+      fontStyle: 'bold',
       color: '#00f0ff',
+      stroke: '#000000',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     // ── Title (bottom-left, fades in)
-    const titleY = H - 148;
+    const titleY = H - 152;
     const titleObj = this.add.text(24, titleY, slide.title.toUpperCase(), {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '14px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '17px',
       fontStyle: 'bold',
       color: '#ffffff',
+      stroke: '#050a14',
+      strokeThickness: 4
     }).setAlpha(0);
     this.tweens.add({ targets: titleObj, alpha: 1, duration: 500 });
 
     // Accent underline below title
     const accent = this.add.graphics().setAlpha(0);
-    accent.lineStyle(1.5, 0x00f0ff, 0.8);
-    accent.lineBetween(24, titleY + 20, 24 + slide.title.length * 9, titleY + 20);
+    accent.lineStyle(2, 0x00f0ff, 0.9);
+    accent.lineBetween(24, titleY + 23, 24 + slide.title.length * 11, titleY + 23);
     this.tweens.add({ targets: accent, alpha: 1, duration: 500, delay: 200 });
 
     // ── Typewriter body text
-    const bodyText = this.add.text(24, titleY + 28, '', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '9px',
-      color: '#c8d8e8',
-      lineSpacing: 6,
+    const bodyText = this.add.text(24, titleY + 32, '', {
+      fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
+      fontSize: '13px',
+      color: '#e2f0fc',
+      stroke: '#050a14',
+      strokeThickness: 3,
+      lineSpacing: 8,
       wordWrap: { width: W - 48 },
     });
 
@@ -163,9 +180,12 @@ export class StoryScene extends Phaser.Scene {
     // ── NEXT / BEGIN button (bottom-right, pulsing)
     const isLast = index === SLIDES.length - 1;
     const nextBtn = this.add.text(W - 20, H - 20, isLast ? 'BEGIN  ►' : 'NEXT  ►', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '9px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '13px',
+      fontStyle: 'bold',
       color: '#70e000',
+      stroke: '#050a14',
+      strokeThickness: 3
     }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
     this.tweens.add({ targets: nextBtn, alpha: 0.5, yoyo: true, repeat: -1, duration: 700 });
     nextBtn.on('pointerup', () => this.advanceSlide());
@@ -174,9 +194,12 @@ export class StoryScene extends Phaser.Scene {
 
     // ── SKIP button (top-right)
     const skipBtn = this.add.text(W - 20, 20, 'SKIP  »', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '9px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '12px',
+      fontStyle: 'bold',
       color: '#8b9bb4',
+      stroke: '#050a14',
+      strokeThickness: 2
     }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
     skipBtn.on('pointerup', () => this.skipAll());
     skipBtn.on('pointerover', () => skipBtn.setColor('#ffffff'));
@@ -235,6 +258,9 @@ export class StoryScene extends Phaser.Scene {
   }
 
   private startGame(): void {
+    if (AudioManager.getCurrentTrack() === 'story') {
+      AudioManager.stopMusic();
+    }
     this.scene.start(GAME_CONFIG.sceneKeys.Game);
   }
 }

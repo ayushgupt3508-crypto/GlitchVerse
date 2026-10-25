@@ -92,8 +92,9 @@ export class Guard extends Phaser.Physics.Arcade.Sprite {
 
     // Guard name label above sprite
     this.nameLabel = scene.add.text(x, y - 36, this.guardName, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '6px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '9px',
+      fontStyle: 'bold',
       color: '#cccc88',
       stroke: '#000000',
       strokeThickness: 2
@@ -324,8 +325,12 @@ export class Guard extends Phaser.Physics.Arcade.Sprite {
   private spawnAlertIcon(text = '!!', color = '#ff8800'): void {
     if (!this.alertIcon) {
       this.alertIcon = this.scene.add.text(this.x, this.y - 28, text, {
-        fontFamily: 'Courier New, monospace', fontSize: '14px',
-        color, stroke: '#000000', strokeThickness: 2
+        fontFamily: '"Pixelify Sans", monospace',
+        fontSize: '15px',
+        fontStyle: 'bold',
+        color,
+        stroke: '#000000',
+        strokeThickness: 2
       }).setOrigin(0.5).setDepth(25);
     } else {
       this.alertIcon.setText(text).setColor(color).setVisible(true);

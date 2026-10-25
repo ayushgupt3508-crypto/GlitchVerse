@@ -51,10 +51,11 @@ export class PowerNode implements IStaffInteractable {
     this.sprite = scene.add.sprite(x, y, 'power_node').setDepth(12);
 
     this.labelText = scene.add.text(x, y - 22, this.activeCircuitId.toUpperCase(), {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '7px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '10px',
+      fontStyle: 'bold',
       color: '#00f0ff',
-      stroke: '#000000',
+      stroke: '#040711',
       strokeThickness: 2
     }).setOrigin(0.5).setDepth(20);
   }
