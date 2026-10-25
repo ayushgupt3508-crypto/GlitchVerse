@@ -6,6 +6,7 @@ export interface PauseMenuCallbacks {
   onResume: () => void;
   onRestart: () => void;
   onMainMenu: () => void;
+  onCheckpoint?: () => void;
 }
 
 export class PauseMenu extends Phaser.GameObjects.Container {
@@ -17,6 +18,11 @@ export class PauseMenu extends Phaser.GameObjects.Container {
     super(scene, 0, 0);
     this.setScrollFactor(0);
     this.setDepth(2000);
+
+    const hasCheckpoint = !!callbacks.onCheckpoint;
+    if (hasCheckpoint) {
+      this.panelHeight = 256;
+    }
 
     const width = scene.cameras.main.width;
     const height = scene.cameras.main.height;
@@ -52,8 +58,13 @@ export class PauseMenu extends Phaser.GameObjects.Container {
     }).setOrigin(0.5).setScrollFactor(0);
     this.add(header);
 
-    const buttons = [
+    const buttons: Array<{ label: string; action: () => void }> = [
       { label: 'RESUME', action: () => callbacks.onResume() },
+    ];
+    if (hasCheckpoint) {
+      buttons.push({ label: 'START AT CHECKPOINT', action: () => callbacks.onCheckpoint!() });
+    }
+    buttons.push(
       { label: 'RESTART LEVEL', action: () => callbacks.onRestart() },
       {
         label: 'SETTINGS',
@@ -65,10 +76,10 @@ export class PauseMenu extends Phaser.GameObjects.Container {
         }
       },
       { label: 'MAIN MENU', action: () => callbacks.onMainMenu() }
-    ];
+    );
 
-    const startY = py + 60;
-    const spacingY = 36;
+    const startY = hasCheckpoint ? py + 52 : py + 60;
+    const spacingY = hasCheckpoint ? 35 : 36;
     const w = 160;
     const h = 26;
 

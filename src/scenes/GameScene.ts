@@ -39,11 +39,11 @@ export const LEVEL1_DATA = {
   },
   zone3: {
     entrancePlatform: { startX: 1820, endX: 2020, y: 250 },
-    gantry: { startX: 1860, endX: 1920, y: 195 },
+    gantry: { startX: 1860, endX: 1892, y: 195 },
     checkpoint: { x: 1850, y: 218, respawnY: 200 },
-    refillCrystal1: { x: 1890, y: 165 },
-    suspendedWater: { x: 1950, y: 65, triggerRange: [1880, 1990] as [number, number] },
-    pressurePlate: { x: 1950, y: 250 },
+    refillCrystal1: { x: 1880, y: 165 },
+    suspendedWater: { x: 1950, y: 65, triggerRange: [1840, 2010] as [number, number] },
+    pressurePlate: { x: 1950, y: 240 },
     iceBarrier1: { x: 2000, y: 185, width: 24, height: 130 },
     crumbling: [
       { startX: 2070, y: 230, count: 2 },
@@ -61,12 +61,12 @@ export const LEVEL1_DATA = {
   zone4: {
     entrancePlatform: { startX: 2350, endX: 2420, y: 260 },
     refillCrystal2: { x: 2380, y: 228 },
-    iceRunway: { startX: 2440, endX: 2580, y: 240 },
-    spikes: { startX: 2580, endX: 2604, step: 12, y: 240 },
-    midwayLedge: { startX: 2610, endX: 2640, y: 210 },
-    bunkerWall: { startX: 2640, endX: 2700, ceilingY: 160 },
-    doorwayFloor: { startX: 2640, endX: 2700, y: 240 },
-    timedDoor: { x: 2660, y: 200, width: 24, height: 80, triggerRange: [2610, 2710] as [number, number], durationMs: 4500 },
+    iceRunway: { startX: 2440, endX: 2560, y: 240, triggerRange: [2380, 2610] as [number, number] },
+    spikes: { startX: 2570, endX: 2592, step: 11, y: 240 },
+    approachPlatform: { startX: 2600, endX: 2650, y: 240 },
+    bunkerWall: { startX: 2650, endX: 2700, ceilingY: 120 },
+    doorwayFloor: { startX: 2650, endX: 2700, y: 240 },
+    timedDoor: { x: 2660, y: 180, width: 24, height: 92, triggerRange: [2620, 2710] as [number, number], durationMs: 4500 },
     exitPlatform: { startX: 2700, endX: 2800, y: 260 },
     failsafe2: { shelfX: 2740, shelfY: 210, spriteX: 2740, spriteY: 185 },
     exitPortal: { x: 2775, y: 220 }
@@ -74,7 +74,7 @@ export const LEVEL1_DATA = {
   refillCrystals: [
     { x: 200, y: 288 },
     { x: 1060, y: 258 },
-    { x: 1890, y: 165 },
+    { x: 1880, y: 165 },
     { x: 2380, y: 228 }
   ]
 } as const;
@@ -146,12 +146,16 @@ export class GameScene extends Phaser.Scene {
   private movingHazard?: Phaser.Physics.Arcade.Sprite;
   private hasDroppedIceBlock = false;
   private hasShownPlateHint = false;
+  private droppedIceBlock?: Phaser.Physics.Arcade.Sprite;
 
   // Zone 4 state: Buried Facility Approach
   private timedDoorSprite?: Phaser.Physics.Arcade.Sprite;
   private timedDoorCollider?: Phaser.Physics.Arcade.Collider;
   private isTimedDoorOpen = false;
   private timedDoorTimer?: Phaser.Time.TimerEvent;
+  private isRunwayFrozen = true;
+  private runwayIceTiles: Phaser.GameObjects.Sprite[] = [];
+  private runwayWaterTiles: Phaser.GameObjects.Sprite[] = [];
 
   // Level boundaries
   private readonly levelWidth = LEVEL1_DATA.dimensions.width;
@@ -166,6 +170,8 @@ export class GameScene extends Phaser.Scene {
     this.isRespawning = false;
     this.isLeavingScene = false;
     this.isPaused = false;
+    this.checkpointX = LEVEL1_DATA.spawn.x;
+    this.checkpointY = LEVEL1_DATA.spawn.y;
     this.failsafeCollected = 0;
     this.hasRecoveredComponent = false;
     this.isWaterFrozen = false;
@@ -175,7 +181,11 @@ export class GameScene extends Phaser.Scene {
     this.isBarrier2Melted = false;
     this.hasDroppedIceBlock = false;
     this.hasShownPlateHint = false;
+    this.droppedIceBlock = undefined;
     this.isTimedDoorOpen = false;
+    this.isRunwayFrozen = true;
+    this.runwayIceTiles = [];
+    this.runwayWaterTiles = [];
     this.isSlab1Frozen = false;
     this.isSlab2Frozen = false;
     this.isSlab3Frozen = false;
@@ -260,8 +270,13 @@ export class GameScene extends Phaser.Scene {
 
     // Hazards
     this.physics.add.overlap(this.player, this.hazards, () => this.handleHazardCollision());
-    this.physics.add.overlap(this.player, this.waterTiles, () => {
-      if (!this.isWaterFrozen) this.handleHazardCollision('FREEZING WATER SUBMERSION');
+    this.physics.add.overlap(this.player, this.waterTiles, (_p, wTile) => {
+      const isRunwayTile = this.runwayWaterTiles.includes(wTile as Phaser.Physics.Arcade.Sprite);
+      if (isRunwayTile) {
+        if (!this.isRunwayFrozen) this.handleHazardCollision('FREEZING WATER SUBMERSION');
+      } else {
+        if (!this.isWaterFrozen) this.handleHazardCollision('FREEZING WATER SUBMERSION');
+      }
     });
 
     // Energy conduit overlaps
@@ -972,12 +987,20 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.flash(200, 0, 240, 255);
 
         const block = this.physics.add.sprite(z3.suspendedWater.x, z3.suspendedWater.y + 16, 'ice_block_heavy');
+        this.droppedIceBlock = block;
         block.setCollideWorldBounds(true);
-        block.setBounce(0.05);
-        (block.body as Phaser.Physics.Arcade.Body).setGravityY(650);
+        block.setBounce(0.02);
+        (block.body as Phaser.Physics.Arcade.Body).setGravityY(700);
+        (block.body as Phaser.Physics.Arcade.Body).setVelocityX(0);
+
+        // Player can stand firmly on the ice block
+        this.physics.add.collider(this.player, block, () => {
+          this.isOnIce = true;
+        });
 
         this.physics.add.collider(block, this.platforms);
         if (this.pressurePlateSprite) {
+          this.physics.add.collider(block, this.pressurePlateSprite, () => this.triggerPressurePlate());
           this.physics.add.overlap(block, this.pressurePlateSprite, () => this.triggerPressurePlate());
         }
       }
@@ -990,8 +1013,57 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    // Zone 4: Timed Door
+    // Zone 4: Slippery Runway Unfreezing / Freezing (on or near the runway)
     const z4 = LEVEL1_DATA.zone4;
+    if (
+      this.player.x >= z4.iceRunway.triggerRange[0] &&
+      this.player.x <= z4.iceRunway.triggerRange[1] &&
+      this.player.y >= 100 &&
+      this.player.y <= 320
+    ) {
+      this.isRunwayFrozen = !this.isRunwayFrozen;
+      if (!this.isRunwayFrozen) {
+        // Unfreeze: Ice melts into water
+        this.hud.showBanner('RUNWAY ICE UNFROZEN — THAWED INTO FREEZING WATER!');
+        AudioManager.playStaffUse();
+        this.cameras.main.flash(150, 0, 119, 182);
+
+        // Remove ice tiles with steam particles
+        this.runwayIceTiles.forEach(tile => {
+          this.add.particles(tile.x, tile.y, 'proto_tile', {
+            speedY: { min: -35, max: -10 }, scale: { start: 0.25, end: 0 },
+            tint: [0xade8f4, 0x00f0ff], lifespan: 400, quantity: 6
+          }).setDepth(15);
+          tile.destroy();
+        });
+        this.runwayIceTiles = [];
+
+        // Create water tiles in place of the ice
+        for (let x = z4.iceRunway.startX; x <= z4.iceRunway.endX; x += 32) {
+          const water = this.waterTiles.create(x, z4.iceRunway.y + 6, 'tile_water').refreshBody() as Phaser.Physics.Arcade.Sprite;
+          (water as Phaser.GameObjects.Sprite).setAlpha(0.85);
+          this.runwayWaterTiles.push(water);
+        }
+      } else {
+        // Re-freeze: Water turns back into ice platform
+        this.hud.showBanner('RUNWAY WATER RE-FROZEN — ICE RUNWAY RESTORED!');
+        AudioManager.playStaffUse();
+        this.cameras.main.flash(150, 0, 240, 255);
+
+        // Remove water tiles
+        this.runwayWaterTiles.forEach(w => w.destroy());
+        this.runwayWaterTiles = [];
+
+        // Re-create ice tiles
+        for (let x = z4.iceRunway.startX; x <= z4.iceRunway.endX; x += 32) {
+          const ice = this.icePlatforms.create(x, z4.iceRunway.y, 'tile_ice').refreshBody() as Phaser.Physics.Arcade.Sprite;
+          this.runwayIceTiles.push(ice);
+        }
+      }
+      return;
+    }
+
+    // Zone 4: Timed Door
     if (this.player.x >= z4.timedDoor.triggerRange[0] && this.player.x <= z4.timedDoor.triggerRange[1]) {
       this.meltTimedDoor();
       return;
@@ -1054,9 +1126,9 @@ export class GameScene extends Phaser.Scene {
     const z3 = LEVEL1_DATA.zone3;
 
     // ── Zone 3 Solid Cavern Ceiling (Enclosing the Ice Cave) ──
-    // Solid rock filling from y=0 down to y=120, EXCEPT at the vertical puzzle shaft (x=1930..1968)
+    // Solid rock filling from y=0 down to y=120, EXCEPT at the vertical puzzle shaft (x=1910..1980)
     for (let x = 1840; x <= 2360; x += 32) {
-      if (x >= 1930 && x <= 1968) {
+      if (x >= 1910 && x <= 1980) {
         // Vertical shaft: roof is high up at y=24 so block has room to drop
         this.platforms.create(x, 24, 'proto_tile').refreshBody();
       } else {
@@ -1068,17 +1140,19 @@ export class GameScene extends Phaser.Scene {
     }
 
     // ── Entrance Corridor & Puzzle Chamber Floor ──
-    for (let x = z3.entrancePlatform.startX; x <= 1930; x += 32) {
+    // Left entrance platform: ends at x = 1884 (right edge at x = 1900)
+    for (let x = z3.entrancePlatform.startX; x <= 1884; x += 32) {
       this.platforms.create(x, z3.entrancePlatform.y, 'tile_snow_top').refreshBody();
       this.platforms.create(x, z3.entrancePlatform.y + 32, 'proto_tile').refreshBody();
     }
-    // Threshold platform past the shaft up to Cryo-Barrier 1
-    for (let x = 1970; x <= z3.entrancePlatform.endX; x += 32) {
+    // Right threshold platform: starts at x = 2000 (left edge at x = 1984) up to Cryo-Barrier 1
+    for (let x = 2000; x <= z3.entrancePlatform.endX; x += 32) {
       this.platforms.create(x, z3.entrancePlatform.y, 'tile_snow_top').refreshBody();
       this.platforms.create(x, z3.entrancePlatform.y + 32, 'proto_tile').refreshBody();
     }
 
     // ── Upper Maintenance Gantry (Elevated Ledge before the Shaft) ──
+    // Placed at x = 1860..1892 so it does not encroach into the shaft
     for (let x = z3.gantry.startX; x <= z3.gantry.endX; x += 32) {
       this.platforms.create(x, z3.gantry.y, 'tile_snow_top').refreshBody();
     }
@@ -1095,17 +1169,17 @@ export class GameScene extends Phaser.Scene {
     conduits.push(cond3);
 
     // ── Dedicated Hydraulic Pressure Shaft & Lock Mechanism ──
-    // Guide rails framing the vertical shaft
-    const railLeft = this.add.rectangle(1934, 140, 4, 180, 0x1f3554);
+    // Guide rails framing the vertical shaft (framed wide at x=1904 and x=1984)
+    const railLeft = this.add.rectangle(1904, 140, 4, 180, 0x1f3554);
     railLeft.setStrokeStyle(1, 0x48cae4, 0.5);
-    const railRight = this.add.rectangle(1966, 140, 4, 180, 0x1f3554);
+    const railRight = this.add.rectangle(1984, 140, 4, 180, 0x1f3554);
     railRight.setStrokeStyle(1, 0x48cae4, 0.5);
 
-    // Recessed socket floor tile for pressure plate
-    this.platforms.create(z3.pressurePlate.x, z3.pressurePlate.y + 4, 'proto_tile').refreshBody();
+    // Recessed socket floor tile for pressure plate (recessed to y=260, surface at y=244)
+    this.platforms.create(z3.pressurePlate.x, 260, 'proto_tile').refreshBody();
 
-    // Mechanical Pressure Plate nestled in the shaft socket
-    this.pressurePlateSprite = this.physics.add.sprite(z3.pressurePlate.x, z3.pressurePlate.y - 2, 'plate_mechanism');
+    // Mechanical Pressure Plate resting firmly on top of the socket floor
+    this.pressurePlateSprite = this.physics.add.sprite(z3.pressurePlate.x, z3.pressurePlate.y, 'plate_mechanism');
     this.pressurePlateSprite.setImmovable(true);
     (this.pressurePlateSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     this.add.text(z3.pressurePlate.x - 38, z3.pressurePlate.y + 8, 'PRESSURE LOCK', {
@@ -1113,7 +1187,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // Glowing cyan conduit cable running along the floor from pressure plate to Barrier 1
-    const cable = this.add.rectangle(1982, z3.entrancePlatform.y - 1, 36, 2, 0x00f0ff);
+    const cable = this.add.rectangle(1975, 242, 48, 2, 0x00f0ff);
     cable.setAlpha(0.65);
     this.tweens.add({ targets: cable, alpha: 0.9, yoyo: true, repeat: -1, duration: 600 });
 
@@ -1207,8 +1281,12 @@ export class GameScene extends Phaser.Scene {
     conduits.push(cond4);
 
     // Slippery Ice Runway
+    this.isRunwayFrozen = true;
+    this.runwayIceTiles = [];
+    this.runwayWaterTiles = [];
     for (let x = z4.iceRunway.startX; x <= z4.iceRunway.endX; x += 32) {
-      this.icePlatforms.create(x, z4.iceRunway.y, 'tile_ice').refreshBody();
+      const ice = this.icePlatforms.create(x, z4.iceRunway.y, 'tile_ice').refreshBody() as Phaser.Physics.Arcade.Sprite;
+      this.runwayIceTiles.push(ice);
     }
 
     // Spikes at end of slippery run
@@ -1222,36 +1300,31 @@ export class GameScene extends Phaser.Scene {
       fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ff2222'
     });
 
-    // Midway Resting Ledge
-    for (let x = z4.midwayLedge.startX; x <= z4.midwayLedge.endX; x += 32) {
-      this.platforms.create(x, z4.midwayLedge.y, 'tile_snow_top').refreshBody();
+    // ── Wide Approach & Airlock Floor Platform (Level 240 floor, seamless running transition) ──
+    for (let x = z4.approachPlatform.startX; x <= z4.doorwayFloor.endX; x += 32) {
+      this.platforms.create(x, 240, 'tile_snow_top').refreshBody();
+      this.platforms.create(x, 272, 'proto_tile').refreshBody();
     }
 
     // ── Buried Facility Bunker Wall (Completely blocks jumping over the door) ──
-    // Solid reinforced bunker wall filling from y=0 down to y=160 across x=2640..2700
+    // Solid reinforced bunker wall filling from y=0 down to y=120 across x=2650..2700
     for (let x = z4.bunkerWall.startX; x <= z4.bunkerWall.endX; x += 32) {
-      this.platforms.create(x, 32, 'proto_tile').refreshBody();
-      this.platforms.create(x, 64, 'proto_tile').refreshBody();
-      this.platforms.create(x, 96, 'proto_tile').refreshBody();
-      this.platforms.create(x, 128, 'proto_tile').refreshBody();
-      this.platforms.create(x, 160, 'proto_tile').refreshBody();
-    }
-    // Bunker entrance doorway floor
-    for (let x = z4.doorwayFloor.startX; x <= z4.doorwayFloor.endX; x += 32) {
-      this.platforms.create(x, z4.doorwayFloor.y, 'tile_snow_top').refreshBody();
-      this.platforms.create(x, z4.doorwayFloor.y + 32, 'proto_tile').refreshBody();
+      this.platforms.create(x, 24, 'proto_tile').refreshBody();
+      this.platforms.create(x, 56, 'proto_tile').refreshBody();
+      this.platforms.create(x, 88, 'proto_tile').refreshBody();
+      this.platforms.create(x, 120, 'proto_tile').refreshBody();
     }
 
     // Bunker sign above doorway
-    this.add.text(z4.timedDoor.x - 44, 142, 'FACILITY AIRLOCK', {
+    this.add.text(z4.timedDoor.x - 44, 138, 'FACILITY AIRLOCK', {
       fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#00f0ff', backgroundColor: '#070b14'
     });
 
-    // Timed Ice Door (Fills the opening from y=160 to y=240, 24x80)
+    // Timed Ice Door (Fills the opening from y=134 to y=226, 24x92)
     this.timedDoorSprite = this.physics.add.sprite(z4.timedDoor.x, z4.timedDoor.y, 'timed_ice_door');
     this.timedDoorSprite.setImmovable(true);
     (this.timedDoorSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-    this.add.text(z4.timedDoor.x - 32, z4.timedDoor.y - 50, 'TIMED CRYO-LOCK\n[E/J] MELT (4.5s)', {
+    this.add.text(z4.timedDoor.x - 32, z4.timedDoor.y - 56, 'TIMED CRYO-LOCK\n[E/J] MELT (4.5s)', {
       fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166', backgroundColor: '#070b14'
     });
 
@@ -1373,29 +1446,33 @@ export class GameScene extends Phaser.Scene {
       gfx.destroy();
     }
 
+    if (this.textures.exists('timed_ice_door')) {
+      this.textures.remove('timed_ice_door');
+    }
     if (!this.textures.exists('timed_ice_door')) {
       const gfx = this.make.graphics({ x: 0, y: 0 });
-      // Reinforced bunker cryogenic blast door (24x80)
+      // Reinforced bunker cryogenic blast door (24x92)
       gfx.fillStyle(0x03045e, 0.95);
-      gfx.fillRect(0, 0, 24, 80);
+      gfx.fillRect(0, 0, 24, 92);
       gfx.fillStyle(0x0096c7, 0.75);
-      gfx.fillRect(2, 2, 20, 76);
+      gfx.fillRect(2, 2, 20, 88);
       // Diagonal warning hazard stripes
       gfx.lineStyle(2, 0xffd166, 0.85);
       gfx.lineBetween(4, 16, 20, 32);
       gfx.lineBetween(4, 36, 20, 52);
       gfx.lineBetween(4, 56, 20, 72);
+      gfx.lineBetween(4, 76, 20, 88);
       // Cryogenic lock core in center
       gfx.fillStyle(0x1f3554, 1);
-      gfx.fillRect(4, 32, 16, 16);
+      gfx.fillRect(4, 38, 16, 16);
       gfx.fillStyle(0x00f0ff, 1);
-      gfx.fillRect(7, 35, 10, 10);
+      gfx.fillRect(7, 41, 10, 10);
       gfx.fillStyle(0xffffff, 1);
-      gfx.fillRect(9, 37, 6, 6);
+      gfx.fillRect(9, 43, 6, 6);
       // Steel outer frame
       gfx.lineStyle(2, 0x48cae4, 0.95);
-      gfx.strokeRect(1, 1, 22, 78);
-      gfx.generateTexture('timed_ice_door', 24, 80);
+      gfx.strokeRect(1, 1, 22, 90);
+      gfx.generateTexture('timed_ice_door', 24, 92);
       gfx.destroy();
     }
   }
@@ -1412,6 +1489,16 @@ export class GameScene extends Phaser.Scene {
     if (this.pressurePlateSprite) {
       this.pressurePlateSprite.y += 3;
       this.pressurePlateSprite.setTint(0x00f0ff);
+    }
+
+    // Lock the ice block firmly in place so the player can stand solidly on it
+    if (this.droppedIceBlock && this.droppedIceBlock.active) {
+      this.droppedIceBlock.setImmovable(true);
+      const bBody = this.droppedIceBlock.body as Phaser.Physics.Arcade.Body;
+      if (bBody) {
+        bBody.setAllowGravity(false);
+        bBody.setVelocity(0, 0);
+      }
     }
     // Dissolve Barrier 1
     if (this.iceBarrier1Sprite && !this.isBarrier1Destroyed) {
@@ -1575,8 +1662,7 @@ export class GameScene extends Phaser.Scene {
           this.gameOverScreen = null;
           this.isRespawning = false;
           this.isLeavingScene = false;
-          this.physics.resume();
-          this.scene.restart();
+          this.restartLevelFromBeginning();
         },
         onMainMenu: () => {
           this.gameOverScreen?.destroy();
@@ -1651,6 +1737,16 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // ── Restart Helper ──────────────────────────────────────────────────
+
+  private restartLevelFromBeginning(): void {
+    this.checkpointX = LEVEL1_DATA.spawn.x;
+    this.checkpointY = LEVEL1_DATA.spawn.y;
+    this.isPaused = false;
+    this.physics.resume();
+    this.scene.restart();
+  }
+
   // ── Pause ──────────────────────────────────────────────────────────────
 
   private togglePause(): void {
@@ -1662,8 +1758,25 @@ export class GameScene extends Phaser.Scene {
     this.physics.pause();
     this.pauseMenu = new PauseMenu(this, {
       onResume: () => this.resumeGame(),
-      onRestart: () => { this.isPaused = false; this.physics.resume(); this.scene.restart(); },
-      onMainMenu: () => { this.isPaused = false; this.physics.resume(); this.scene.start(GAME_CONFIG.sceneKeys.MainMenu); }
+      onCheckpoint: () => {
+        this.resumeGame();
+        this.player.restoreIntegrity();
+        this.player.respawnAt(this.checkpointX, this.checkpointY);
+        this.player.restoreStaffCharges(this.player.maxStaffCharges);
+        this.hud.updateIntegrity(this.player.integrity);
+        this.hud.updateCharges(this.player.staffCharges);
+        this.cameras.main.fadeIn(400, 0, 0, 0);
+        this.hud.showBanner('WARPED TO ACTIVE CHECKPOINT');
+      },
+      onRestart: () => {
+        this.resumeGame();
+        this.restartLevelFromBeginning();
+      },
+      onMainMenu: () => {
+        this.isPaused = false;
+        this.physics.resume();
+        this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
+      }
     });
   }
 
