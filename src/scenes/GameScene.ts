@@ -8,6 +8,74 @@ import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
 
+/**
+ * LEVEL 1 DATA SPECIFICATION — FROZEN AGE
+ * ─────────────────────────────────────────
+ * Configurable data arrays for tuning obstacles, puzzles, and item placements
+ * without touching core scene logic.
+ */
+export const LEVEL1_DATA = {
+  id: 'level1',
+  name: 'Frozen Age',
+  sector: 1,
+  dimensions: {
+    width: 2800,
+    height: 360,
+    floorY: 320
+  },
+  spawn: { x: 60, y: 260 },
+  checkpoints: [
+    { id: 'cp_spawn', x: 60, y: 260, label: 'SECTOR 1 ENTRANCE' },
+    { id: 'cp_vault', x: 870, y: 228, label: 'CRYOGENIC VAULT' },
+    { id: 'cp_cave_entrance', x: 1850, y: 200, label: 'ICE CAVE PERIMETER' }
+  ],
+  zone2: {
+    lake: { startX: 1460, endX: 1800, waterY: 330, spikeY: 320 },
+    slab1: { x: 1530, y: 290, width: 48, triggerRange: [1450, 1580] as [number, number] },
+    slab2Trap: { x: 1610, y: 325, width: 48, triggerRange: [1570, 1660] as [number, number] },
+    slab3: { x: 1720, y: 280, width: 48, triggerRange: [1650, 1780] as [number, number] },
+    centerIsland: { startX: 1600, endX: 1640, y: 260 },
+    decoyValve: { x: 1470, y: 330, width: 32, triggerRange: [1440, 1500] as [number, number] }
+  },
+  zone3: {
+    entrancePlatform: { startX: 1820, endX: 2000, y: 250 },
+    checkpoint: { x: 1850, y: 218, respawnY: 200 },
+    refillCrystal1: { x: 1890, y: 218 },
+    suspendedWater: { x: 1960, y: 110, triggerRange: [1920, 2000] as [number, number] },
+    pressurePlate: { x: 1960, y: 250 },
+    iceBarrier1: { x: 2040, y: 218, width: 20, height: 64 },
+    crumbling: [
+      { startX: 2070, y: 230, count: 2 },
+      { startX: 2170, y: 230, count: 2 }
+    ],
+    movingHazard: { x: 2130, startY: 170, endY: 270, duration: 1500 },
+    fallingIcicles: [
+      { id: 'icicle_1', x: 2100, y: 100, triggerDist: 35 },
+      { id: 'icicle_2', x: 2190, y: 100, triggerDist: 35 }
+    ],
+    floorSpikes: { startX: 2060, endX: 2220, step: 22, y: 320 },
+    exitPlatform: { startX: 2230, endX: 2330, y: 250 },
+    iceBarrier2: { x: 2320, y: 218, width: 20, height: 64, triggerRange: [2270, 2345] as [number, number] }
+  },
+  zone4: {
+    entrancePlatform: { startX: 2340, endX: 2420, y: 260 },
+    refillCrystal2: { x: 2380, y: 228 },
+    iceRunway: { startX: 2440, endX: 2580, y: 240 },
+    spikes: { startX: 2580, endX: 2604, step: 12, y: 240 },
+    midwayLedge: { startX: 2620, endX: 2652, y: 210 },
+    timedDoor: { x: 2660, y: 186, width: 20, height: 64, triggerRange: [2610, 2670] as [number, number], durationMs: 4500 },
+    exitPlatform: { startX: 2710, endX: 2800, y: 260 },
+    failsafe2: { shelfX: 2750, shelfY: 210, spriteX: 2750, spriteY: 185 },
+    exitPortal: { x: 2780, y: 220 }
+  },
+  refillCrystals: [
+    { x: 200, y: 288 },
+    { x: 1060, y: 258 },
+    { x: 1890, y: 218 },
+    { x: 2380, y: 228 }
+  ]
+} as const;
+
 export class GameScene extends Phaser.Scene {
   private player!: Player;
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
@@ -27,8 +95,8 @@ export class GameScene extends Phaser.Scene {
   private matrixGlitch!: Phaser.GameObjects.Graphics;
 
   // Checkpoint & Progression
-  private checkpointX = 60;
-  private checkpointY = 260;
+  private checkpointX: number = LEVEL1_DATA.spawn.x;
+  private checkpointY: number = LEVEL1_DATA.spawn.y;
   private failsafeCollected = 0;
   private hasRecoveredComponent = false;
   private isWaterFrozen = false;
@@ -44,18 +112,79 @@ export class GameScene extends Phaser.Scene {
   private deathCount = 0;
   private levelStartTime = 0;
   private isRespawning = false;
+  private isLeavingScene = false;
+
+  // Zone 2 state: Frozen Lake
+  private slab1IceTiles: Phaser.GameObjects.Sprite[] = [];
+  private slab2IceTiles: Phaser.GameObjects.Sprite[] = [];
+  private slab3IceTiles: Phaser.GameObjects.Sprite[] = [];
+  private isSlab1Frozen = false;
+  private isSlab2Frozen = false;
+  private isSlab3Frozen = false;
+  private isDecoyFrozen = false;
+  private decoyIceTile?: Phaser.GameObjects.Sprite;
+
+  // Zone 3 state: Ice Cave
+  private isPressurePlatePressed = false;
+  private pressurePlateSprite?: Phaser.Physics.Arcade.Sprite;
+  private iceBarrier1Sprite?: Phaser.Physics.Arcade.Sprite;
+  private iceBarrier1Collider?: Phaser.Physics.Arcade.Collider;
+  private isBarrier1Destroyed = false;
+  private iceBarrier2Sprite?: Phaser.Physics.Arcade.Sprite;
+  private iceBarrier2Collider?: Phaser.Physics.Arcade.Collider;
+  private isBarrier2Melted = false;
+  private fallingIcicles: Array<{
+    sprite: Phaser.Physics.Arcade.Sprite;
+    collider?: Phaser.Physics.Arcade.Collider;
+    overlapCollider?: Phaser.Physics.Arcade.Collider;
+    triggerDist: number;
+    state: 'idle' | 'warning' | 'falling' | 'destroyed';
+  }> = [];
+  private movingHazard?: Phaser.Physics.Arcade.Sprite;
+  private hasDroppedIceBlock = false;
+
+  // Zone 4 state: Buried Facility Approach
+  private timedDoorSprite?: Phaser.Physics.Arcade.Sprite;
+  private timedDoorCollider?: Phaser.Physics.Arcade.Collider;
+  private isTimedDoorOpen = false;
+  private timedDoorTimer?: Phaser.Time.TimerEvent;
 
   // Level boundaries
-  private readonly levelWidth = 1600;
-  private readonly levelHeight = 360;
+  private readonly levelWidth = LEVEL1_DATA.dimensions.width;
+  private readonly levelHeight = LEVEL1_DATA.dimensions.height;
 
   constructor() {
     super(GAME_CONFIG.sceneKeys.Game);
   }
 
   create(): void {
+    // Reset all per-run state
+    this.isRespawning = false;
+    this.isLeavingScene = false;
+    this.isPaused = false;
+    this.failsafeCollected = 0;
+    this.hasRecoveredComponent = false;
+    this.isWaterFrozen = false;
+    this.deathCount = 0;
+    this.isPressurePlatePressed = false;
+    this.isBarrier1Destroyed = false;
+    this.isBarrier2Melted = false;
+    this.hasDroppedIceBlock = false;
+    this.isTimedDoorOpen = false;
+    this.isSlab1Frozen = false;
+    this.isSlab2Frozen = false;
+    this.isSlab3Frozen = false;
+    this.isDecoyFrozen = false;
+    this.failsafeItems = [];
+    this.movingPlatformSprites = [];
+    this.fallingIcicles = [];
+    this.slab1IceTiles = [];
+    this.slab2IceTiles = [];
+    this.slab3IceTiles = [];
+
     TextureGenerator.generatePlayerTextures(this);
     TextureGenerator.generateEnvironmentTextures(this);
+    this.ensureZoneTextures();
 
     // Physics world is taller than the visible level so the player can
     // physically fall off platforms before the death trigger fires.
@@ -172,7 +301,7 @@ export class GameScene extends Phaser.Scene {
     // Drone overlaps — use integrity system instead of instant kill
     this.drones.forEach(drone => {
       this.physics.add.overlap(this.player, drone, () => {
-        if (!drone.isLethal || this.isRespawning) return;
+        if (!drone.isLethal || this.isRespawning || this.isLeavingScene) return;
         const lethal = this.player.takeDamage();
         if (lethal || this.player.integrity <= 0 || this.player.isDead) {
           this.handleHazardCollision('SENTINEL DRONE CONTACT');
@@ -180,6 +309,49 @@ export class GameScene extends Phaser.Scene {
           AudioManager.playDeath(); // short hit sound
           this.cameras.main.shake(150, 0.01);
           this.cameras.main.flash(80, 180, 0, 0);
+          this.hud.showBanner(`INTEGRITY BREACH! ${this.player.integrity} REMAINING`);
+        }
+      });
+    });
+
+    // ── Zone 3 & Zone 4 Dynamic Colliders / Overlaps ──
+    if (this.iceBarrier1Sprite) {
+      this.iceBarrier1Collider = this.physics.add.collider(this.player, this.iceBarrier1Sprite);
+    }
+    if (this.iceBarrier2Sprite) {
+      this.iceBarrier2Collider = this.physics.add.collider(this.player, this.iceBarrier2Sprite);
+    }
+    if (this.timedDoorSprite) {
+      this.timedDoorCollider = this.physics.add.collider(this.player, this.timedDoorSprite);
+    }
+
+    if (this.movingHazard) {
+      this.physics.add.overlap(this.player, this.movingHazard, () => {
+        if (this.isRespawning || this.isLeavingScene) return;
+        const lethal = this.player.takeDamage();
+        if (lethal || this.player.integrity <= 0 || this.player.isDead) {
+          this.handleHazardCollision('FROST HAZARD CONTACT');
+        } else {
+          AudioManager.playDeath();
+          this.cameras.main.shake(150, 0.01);
+          this.hud.showBanner(`INTEGRITY BREACH! ${this.player.integrity} REMAINING`);
+        }
+      });
+    }
+
+    this.fallingIcicles.forEach(item => {
+      item.collider = this.physics.add.collider(item.sprite, this.platforms, () => {
+        this.shatterFallingIcicle(item);
+      });
+      item.overlapCollider = this.physics.add.overlap(this.player, item.sprite, () => {
+        if (this.isRespawning || this.isLeavingScene) return;
+        const lethal = this.player.takeDamage();
+        this.shatterFallingIcicle(item);
+        if (lethal || this.player.integrity <= 0 || this.player.isDead) {
+          this.handleHazardCollision('FALLING ICICLE IMPACT');
+        } else {
+          AudioManager.playDeath();
+          this.cameras.main.shake(150, 0.01);
           this.hud.showBanner(`INTEGRITY BREACH! ${this.player.integrity} REMAINING`);
         }
       });
@@ -315,16 +487,48 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.isPaused) return;
 
-    if (this.player.isDead && !this.isRespawning) {
+    if (this.player.isDead && !this.isRespawning && !this.isLeavingScene) {
       this.handleHazardCollision('SYSTEM RECOVERY');
       return;
     }
-    if (this.isRespawning) return;
+    if (this.isRespawning || this.isLeavingScene) return;
 
     this.player.update(time, delta);
 
     // Update sentinel drones
     this.drones.forEach(d => d.update(time, delta, this.player.x, this.player.y));
+
+    // Update Zone 3 falling icicles
+    this.fallingIcicles.forEach(item => {
+      if (item.state === 'idle') {
+        const dx = Math.abs(this.player.x - item.sprite.x);
+        if (dx < item.triggerDist && this.player.y > item.sprite.y) {
+          item.state = 'warning';
+          item.sprite.setData('origX', item.sprite.x);
+          this.tweens.add({
+            targets: item.sprite,
+            x: item.sprite.x + 2,
+            yoyo: true,
+            repeat: 5,
+            duration: 40,
+            onComplete: () => {
+              if (item.state === 'warning' && item.sprite && item.sprite.active) {
+                item.state = 'falling';
+                const body = item.sprite.body as Phaser.Physics.Arcade.Body;
+                if (body) {
+                  body.setAllowGravity(true);
+                  body.setVelocityY(260);
+                }
+              }
+            }
+          });
+        }
+      } else if (item.state === 'falling') {
+        if (item.sprite.y > this.levelHeight + 20) {
+          this.shatterFallingIcicle(item);
+        }
+      }
+    });
 
     // Apply / reset ice friction
     if (this.isOnIce) {
@@ -335,12 +539,12 @@ export class GameScene extends Phaser.Scene {
     this.isOnIce = false;
 
     // Pit / fall death
-    if (this.player.y > this.levelHeight + 40 && !this.player.isDead) {
+    if (this.player.y > this.levelHeight + 40 && !this.player.isDead && !this.isLeavingScene) {
       this.handleHazardCollision('ABYSSAL FALL');
     }
 
     // Level exit
-    if (this.hasRecoveredComponent && this.exitPortal && !this.player.isDead) {
+    if (this.hasRecoveredComponent && this.exitPortal && !this.player.isDead && !this.isLeavingScene) {
       const dist = Phaser.Math.Distance.Between(
         this.player.x, this.player.y, this.exitPortal.x, this.exitPortal.y
       );
@@ -376,7 +580,10 @@ export class GameScene extends Phaser.Scene {
       [610, 0, 26, 160], [720, 0, 11, 80],  [820, 0, 18, 125],
       [920, 0, 24, 145], [1030,0, 12, 88],  [1140,0, 22, 130],
       [1250,0, 16, 105], [1370,0, 20, 118], [1480,0, 14, 92],
-      [1580,0, 24, 150],
+      [1580,0, 24, 150], [1690,0, 18, 120], [1800,0, 22, 135],
+      [1910,0, 16, 110], [2020,0, 24, 145], [2130,0, 20, 125],
+      [2240,0, 14, 95],  [2350,0, 22, 130], [2460,0, 18, 115],
+      [2570,0, 24, 140], [2680,0, 16, 100], [2760,0, 20, 125],
     ];
     stalData.forEach(([sx, sy, w, h]) => {
       // Main stalactite body (very dark blue-grey)
@@ -396,7 +603,8 @@ export class GameScene extends Phaser.Scene {
     const nearStal = this.add.graphics().setScrollFactor(0.6).setDepth(3);
     [[80, 0, 14, 70], [280, 0, 18, 95], [550, 0, 22, 120],
      [750, 0, 15, 78], [980, 0, 20, 108], [1200, 0, 16, 85],
-     [1430, 0, 24, 130]].forEach(([sx, sy, w, h]) => {
+     [1430, 0, 24, 130], [1650, 0, 18, 90], [1900, 0, 20, 110],
+     [2150, 0, 22, 115], [2400, 0, 16, 85], [2650, 0, 24, 120]].forEach(([sx, sy, w, h]) => {
       nearStal.fillStyle(0x040e18, 1);
       nearStal.fillTriangle(sx - w/2, sy, sx + w/2, sy, sx, sy + h);
       nearStal.fillStyle(0x00c8ee, 0.5);
@@ -547,24 +755,20 @@ export class GameScene extends Phaser.Scene {
     this.platforms.create(1280, 190, 'tile_snow_top').refreshBody();
     this.platforms.create(1312, 190, 'tile_snow_top').refreshBody();
 
-    // Final exit platform
-    for (let x = 1400; x <= 1600; x += 32) {
-      this.platforms.create(x, 260, 'tile_snow_top').refreshBody();
-      this.platforms.create(x, 292, 'proto_tile').refreshBody();
+    // Transition to Zone 2: Frozen Lake
+    for (let x = 1360; x <= 1440; x += 32) {
+      this.platforms.create(x, 250, 'tile_snow_top').refreshBody();
+      this.platforms.create(x, 282, 'proto_tile').refreshBody();
     }
 
-    // Failsafe Component #02 — on elevated shelf above final platform
-    const shelf = this.add.rectangle(1455, 210, 48, 8, 0x1f3554);
-    shelf.setStrokeStyle(1, 0xffd166);
-    const fs2 = this.physics.add.sprite(1455, 190, 'failsafe_component');
-    fs2.setImmovable(true);
-    (fs2.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-    this.tweens.add({ targets: fs2, y: 185, yoyo: true, repeat: -1, duration: 1000, ease: 'Sine.easeInOut' });
-    this.add.text(1422, 165, 'FAILSAFE 02', { fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166' });
-    // Small jump platform to reach it
-    this.platforms.create(1455, 218, 'tile_snow_top').refreshBody();
-    this.platforms.create(1423, 218, 'tile_snow_top').refreshBody();
-    this.failsafeItems.push(fs2);
+    // ── Zone 2: Frozen Lake ──
+    this.buildZone2FrozenLake();
+
+    // ── Zone 3: Ice Cave ──
+    this.buildZone3IceCave(crystals, conduits);
+
+    // ── Zone 4: Buried Facility Approach (with relocated Failsafe 02 & Exit Gate) ──
+    this.buildZone4FacilityApproach(conduits);
 
     // ── Moving Platform (Phase 5) ────────────────────────────────────
     // Floats between x=500 and x=760, bridging the gap before the water chasm
@@ -586,19 +790,6 @@ export class GameScene extends Phaser.Scene {
     this.add.text(555, 236, '← MOVING PLATFORM →', {
       fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#48cae4'
     });
-
-    // Exit Portal
-    const portalGfx = this.make.graphics({ x: 0, y: 0 });
-    portalGfx.fillStyle(0x70e000, 0.9);
-    portalGfx.fillCircle(16, 24, 16);
-    portalGfx.lineStyle(2, 0xffffff, 1);
-    portalGfx.strokeCircle(16, 24, 16);
-    portalGfx.generateTexture('exit_portal', 32, 48);
-    portalGfx.destroy();
-
-    this.exitPortal = this.add.sprite(1520, 220, 'exit_portal');
-    this.tweens.add({ targets: this.exitPortal, scaleX: 1.1, scaleY: 1.1, yoyo: true, repeat: -1, duration: 800 });
-    this.add.text(1470, 175, 'EXIT GATE', { fontFamily: 'Courier New, monospace', fontSize: '9px', color: '#70e000' });
 
     // ── Sentinel Drones (Phase 3) ──────────────────────────────────────
     // Drone 1: patrols above the vault platform
@@ -664,6 +855,7 @@ export class GameScene extends Phaser.Scene {
   // ── Water State Conversion ─────────────────────────────────────────────
 
   private checkWaterStateConversion(): void {
+    // Zone 1: Main Water Chasm (existing logic preserved 100%)
     if (this.player.x >= 400 && this.player.x <= 750) {
       if (!this.isWaterFrozen) {
         this.isWaterFrozen = true;
@@ -680,7 +872,537 @@ export class GameScene extends Phaser.Scene {
         this.icePlatforms.clear(true, true);
         this.cameras.main.flash(150, 0, 119, 182);
       }
+      return;
     }
+
+    // Zone 2: Frozen Lake — Slab 1
+    const z2 = LEVEL1_DATA.zone2;
+    if (this.player.x >= z2.slab1.triggerRange[0] && this.player.x <= z2.slab1.triggerRange[1]) {
+      this.isSlab1Frozen = !this.isSlab1Frozen;
+      if (this.isSlab1Frozen) {
+        this.hud.showBanner('LAKE SLAB A FROZEN');
+        this.slab1IceTiles = [];
+        for (let sx = z2.slab1.x - 16; sx <= z2.slab1.x + 16; sx += 32) {
+          const ice = this.icePlatforms.create(sx, z2.slab1.y, 'tile_ice').refreshBody() as Phaser.GameObjects.Sprite;
+          this.slab1IceTiles.push(ice);
+        }
+        this.cameras.main.flash(150, 0, 240, 255);
+      } else {
+        this.hud.showBanner('LAKE SLAB A MELTED');
+        this.slab1IceTiles.forEach(tile => tile.destroy());
+        this.slab1IceTiles = [];
+      }
+      return;
+    }
+
+    // Zone 2: Decoy Valve
+    if (this.player.x >= z2.decoyValve.triggerRange[0] && this.player.x <= z2.decoyValve.triggerRange[1] && this.player.y > 270) {
+      this.isDecoyFrozen = !this.isDecoyFrozen;
+      if (this.isDecoyFrozen) {
+        this.hud.showBanner('SUB-AQUIFER VALVE FROZEN (DEAD END)');
+        this.decoyIceTile = this.icePlatforms.create(z2.decoyValve.x, z2.decoyValve.y - 16, 'tile_ice').refreshBody() as Phaser.GameObjects.Sprite;
+        this.cameras.main.flash(150, 100, 150, 255);
+      } else {
+        this.hud.showBanner('SUB-AQUIFER VALVE THAWED');
+        this.decoyIceTile?.destroy();
+        this.decoyIceTile = undefined;
+      }
+      return;
+    }
+
+    // Zone 2: Slab 2 (Decoy / Trap Slab)
+    if (this.player.x >= z2.slab2Trap.triggerRange[0] && this.player.x <= z2.slab2Trap.triggerRange[1] && this.player.y > 270) {
+      this.isSlab2Frozen = !this.isSlab2Frozen;
+      if (this.isSlab2Frozen) {
+        this.hud.showBanner('LOWER SLAB B FROZEN (HAZARD ROUTE)');
+        this.slab2IceTiles = [];
+        for (let sx = z2.slab2Trap.x - 16; sx <= z2.slab2Trap.x + 16; sx += 32) {
+          const ice = this.icePlatforms.create(sx, z2.slab2Trap.y, 'tile_ice').refreshBody() as Phaser.GameObjects.Sprite;
+          this.slab2IceTiles.push(ice);
+        }
+        this.cameras.main.flash(150, 0, 240, 255);
+      } else {
+        this.hud.showBanner('LOWER SLAB B MELTED');
+        this.slab2IceTiles.forEach(tile => tile.destroy());
+        this.slab2IceTiles = [];
+      }
+      return;
+    }
+
+    // Zone 2: Slab 3
+    if (this.player.x >= z2.slab3.triggerRange[0] && this.player.x <= z2.slab3.triggerRange[1]) {
+      this.isSlab3Frozen = !this.isSlab3Frozen;
+      if (this.isSlab3Frozen) {
+        this.hud.showBanner('LAKE SLAB C FROZEN');
+        this.slab3IceTiles = [];
+        for (let sx = z2.slab3.x - 16; sx <= z2.slab3.x + 16; sx += 32) {
+          const ice = this.icePlatforms.create(sx, z2.slab3.y, 'tile_ice').refreshBody() as Phaser.GameObjects.Sprite;
+          this.slab3IceTiles.push(ice);
+        }
+        this.cameras.main.flash(150, 0, 240, 255);
+      } else {
+        this.hud.showBanner('LAKE SLAB C MELTED');
+        this.slab3IceTiles.forEach(tile => tile.destroy());
+        this.slab3IceTiles = [];
+      }
+      return;
+    }
+
+    // Zone 3: Suspended Water Geyser (Drop Ice Block)
+    const z3 = LEVEL1_DATA.zone3;
+    if (this.player.x >= z3.suspendedWater.triggerRange[0] && this.player.x <= z3.suspendedWater.triggerRange[1]) {
+      if (!this.hasDroppedIceBlock) {
+        this.hasDroppedIceBlock = true;
+        this.hud.showBanner('SUSPENDED WATER FROZEN — MASS DROPPING!');
+        this.cameras.main.flash(200, 0, 240, 255);
+
+        const block = this.physics.add.sprite(z3.suspendedWater.x, z3.suspendedWater.y + 16, 'ice_block_heavy');
+        block.setCollideWorldBounds(true);
+        block.setBounce(0.05);
+        (block.body as Phaser.Physics.Arcade.Body).setGravityY(600);
+
+        this.physics.add.collider(block, this.platforms);
+        if (this.pressurePlateSprite) {
+          this.physics.add.overlap(block, this.pressurePlateSprite, () => this.triggerPressurePlate());
+        }
+      }
+      return;
+    }
+
+    // Zone 3: Melt Ice Barrier 2
+    if (this.player.x >= z3.iceBarrier2.triggerRange[0] && this.player.x <= z3.iceBarrier2.triggerRange[1]) {
+      this.meltBarrier2();
+      return;
+    }
+
+    // Zone 4: Timed Door
+    const z4 = LEVEL1_DATA.zone4;
+    if (this.player.x >= z4.timedDoor.triggerRange[0] && this.player.x <= z4.timedDoor.triggerRange[1]) {
+      this.meltTimedDoor();
+      return;
+    }
+  }
+
+  // ── Zone 2: Frozen Lake Builder ────────────────────────────────────────
+
+  private buildZone2FrozenLake(): void {
+    const z2 = LEVEL1_DATA.zone2;
+    // Water tiles for the lake channel
+    for (let x = z2.lake.startX; x <= z2.lake.endX; x += 32) {
+      const water = this.waterTiles.create(x, z2.lake.waterY, 'tile_water').refreshBody();
+      (water as Phaser.GameObjects.Sprite).setAlpha(0.9);
+      this.waterTiles.create(x, z2.lake.waterY + 24, 'tile_water').refreshBody();
+    }
+
+    // Glowing cyan floor spikes beneath the lake
+    for (let x = 1480; x <= 1790; x += 22) {
+      const spike = this.hazards.create(x, z2.lake.spikeY, 'hazard_icicle') as Phaser.Physics.Arcade.Sprite;
+      spike.refreshBody();
+      (spike.body as Phaser.Physics.Arcade.StaticBody).setSize(6, 12);
+      (spike.body as Phaser.Physics.Arcade.StaticBody).setOffset(8, 0);
+    }
+
+    // Solid Center Island in the lake
+    for (let x = z2.centerIsland.startX; x <= z2.centerIsland.endX; x += 32) {
+      this.platforms.create(x, z2.centerIsland.y, 'tile_snow_top').refreshBody();
+      this.platforms.create(x, z2.centerIsland.y + 32, 'proto_tile').refreshBody();
+    }
+
+    // Decoy water alcove beneath entry bank
+    const decoyPuddle = this.waterTiles.create(z2.decoyValve.x, z2.decoyValve.y, 'tile_water').refreshBody();
+    (decoyPuddle as Phaser.GameObjects.Sprite).setAlpha(0.85);
+
+    // Decorative labels & signposts
+    this.add.text(1450, 195, 'ZONE 2: FROZEN LAKE\nSELECTIVE SLAB CONVERSION', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#00f0ff', backgroundColor: '#070b14'
+    });
+    this.add.text(z2.slab1.x - 16, z2.slab1.y - 18, 'SLAB A', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#48cae4'
+    });
+    this.add.text(z2.slab2Trap.x - 24, z2.slab2Trap.y - 18, '⚠ LOW SLAB B', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ff6b35'
+    });
+    this.add.text(z2.slab3.x - 16, z2.slab3.y - 18, 'SLAB C', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#48cae4'
+    });
+    this.add.text(z2.decoyValve.x - 28, z2.decoyValve.y - 20, 'DECOY RESERVOIR', {
+      fontFamily: 'Courier New, monospace', fontSize: '6px', color: '#bde0fe'
+    });
+  }
+
+  // ── Zone 3: Ice Cave Builder ───────────────────────────────────────────
+
+  private buildZone3IceCave(
+    crystals: Array<{ sprite: Phaser.Physics.Arcade.Sprite; cx: number; cy: number }>,
+    conduits: Phaser.Physics.Arcade.Sprite[]
+  ): void {
+    const z3 = LEVEL1_DATA.zone3;
+
+    // Entrance platform
+    for (let x = z3.entrancePlatform.startX; x <= z3.entrancePlatform.endX; x += 32) {
+      this.platforms.create(x, z3.entrancePlatform.y, 'tile_snow_top').refreshBody();
+      this.platforms.create(x, z3.entrancePlatform.y + 32, 'proto_tile').refreshBody();
+    }
+
+    // Mid-level checkpoint crystal #2 (before Zone 3)
+    const cp2 = this.spawnCheckpointCrystal(z3.checkpoint.x, z3.checkpoint.y);
+    crystals.push(cp2);
+
+    // Extra Refill Crystal #1 (Conduit #3)
+    const cond3 = this.spawnEnergyConduit(z3.refillCrystal1.x, z3.refillCrystal1.y);
+    conduits.push(cond3);
+
+    // Suspended Water Geyser (drop ice block puzzle)
+    this.add.particles(z3.suspendedWater.x, z3.suspendedWater.y, 'proto_tile', {
+      speedY: { min: 25, max: 55 },
+      scale: { start: 0.15, end: 0 },
+      alpha: { start: 0.8, end: 0.1 },
+      tint: [0x00f0ff, 0x48cae4],
+      lifespan: 450,
+      frequency: 250
+    }).setDepth(5);
+    // Suspended pipe fixture
+    const pipe = this.add.rectangle(z3.suspendedWater.x, z3.suspendedWater.y - 14, 16, 20, 0x1a2638);
+    pipe.setStrokeStyle(1, 0x00f0ff);
+    this.add.text(z3.suspendedWater.x - 48, z3.suspendedWater.y - 32, 'SUSPENDED AQUIFER\n[E/J] FREEZE MASS', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#00f0ff', backgroundColor: '#070b14'
+    });
+
+    // Mechanical Pressure Plate on the floor
+    this.pressurePlateSprite = this.physics.add.staticSprite(z3.pressurePlate.x, z3.pressurePlate.y - 4, 'plate_mechanism');
+    this.pressurePlateSprite.refreshBody();
+    this.add.text(z3.pressurePlate.x - 28, z3.pressurePlate.y + 8, 'PRESSURE LOCK', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166'
+    });
+
+    // Ice Barrier 1 (dissolves when pressure plate triggered)
+    this.iceBarrier1Sprite = this.physics.add.sprite(z3.iceBarrier1.x, z3.iceBarrier1.y, 'ice_barrier');
+    this.iceBarrier1Sprite.setImmovable(true);
+    (this.iceBarrier1Sprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.add.text(z3.iceBarrier1.x - 24, z3.iceBarrier1.y - 44, 'CRYO-BARRIER 1', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#00f0ff'
+    });
+
+    // Cavern Floor Spikes beneath crumbling run
+    for (let x = z3.floorSpikes.startX; x <= z3.floorSpikes.endX; x += z3.floorSpikes.step) {
+      const spike = this.hazards.create(x, z3.floorSpikes.y, 'hazard_icicle') as Phaser.Physics.Arcade.Sprite;
+      spike.refreshBody();
+      (spike.body as Phaser.Physics.Arcade.StaticBody).setSize(6, 12);
+      (spike.body as Phaser.Physics.Arcade.StaticBody).setOffset(8, 0);
+    }
+
+    // Crumbling Platforms
+    z3.crumbling.forEach(c => {
+      this.spawnCrumblingSection(c.startX, c.y, c.count);
+    });
+
+    // Moving Cave Hazard (dynamic immovable body on fixed path)
+    this.movingHazard = this.physics.add.sprite(z3.movingHazard.x, z3.movingHazard.startY, 'frost_hazard');
+    this.movingHazard.setImmovable(true);
+    (this.movingHazard.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.tweens.add({
+      targets: this.movingHazard,
+      y: z3.movingHazard.endY,
+      ease: 'Sine.easeInOut',
+      duration: z3.movingHazard.duration,
+      yoyo: true,
+      repeat: -1
+    });
+
+    // Falling Icicles with visible warning shake
+    z3.fallingIcicles.forEach(icicleData => {
+      const sprite = this.physics.add.sprite(icicleData.x, icicleData.y, 'falling_icicle');
+      sprite.setImmovable(true);
+      (sprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+      this.fallingIcicles.push({
+        sprite,
+        triggerDist: icicleData.triggerDist,
+        state: 'idle'
+      });
+    });
+
+    // Cavern Exit Platform
+    for (let x = z3.exitPlatform.startX; x <= z3.exitPlatform.endX; x += 32) {
+      this.platforms.create(x, z3.exitPlatform.y, 'tile_snow_top').refreshBody();
+      this.platforms.create(x, z3.exitPlatform.y + 32, 'proto_tile').refreshBody();
+    }
+
+    // Ice Barrier 2 (meltable frost bulwark)
+    this.iceBarrier2Sprite = this.physics.add.sprite(z3.iceBarrier2.x, z3.iceBarrier2.y, 'ice_barrier');
+    this.iceBarrier2Sprite.setImmovable(true);
+    (this.iceBarrier2Sprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.add.text(z3.iceBarrier2.x - 24, z3.iceBarrier2.y - 44, 'FROST BULWARK\n[E/J] MELT', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ff6b35', backgroundColor: '#070b14'
+    });
+  }
+
+  // ── Zone 4: Buried Facility Approach Builder ───────────────────────────
+
+  private buildZone4FacilityApproach(conduits: Phaser.Physics.Arcade.Sprite[]): void {
+    const z4 = LEVEL1_DATA.zone4;
+
+    // Entrance Platform
+    for (let x = z4.entrancePlatform.startX; x <= z4.entrancePlatform.endX; x += 32) {
+      this.platforms.create(x, z4.entrancePlatform.y, 'tile_snow_top').refreshBody();
+      this.platforms.create(x, z4.entrancePlatform.y + 32, 'proto_tile').refreshBody();
+    }
+
+    // Extra Refill Crystal #2 (Conduit #4)
+    const cond4 = this.spawnEnergyConduit(z4.refillCrystal2.x, z4.refillCrystal2.y);
+    conduits.push(cond4);
+
+    // Slippery Ice Runway
+    for (let x = z4.iceRunway.startX; x <= z4.iceRunway.endX; x += 32) {
+      this.icePlatforms.create(x, z4.iceRunway.y, 'tile_ice').refreshBody();
+    }
+
+    // Spikes at end of slippery run
+    for (let x = z4.spikes.startX; x <= z4.spikes.endX; x += z4.spikes.step) {
+      const spike = this.hazards.create(x, z4.spikes.y, 'hazard_icicle') as Phaser.Physics.Arcade.Sprite;
+      spike.refreshBody();
+      (spike.body as Phaser.Physics.Arcade.StaticBody).setSize(6, 12);
+      (spike.body as Phaser.Physics.Arcade.StaticBody).setOffset(8, 0);
+    }
+    this.add.text(z4.iceRunway.startX + 10, z4.iceRunway.y - 20, 'SLIPPERY RUNWAY ⚠ JUMP BEFORE SPIKES', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ff2222'
+    });
+
+    // Midway Resting Ledge
+    for (let x = z4.midwayLedge.startX; x <= z4.midwayLedge.endX; x += 32) {
+      this.platforms.create(x, z4.midwayLedge.y, 'tile_snow_top').refreshBody();
+    }
+
+    // Timed Ice Door
+    this.timedDoorSprite = this.physics.add.sprite(z4.timedDoor.x, z4.timedDoor.y, 'timed_ice_door');
+    this.timedDoorSprite.setImmovable(true);
+    (this.timedDoorSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.add.text(z4.timedDoor.x - 30, z4.timedDoor.y - 44, 'TIMED CRYO-LOCK\n[E/J] MELT (4.5s)', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166', backgroundColor: '#070b14'
+    });
+
+    // Final Exit Platform
+    for (let x = z4.exitPlatform.startX; x <= z4.exitPlatform.endX; x += 32) {
+      this.platforms.create(x, z4.exitPlatform.y, 'tile_snow_top').refreshBody();
+      this.platforms.create(x, z4.exitPlatform.y + 32, 'proto_tile').refreshBody();
+    }
+
+    // Failsafe Component #02 (relocated to end of Zone 4)
+    const shelf = this.add.rectangle(z4.failsafe2.shelfX, z4.failsafe2.shelfY, 48, 8, 0x1f3554);
+    shelf.setStrokeStyle(1, 0xffd166);
+    const fs2 = this.physics.add.sprite(z4.failsafe2.spriteX, z4.failsafe2.spriteY, 'failsafe_component');
+    fs2.setImmovable(true);
+    (fs2.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.tweens.add({ targets: fs2, y: z4.failsafe2.spriteY - 5, yoyo: true, repeat: -1, duration: 1000, ease: 'Sine.easeInOut' });
+    this.add.text(z4.failsafe2.spriteX - 33, z4.failsafe2.spriteY - 25, 'FAILSAFE 02', {
+      fontFamily: 'Courier New, monospace', fontSize: '7px', color: '#ffd166'
+    });
+    // Small jump platform to reach shelf
+    this.platforms.create(z4.failsafe2.shelfX, z4.failsafe2.shelfY + 8, 'tile_snow_top').refreshBody();
+    this.failsafeItems.push(fs2);
+
+    // Relocated Exit Portal
+    const portalGfx = this.make.graphics({ x: 0, y: 0 });
+    portalGfx.fillStyle(0x70e000, 0.9);
+    portalGfx.fillCircle(16, 24, 16);
+    portalGfx.lineStyle(2, 0xffffff, 1);
+    portalGfx.strokeCircle(16, 24, 16);
+    portalGfx.generateTexture('exit_portal', 32, 48);
+    portalGfx.destroy();
+
+    this.exitPortal = this.add.sprite(z4.exitPortal.x, z4.exitPortal.y, 'exit_portal');
+    this.tweens.add({ targets: this.exitPortal, scaleX: 1.1, scaleY: 1.1, yoyo: true, repeat: -1, duration: 800 });
+    this.add.text(z4.exitPortal.x - 50, z4.exitPortal.y - 45, 'EXIT GATE', {
+      fontFamily: 'Courier New, monospace', fontSize: '9px', color: '#70e000'
+    });
+  }
+
+  // ── Procedural Textures for Extended Zones ─────────────────────────────
+
+  private ensureZoneTextures(): void {
+    if (!this.textures.exists('plate_mechanism')) {
+      const gfx = this.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x1a2638, 1);
+      gfx.fillRect(0, 4, 24, 4);
+      gfx.fillStyle(0x00f0ff, 1);
+      gfx.fillRect(4, 2, 16, 2);
+      gfx.fillStyle(0xffd166, 1);
+      gfx.fillRect(8, 0, 8, 2);
+      gfx.generateTexture('plate_mechanism', 24, 8);
+      gfx.destroy();
+    }
+
+    if (!this.textures.exists('ice_block_heavy')) {
+      const gfx = this.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x00b4d8, 0.85);
+      gfx.fillRect(0, 0, 24, 24);
+      gfx.fillStyle(0xade8f4, 0.6);
+      gfx.fillRect(2, 2, 20, 20);
+      gfx.fillStyle(0xffffff, 0.9);
+      gfx.fillRect(4, 4, 8, 3);
+      gfx.lineStyle(1.5, 0x00f0ff, 1);
+      gfx.strokeRect(1, 1, 22, 22);
+      gfx.generateTexture('ice_block_heavy', 24, 24);
+      gfx.destroy();
+    }
+
+    if (!this.textures.exists('ice_barrier')) {
+      const gfx = this.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x0077b6, 0.85);
+      gfx.fillRect(0, 0, 20, 64);
+      gfx.fillStyle(0x00b4d8, 0.6);
+      gfx.fillRect(2, 2, 16, 60);
+      gfx.fillStyle(0xcaf0f8, 0.8);
+      gfx.fillRect(4, 4, 4, 56);
+      gfx.lineStyle(1, 0xffffff, 0.7);
+      gfx.lineBetween(4, 16, 16, 32);
+      gfx.lineBetween(16, 32, 4, 48);
+      gfx.lineStyle(2, 0x00f0ff, 0.9);
+      gfx.strokeRect(0, 0, 20, 64);
+      gfx.generateTexture('ice_barrier', 20, 64);
+      gfx.destroy();
+    }
+
+    if (!this.textures.exists('frost_hazard')) {
+      const gfx = this.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x00b4d8, 1);
+      gfx.fillTriangle(11, 0, 18, 11, 4, 11);
+      gfx.fillTriangle(11, 22, 18, 11, 4, 11);
+      gfx.fillTriangle(0, 11, 11, 4, 11, 18);
+      gfx.fillTriangle(22, 11, 11, 4, 11, 18);
+      gfx.fillStyle(0xffffff, 1);
+      gfx.fillCircle(11, 11, 4);
+      gfx.generateTexture('frost_hazard', 22, 22);
+      gfx.destroy();
+    }
+
+    if (!this.textures.exists('falling_icicle')) {
+      const gfx = this.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x00b4d8, 1);
+      gfx.fillTriangle(0, 0, 14, 0, 7, 30);
+      gfx.fillStyle(0xcaf0f8, 0.8);
+      gfx.fillTriangle(3, 0, 11, 0, 7, 24);
+      gfx.fillStyle(0xffffff, 0.9);
+      gfx.fillRect(6, 2, 2, 8);
+      gfx.generateTexture('falling_icicle', 14, 30);
+      gfx.destroy();
+    }
+
+    if (!this.textures.exists('timed_ice_door')) {
+      const gfx = this.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x03045e, 0.9);
+      gfx.fillRect(0, 0, 20, 64);
+      gfx.fillStyle(0x0096c7, 0.7);
+      gfx.fillRect(2, 2, 16, 60);
+      gfx.lineStyle(1.5, 0x48cae4, 0.9);
+      gfx.strokeRect(1, 1, 18, 62);
+      gfx.fillStyle(0xffd166, 0.9);
+      gfx.fillRect(8, 28, 4, 8);
+      gfx.generateTexture('timed_ice_door', 20, 64);
+      gfx.destroy();
+    }
+  }
+
+  // ── Puzzle Interaction Handlers ────────────────────────────────────────
+
+  private triggerPressurePlate(): void {
+    if (this.isPressurePlatePressed) return;
+    this.isPressurePlatePressed = true;
+    AudioManager.playCheckpoint();
+    this.hud.showBanner('PRESSURE APPLIED — ICE BARRIER DISSOLVED!');
+    this.cameras.main.flash(150, 0, 240, 255);
+    if (this.pressurePlateSprite) {
+      this.pressurePlateSprite.y += 2;
+      this.pressurePlateSprite.setTint(0x00f0ff);
+    }
+    // Dissolve Barrier 1
+    if (this.iceBarrier1Sprite && !this.isBarrier1Destroyed) {
+      this.isBarrier1Destroyed = true;
+      // Rule: Destroy colliders before destroying their sprites
+      if (this.iceBarrier1Collider) {
+        this.physics.world.removeCollider(this.iceBarrier1Collider);
+        this.iceBarrier1Collider = undefined;
+      }
+      this.add.particles(this.iceBarrier1Sprite.x, this.iceBarrier1Sprite.y, 'proto_tile', {
+        speed: { min: 30, max: 80 }, scale: { start: 0.3, end: 0 },
+        tint: [0x00f0ff, 0x48cae4], lifespan: 500, quantity: 20
+      }).setDepth(15);
+      this.iceBarrier1Sprite.destroy();
+      this.iceBarrier1Sprite = undefined;
+    }
+  }
+
+  private meltBarrier2(): void {
+    if (this.isBarrier2Melted || !this.iceBarrier2Sprite) return;
+    this.isBarrier2Melted = true;
+    AudioManager.playStaffUse();
+    this.hud.showBanner('FROST BULWARK MELTED — PASSAGE OPEN!');
+    this.cameras.main.flash(150, 0, 119, 182);
+    // Rule: Destroy colliders before destroying their sprites
+    if (this.iceBarrier2Collider) {
+      this.physics.world.removeCollider(this.iceBarrier2Collider);
+      this.iceBarrier2Collider = undefined;
+    }
+    this.add.particles(this.iceBarrier2Sprite.x, this.iceBarrier2Sprite.y, 'proto_tile', {
+      speedY: { min: 20, max: 70 }, scale: { start: 0.25, end: 0 },
+      tint: [0x0096c7, 0x00f0ff], lifespan: 600, quantity: 18
+    }).setDepth(15);
+    this.iceBarrier2Sprite.destroy();
+    this.iceBarrier2Sprite = undefined;
+  }
+
+  private meltTimedDoor(): void {
+    if (this.isTimedDoorOpen || !this.timedDoorSprite) return;
+    this.isTimedDoorOpen = true;
+    AudioManager.playStaffUse();
+    this.hud.showBanner('CRYO-LOCK MELTED! RUN! (4.5s)');
+    this.cameras.main.flash(150, 0, 180, 220);
+    if (this.timedDoorCollider) {
+      this.timedDoorCollider.active = false;
+    }
+    // Disable body so player can pass through
+    (this.timedDoorSprite.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+    this.tweens.add({ targets: this.timedDoorSprite, alpha: 0.15, duration: 250 });
+
+    if (this.timedDoorTimer) {
+      this.timedDoorTimer.remove();
+    }
+
+    this.timedDoorTimer = this.time.delayedCall(LEVEL1_DATA.zone4.timedDoor.durationMs, () => {
+      this.isTimedDoorOpen = false;
+      if (this.timedDoorSprite) {
+        if (this.timedDoorCollider) {
+          this.timedDoorCollider.active = true;
+        }
+        (this.timedDoorSprite.body as Phaser.Physics.Arcade.StaticBody).enable = true;
+        this.tweens.add({ targets: this.timedDoorSprite, alpha: 1, duration: 300 });
+        this.cameras.main.shake(120, 0.008);
+        this.hud.showBanner('CRYO-LOCK RE-FROZEN!');
+      }
+    });
+  }
+
+  private shatterFallingIcicle(item: {
+    sprite: Phaser.Physics.Arcade.Sprite;
+    collider?: Phaser.Physics.Arcade.Collider;
+    overlapCollider?: Phaser.Physics.Arcade.Collider;
+    state: string;
+  }): void {
+    if (item.state === 'destroyed') return;
+    item.state = 'destroyed';
+    // Rule: Destroy colliders before destroying their sprites
+    if (item.collider) {
+      this.physics.world.removeCollider(item.collider);
+      item.collider = undefined;
+    }
+    if (item.overlapCollider) {
+      this.physics.world.removeCollider(item.overlapCollider);
+      item.overlapCollider = undefined;
+    }
+    this.add.particles(item.sprite.x, item.sprite.y, 'proto_tile', {
+      speed: { min: 20, max: 60 }, scale: { start: 0.2, end: 0 },
+      tint: [0x00f0ff, 0x48cae4], lifespan: 400, quantity: 8
+    }).setDepth(15);
+    item.sprite.destroy();
   }
 
   // ── Failsafe Collection ────────────────────────────────────────────────
@@ -722,7 +1444,7 @@ export class GameScene extends Phaser.Scene {
   // ── Hazard / Death ─────────────────────────────────────────────────────
 
   private handleHazardCollision(reason = 'COLLISION HAZARD'): void {
-    if (this.isRespawning) return;
+    if (this.isRespawning || this.isLeavingScene) return;
     this.isRespawning = true;
     this.player.die();
     this.hud.updateIntegrity(0);
@@ -747,11 +1469,13 @@ export class GameScene extends Phaser.Scene {
           this.hud.updateCharges(this.player.staffCharges);
           this.cameras.main.fadeIn(400, 0, 0, 0);
           this.isRespawning = false;
+          this.isLeavingScene = false;
         },
         onRestart: () => {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
           this.isRespawning = false;
+          this.isLeavingScene = false;
           this.physics.resume();
           this.scene.restart();
         },
@@ -759,6 +1483,7 @@ export class GameScene extends Phaser.Scene {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
           this.isRespawning = false;
+          this.isLeavingScene = false;
           this.physics.resume();
           this.cameras.main.fadeOut(300, 0, 0, 0, () => {
             this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
@@ -773,7 +1498,8 @@ export class GameScene extends Phaser.Scene {
   // ── Level Complete ─────────────────────────────────────────────────────
 
   private handleLevelComplete(): void {
-    if (this.physics.world.isPaused) return;
+    if (this.isLeavingScene || this.physics.world.isPaused) return;
+    this.isLeavingScene = true;
     this.physics.pause();
     this.hud.showBanner(`SECTOR 1 ESCAPED! ${this.failsafeCollected}/5 FAILSAFES RECOVERED.`);
     this.cameras.main.fade(600, 0, 240, 255, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
