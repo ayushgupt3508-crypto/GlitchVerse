@@ -65,10 +65,12 @@ export class GuideModal extends Phaser.GameObjects.Container {
 
     this.add(panel);
 
-    // 3. Header title
-    const headerTitle = scene.add.text(px + 16, py + 14, '// FIELD GUIDE: CONTROLS & PROTOCOLS //', {
+    // 3. Dynamic Guide Data based on active level / sector
+    const guideData = this.getGuideData(scene);
+
+    const headerTitle = scene.add.text(px + 16, py + 14, guideData.headerTitle, {
       fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
-      fontSize: '13px',
+      fontSize: '12px',
       color: '#00f0ff',
       fontStyle: 'bold',
       stroke: '#000000',
@@ -135,13 +137,13 @@ export class GuideModal extends Phaser.GameObjects.Container {
       y1 += 24;
     });
 
-    // ── Column 2: Merlin's Staff & Drone Stun ───────────────────────────
+    // ── Column 2: Level-Specific Staff Abilities & Mechanics ────────────
     const col2X = px + 242;
     let y2 = py + 38;
 
-    const col2Header = scene.add.text(col2X, y2, '◈ STAFF ABILITIES & PUZZLES', {
+    const col2Header = scene.add.text(col2X, y2, guideData.abilitiesHeader, {
       fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
-      fontSize: '12px',
+      fontSize: '11px',
       color: '#00f0ff',
       fontStyle: 'bold',
       stroke: '#000000',
@@ -150,25 +152,7 @@ export class GuideModal extends Phaser.GameObjects.Container {
     this.add(col2Header);
     y2 += 18;
 
-    const abilitiesList = [
-      {
-        title: 'FREEZE DRONES [J / E]:',
-        color: '#ffd166',
-        desc: 'Press J or E near sentient drones to freeze them in stasis for 5s to pass safely.'
-      },
-      {
-        title: 'WATER & ICE RUNWAYS:',
-        color: '#70e000',
-        desc: 'Staff freezes water into solid slippery runways to cross gaps, or thaws ice back.'
-      },
-      {
-        title: 'CRYO BLOCKS & LOCKS:',
-        color: '#00f0ff',
-        desc: 'Drop overhead ice stalactites into solid ground blocks to trigger floor locks & open doors.'
-      }
-    ];
-
-    abilitiesList.forEach((item) => {
+    guideData.abilitiesList.forEach((item) => {
       const titleText = scene.add.text(col2X, y2, item.title, {
         fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
         fontSize: '11px',
@@ -203,7 +187,7 @@ export class GuideModal extends Phaser.GameObjects.Container {
       strokeThickness: 2
     }).setScrollFactor(0);
 
-    const directive1 = scene.add.text(botX + 130, botY, '⚡ Energy Conduits: Stand close to recharge Staff.', {
+    const directive1 = scene.add.text(botX + 130, botY, guideData.directive1, {
       fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
       fontSize: '10px',
       color: '#e0fbfc',
@@ -211,7 +195,7 @@ export class GuideModal extends Phaser.GameObjects.Container {
       strokeThickness: 2
     }).setScrollFactor(0);
 
-    const directive2 = scene.add.text(botX + 130, botY + 13, '💎 5 Crystals: Collect shattered parts to unlock Exit Portal.', {
+    const directive2 = scene.add.text(botX + 130, botY + 13, guideData.directive2, {
       fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
       fontSize: '10px',
       color: '#e0fbfc',
@@ -298,5 +282,144 @@ export class GuideModal extends Phaser.GameObjects.Container {
       this.keyListener = undefined;
     }
     super.destroy(fromScene);
+  }
+
+  private getGuideData(scene: Phaser.Scene): {
+    headerTitle: string;
+    abilitiesHeader: string;
+    abilitiesList: Array<{ title: string; color: string; desc: string }>;
+    directive1: string;
+    directive2: string;
+  } {
+    const key = scene.scene?.key || scene.constructor.name || '';
+
+    if (key === 'Sector2Scene') {
+      return {
+        headerTitle: '// FIELD GUIDE: SECTOR 2 · HEAT AGE //',
+        abilitiesHeader: '◈ SECTOR 2 ABILITIES & HEAT TECH',
+        abilitiesList: [
+          {
+            title: 'THERMAL VENTS [J / E]:',
+            color: '#ff8800',
+            desc: 'Ignite dormant vents within 150px. Updraft lifts vertically; Convection carries horizontally across lava.'
+          },
+          {
+            title: 'HAZARD SUPPRESSION:',
+            color: '#ffd166',
+            desc: 'When no vent is near, staff suppresses Fire Jet nozzles and stuns patrolling Ember Drones.'
+          },
+          {
+            title: 'RAFT CENTER BALANCE:',
+            color: '#00ff88',
+            desc: 'Stand in the center of moving rafts (between arrows) to lock carriage across lava without sliding off.'
+          }
+        ],
+        directive1: '⚡ Heat Conduits: Stand close to recharge Staff energy.',
+        directive2: '🔥 Failsafes 03 & 04: Collect both components to unlock Exit Gate.'
+      };
+    }
+
+    if (key === 'Level3Scene') {
+      return {
+        headerTitle: '// FIELD GUIDE: SECTOR 3 · MEDIEVAL PALACE //',
+        abilitiesHeader: '◈ SECTOR 3 ABILITIES & INFILTRATION',
+        abilitiesList: [
+          {
+            title: 'TEMPORAL CLOAKING [C / Q / J]:',
+            color: '#ffd166',
+            desc: 'Activate camouflage to become invisible, slipping past elite palace guards and security lasers.'
+          },
+          {
+            title: 'CHAMBER KEY & PORTCULLIS:',
+            color: '#d4af37',
+            desc: 'Infiltrate the inner vault to steal the royal iron key and raise locked palace portcullises.'
+          },
+          {
+            title: 'ELEVATED CHANDELIERS:',
+            color: '#00f0ff',
+            desc: 'Leap across chandeliers and palace rafters to bypass heavily patrolled ground corridors.'
+          }
+        ],
+        directive1: '⚡ Energy Conduits: Recharge staff charges before cloaking.',
+        directive2: '👑 Failsafe 03: Infiltrate royal vault to recover Component 3.'
+      };
+    }
+
+    if (key === 'Level4Scene') {
+      return {
+        headerTitle: '// FIELD GUIDE: SECTOR 4 · ANCIENT FOREST //',
+        abilitiesHeader: '◈ SECTOR 4 ABILITIES & TIME CONTROL',
+        abilitiesList: [
+          {
+            title: 'TIME MANIPULATION [T / E / J]:',
+            color: '#00f0ff',
+            desc: 'Freeze or rewind time on ancient mechanisms, swinging log hazards, and moving platforms.'
+          },
+          {
+            title: 'COLLAPSED BRIDGES:',
+            color: '#70e000',
+            desc: 'Rewind time on collapsed stone bridge segments to restore solid crossings over chasms.'
+          },
+          {
+            title: 'GOLEM STASIS:',
+            color: '#ffd166',
+            desc: 'Cast chronal stasis on ancient stone golems to freeze their strikes before impact.'
+          }
+        ],
+        directive1: '⚡ Time Conduits: Recharge chronal staff energy.',
+        directive2: '🌿 Failsafe 04: Rewind ruins to recover Component 4.'
+      };
+    }
+
+    if (key === 'Level5Scene') {
+      return {
+        headerTitle: '// FIELD GUIDE: SECTOR 5 · FUTURISTIC CORE //',
+        abilitiesHeader: '◈ SECTOR 5 ABILITIES & CORE OVERRIDE',
+        abilitiesList: [
+          {
+            title: 'DIMENSIONAL PHASING [SHIFT / TAB / X]:',
+            color: '#ff00aa',
+            desc: 'Shift reality between Phase A and Phase B to solidify phasing platforms and bypass laser walls.'
+          },
+          {
+            title: 'MULTI-ABILITY ARSENAL:',
+            color: '#00f0ff',
+            desc: 'Combine chronal stasis, cloaking, and phase shifts to neutralize core security grids.'
+          },
+          {
+            title: 'FAILSAFE CORE ASSEMBLY:',
+            color: '#ffd166',
+            desc: 'Assemble all 5 recovered failsafe components into the central pedestal to seal the core.'
+          }
+        ],
+        directive1: '⚡ Core Conduits: Supercharge multidimensional staff battery.',
+        directive2: '🔮 Failsafe Array: Place Component 5 to complete the array.'
+      };
+    }
+
+    // Default: Sector 1 (GameScene · Ice Age)
+    return {
+      headerTitle: '// FIELD GUIDE: SECTOR 1 · ICE AGE //',
+      abilitiesHeader: '◈ SECTOR 1 ABILITIES & CRYOTECH',
+      abilitiesList: [
+        {
+          title: 'FREEZE DRONES [J / E]:',
+          color: '#ffd166',
+          desc: 'Press J or E near sentient drones to freeze them in stasis for 5s to pass safely.'
+        },
+        {
+          title: 'WATER & ICE RUNWAYS:',
+          color: '#70e000',
+          desc: 'Staff freezes water into solid slippery runways to cross gaps, or thaws ice back.'
+        },
+        {
+          title: 'CRYO BLOCKS & LOCKS:',
+          color: '#00f0ff',
+          desc: 'Drop overhead ice stalactites into solid ground blocks to trigger floor locks & open doors.'
+        }
+      ],
+      directive1: '⚡ Energy Conduits: Stand close to recharge Staff.',
+      directive2: '💎 5 Crystals: Recover shattered components to unlock Exit Portal.'
+    };
   }
 }

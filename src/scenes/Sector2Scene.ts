@@ -3,6 +3,7 @@ import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { Player } from '../entities/Player';
 import { SentinelDrone } from '../entities/SentinelDrone';
 import { FireJet } from '../entities/FireJet';
+import { ThermalVent, ThermalVentType, THERMAL_VENT_CONFIG } from '../entities/ThermalVent';
 import { HUD } from '../ui/HUD';
 import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
@@ -29,8 +30,10 @@ export class Sector2Scene extends Phaser.Scene {
   private player!: Player;
   private drones: SentinelDrone[] = [];
   private fireJets: FireJet[] = [];
+  private vents: ThermalVent[] = [];
   private raft1!: Phaser.Physics.Arcade.Sprite;
   private raft2!: Phaser.Physics.Arcade.Sprite;
+  private raftIndicatorGfx?: Phaser.GameObjects.Graphics;
   private failsafeItems: Phaser.Physics.Arcade.Sprite[] = [];
   private exitPortal?: Phaser.GameObjects.Graphics;
 
@@ -39,6 +42,7 @@ export class Sector2Scene extends Phaser.Scene {
   private pauseMenu: PauseMenu | null = null;
   private gameOverScreen: GameOverScreen | null = null;
   private isPaused = false;
+  private isLeavingScene = false;
   private checkpointX = 60;
   private checkpointY = 268;
   private failsafeCollected = 0;
@@ -49,14 +53,33 @@ export class Sector2Scene extends Phaser.Scene {
   private isRespawning = false;
 
   // Level dimensions — floor at y=330 (lava surface)
-  private readonly levelWidth  = 2000;
+  private readonly levelWidth  = 3760;
   private readonly levelHeight = 420;
   private readonly floorY      = 330; // lava surface y
 
   constructor() { super('Sector2Scene'); }
 
   create(): void {
+    // Reset all per-run state so stale entities/menus do not survive scene.restart()
+    this.fireJets = [];
+    this.failsafeItems = [];
+    this.emberTiles = [];
+    this.vents = [];
+    this.drones = [];
+    this.exitPortal = undefined;
+    this.failsafeCollected = 0;
+    this.hasRecoveredAll = false;
+    this.deathCount = 0;
+    this.checkpointX = 60;
+    this.checkpointY = 268;
+    this.isPaused = false;
     this.isRespawning = false;
+    this.isLeavingScene = false;
+    this.pauseMenu = null;
+    this.gameOverScreen = null;
+    this.raftIndicatorGfx?.destroy();
+    this.raftIndicatorGfx = this.add.graphics().setDepth(12);
+
     // Generate all textures first
     TextureGenerator.generatePlayerTextures(this);
     TextureGenerator.generateEnvironmentTextures(this);
@@ -175,12 +198,8 @@ export class Sector2Scene extends Phaser.Scene {
     this.player.on('staff_used', (chargesLeft: number) => {
       this.hud.updateCharges(chargesLeft);
       AudioManager.playStaffUse();
-      // Priority: lava solidification first; fall back to jet/drone stun
-      const solidified = this.tryLavaSolidification();
-      if (!solidified) {
-        this.tryStunNearbyJets();
-        this.tryStunNearbyDrones();
-      }
+      // Handle thermal vent control (ignites nearest dormant vent, or falls back to stun)
+      this.handleStaffUse();
     });
     this.player.on('staff_empty', () => {
       this.hud.showBanner('STAFF DEPLETED — FIND A HEAT CONDUIT!');
@@ -216,9 +235,12 @@ export class Sector2Scene extends Phaser.Scene {
     }
     if (this.isRespawning) return;
 
+    this.updateRaftCarriage();
+    this.renderRaftIndicators(time);
     this.player.update(time, delta);
     this.drones.forEach(d => d.update(time, delta, this.player.x, this.player.y));
     this.fireJets.forEach(j => j.update(time));
+    this.vents.forEach(v => v.update(delta, this.player));
 
     // Pit-fall safety net (below lava floor)
     if (this.player.y > 480 && !this.player.isDead) {
@@ -227,7 +249,7 @@ export class Sector2Scene extends Phaser.Scene {
 
     // Exit check
     if (this.hasRecoveredAll && this.exitPortal && !this.player.isDead) {
-      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, 1960, 220) < 40) {
+      if (Phaser.Math.Distance.Between(this.player.x, this.player.y, 3720, 232) < 40) {
         this.handleLevelComplete();
       }
     }
@@ -288,43 +310,45 @@ export class Sector2Scene extends Phaser.Scene {
     }
 
     // ── 4. Demon shadow entity (scroll=0.12, depth=2) ─────────────────
+    // Demon position pinned to old x=1000 so extending world width does not move it
+    const demonX = 1000;
     const demon = this.add.graphics().setScrollFactor(0.12).setDepth(2);
     demon.fillStyle(0x180204, 0.8);
-    // Body ellipse centred on level midpoint at upper-middle of screen
-    demon.fillEllipse(this.levelWidth * 0.5, 170, 260, 340);
-    demon.fillCircle(this.levelWidth * 0.5, 60, 80);
+    // Body ellipse centred on pinned x
+    demon.fillEllipse(demonX, 170, 260, 340);
+    demon.fillCircle(demonX, 60, 80);
     // Horns (only go upward, never downward into gameplay)
     demon.fillTriangle(
-      this.levelWidth * 0.5 - 55, 60,
-      this.levelWidth * 0.5 - 95, -30,
-      this.levelWidth * 0.5 - 25, 50
+      demonX - 55, 60,
+      demonX - 95, -30,
+      demonX - 25, 50
     );
     demon.fillTriangle(
-      this.levelWidth * 0.5 + 55, 60,
-      this.levelWidth * 0.5 + 95, -30,
-      this.levelWidth * 0.5 + 25, 50
+      demonX + 55, 60,
+      demonX + 95, -30,
+      demonX + 25, 50
     );
     // Wings — extend laterally, NOT downward past y=200
     demon.fillTriangle(
-      this.levelWidth * 0.5 - 70, 140,
-      this.levelWidth * 0.5 - 300, 100,
-      this.levelWidth * 0.5 - 50, 220
+      demonX - 70, 140,
+      demonX - 300, 100,
+      demonX - 50, 220
     );
     demon.fillTriangle(
-      this.levelWidth * 0.5 + 70, 140,
-      this.levelWidth * 0.5 + 300, 100,
-      this.levelWidth * 0.5 + 50, 220
+      demonX + 70, 140,
+      demonX + 300, 100,
+      demonX + 50, 220
     );
     // Pulsing glowing eyes
     demon.fillStyle(0xff4400, 0.85);
-    demon.fillCircle(this.levelWidth * 0.5 - 26, 60, 11);
-    demon.fillCircle(this.levelWidth * 0.5 + 26, 60, 11);
+    demon.fillCircle(demonX - 26, 60, 11);
+    demon.fillCircle(demonX + 26, 60, 11);
     demon.fillStyle(0xff8800, 1);
-    demon.fillCircle(this.levelWidth * 0.5 - 26, 60, 5);
-    demon.fillCircle(this.levelWidth * 0.5 + 26, 60, 5);
+    demon.fillCircle(demonX - 26, 60, 5);
+    demon.fillCircle(demonX + 26, 60, 5);
     demon.fillStyle(0xffffff, 0.7);
-    demon.fillCircle(this.levelWidth * 0.5 - 24, 57, 1.5);
-    demon.fillCircle(this.levelWidth * 0.5 + 28, 57, 1.5);
+    demon.fillCircle(demonX - 24, 57, 1.5);
+    demon.fillCircle(demonX + 28, 57, 1.5);
     // Eye pulse tween on the graphics object
     this.tweens.add({ targets: demon, alpha: 0.75, yoyo: true, repeat: -1, duration: 1800 });
 
@@ -421,6 +445,7 @@ export class Sector2Scene extends Phaser.Scene {
     this.raft1.setDisplaySize(64, 32);
     (this.raft1.body as Phaser.Physics.Arcade.StaticBody).setSize(64, 32);
     this.raft1.refreshBody();
+    this.raft1.setData('prevX', 380);
 
     this.tweens.add({
       targets: this.raft1,
@@ -438,7 +463,7 @@ export class Sector2Scene extends Phaser.Scene {
     this.platforms.create(660, 270, 'tile_metal').refreshBody();
     this.platforms.create(692, 270, 'tile_metal').refreshBody();
 
-    this.add.text(306, 218, '↔ LAVA RAFT', {
+    this.add.text(306, 218, '↔ LAVA RAFT  [STAND IN CENTER TO RIDE]', {
       fontFamily: GAME_FONTS.primary,
       fontSize: '10px',
       fontStyle: 'bold',
@@ -446,17 +471,6 @@ export class Sector2Scene extends Phaser.Scene {
       stroke: '#040711',
       strokeThickness: 2
     });
-
-    // Solidification ability hint (floats above chasm entrance)
-    const hintTxt = this.add.text(290, 203, '[E/J] STAFF = SOLIDIFY LAVA', {
-      fontFamily: GAME_FONTS.primary,
-      fontSize: '10px',
-      fontStyle: 'bold',
-      color: '#00c8ff',
-      backgroundColor: '#0a0412cc',
-      padding: { x: 4, y: 2 }
-    });
-    this.tweens.add({ targets: hintTxt, alpha: 0.4, yoyo: true, repeat: -1, duration: 900 });
 
     // ── Segment 3: Fire Jet Gauntlet (x=700-1040) ────────────────────
     for (let x = 704; x <= 1056; x += 32) {
@@ -542,6 +556,7 @@ export class Sector2Scene extends Phaser.Scene {
     this.raft2.setDisplaySize(64, 32);
     (this.raft2.body as Phaser.Physics.Arcade.StaticBody).setSize(64, 32);
     this.raft2.refreshBody();
+    this.raft2.setData('prevX', 1700);
 
     this.tweens.add({
       targets: this.raft2,
@@ -558,28 +573,166 @@ export class Sector2Scene extends Phaser.Scene {
     // Ember drone #2 patrolling the ledge area
     drones.push(this.spawnEmberDrone(1610, 186, 1450, 1660));
 
-    // ── Segment 6: Final Platform + Failsafe #04 (x=1820-2000) ───────
-    for (let x = 1824; x <= 2000; x += 32) {
+    // ── Extension Entry: Safe Practice Area & Tutorial Vent (x=1824-2080) ──
+    for (let x = 1824; x <= 2080; x += 32) {
       this.platforms.create(x, 270, 'tile_metal').refreshBody();
     }
-    // Lava in the gap before final platform
+    // Lava under the chasm before entry platform (1760-1824)
     for (let x = 1760; x <= 1824; x += 32) {
       (this.lavaTiles.create(x, this.floorY + 4, 'tile_lava') as Phaser.Physics.Arcade.Sprite).refreshBody();
     }
+    // Tutorial vent & safe practice ledge
+    this.spawnThermalVent(1940, 270, 'updraft', 48, 140);
+    this.platforms.create(1960, 200, 'tile_metal').refreshBody();
+    this.platforms.create(1992, 200, 'tile_metal').refreshBody();
+    this.platforms.create(2024, 200, 'tile_metal').refreshBody();
+    this.add.text(1860, 235, '[E/J] IGNITE THERMAL VENT  ·  RIDE THE UPDRAFT', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ffaa00',
+      backgroundColor: '#0a0402cc',
+      padding: { x: 4, y: 2 }
+    });
 
-    // Right boundary wall
-    for (let y = 0; y < 240; y += 32) {
-      this.platforms.create(2000, y, 'tile_metal').refreshBody();
+    // ── Z1: Vent Foyer (x=2080-2420) ─────────────────────────────────
+    // Approach floor
+    for (let x = 2112; x <= 2240; x += 32) {
+      this.platforms.create(x, 290, 'tile_metal').refreshBody();
+    }
+    // Conduit before cliff
+    conduits.push(this.spawnHeatConduit(2120, 258));
+
+    // Updraft vent to scale the ~130px cliff
+    this.spawnThermalVent(2200, 290, 'updraft', 48, 160);
+
+    // 130px cliff: base y=290, top ledge y=160
+    for (let y = 192; y <= 290; y += 32) {
+      this.platforms.create(2240, y, 'tile_metal').refreshBody();
+    }
+    // Cliff top ledge
+    for (let x = 2240; x <= 2400; x += 32) {
+      this.platforms.create(x, 160, 'tile_metal').refreshBody();
+    }
+    // Checkpoint & conduit on top ledge
+    crystals.push(this.spawnCheckpointCrystal(2280, 128));
+    conduits.push(this.spawnHeatConduit(2360, 128));
+
+    this.add.text(2244, 108, 'Z1 · VENT FOYER', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ff8800',
+      stroke: '#040711',
+      strokeThickness: 2
+    });
+
+    // ── Z2: Convection Relay (x=2400-2920) ───────────────────────────
+    // Starting launch ledge
+    this.platforms.create(2410, 190, 'tile_metal').refreshBody();
+    this.platforms.create(2442, 190, 'tile_metal').refreshBody();
+
+    // Lava under gap 1 (x=2432 to 2640)
+    for (let x = 2432; x <= 2640; x += 32) {
+      (this.lavaTiles.create(x, this.floorY + 4, 'tile_lava') as Phaser.Physics.Arcade.Sprite).refreshBody();
+    }
+    // Tunnel Vent 1
+    this.spawnThermalVent(2440, 180, 'convection', 190, 60);
+
+    // Solid Island between the two tunnels
+    for (let x = 2630; x <= 2700; x += 32) {
+      this.platforms.create(x, 190, 'tile_metal').refreshBody();
     }
 
-    // Failsafe #04 elevated shelf
-    this.platforms.create(1900, 230, 'tile_metal').refreshBody();
-    this.platforms.create(1868, 230, 'tile_metal').refreshBody();
-    const fs4 = this.physics.add.sprite(1900, 208, 'failsafe_component').setTint(0xff4400);
+    // Lava under gap 2 (x=2688 to 2896)
+    for (let x = 2688; x <= 2896; x += 32) {
+      (this.lavaTiles.create(x, this.floorY + 4, 'tile_lava') as Phaser.Physics.Arcade.Sprite).refreshBody();
+    }
+    // Tunnel Vent 2 (can be ignited while gliding in Tunnel 1)
+    this.spawnThermalVent(2700, 180, 'convection', 190, 60);
+
+    // Landing platform
+    for (let x = 2890; x <= 2960; x += 32) {
+      this.platforms.create(x, 190, 'tile_metal').refreshBody();
+    }
+
+    this.add.text(2540, 130, 'Z2 · CONVECTION RELAY', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ff8800',
+      stroke: '#040711',
+      strokeThickness: 2
+    });
+
+    // ── Z3: Furnace Gauntlet (x=2920-3340) ───────────────────────────
+    // Conduit before gauntlet
+    conduits.push(this.spawnHeatConduit(2940, 158));
+
+    // Descent steps
+    this.platforms.create(2980, 224, 'tile_metal').refreshBody();
+    this.platforms.create(3012, 256, 'tile_metal').refreshBody();
+
+    // Floor under jets
+    for (let x = 3040; x <= 3340; x += 32) {
+      this.platforms.create(x, 290, 'tile_metal').refreshBody();
+    }
+
+    // Updraft vent to catwalk (Route A: 1 charge)
+    this.spawnThermalVent(3060, 290, 'updraft', 48, 150);
+
+    // Overhead catwalk
+    for (let x = 3090; x <= 3290; x += 32) {
+      this.platforms.create(x, 180, 'tile_metal').refreshBody();
+    }
+
+    // 3 Fire Jets on the floor (Route B: 2+ charges, suppression)
+    const gauntletJets: [number, number, number, number][] = [
+      [3130, 290, 70, 0],
+      [3200, 290, 70, 650],
+      [3270, 290, 70, 1300]
+    ];
+    gauntletJets.forEach(([jx, jy, h, off]) => {
+      const jet = new FireJet(this, this.fireHazards, jx, jy, h, off);
+      this.fireJets.push(jet);
+    });
+
+    this.add.text(3080, 150, 'Z3 · CATWALK ROUTE ↑', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ffaa00',
+      stroke: '#040711',
+      strokeThickness: 2
+    });
+
+    // ── Z4: Finale (x=3340-3760) ─────────────────────────────────────
+    // Entrance platform leading to updraft vent
+    for (let x = 3340; x <= 3456; x += 32) {
+      this.platforms.create(x, 290, 'tile_metal').refreshBody();
+    }
+
+    // Checkpoint & conduit
+    crystals.push(this.spawnCheckpointCrystal(3360, 258));
+    conduits.push(this.spawnHeatConduit(3400, 258));
+
+    // Updraft vent: open to the sky at x=3440 (lifts player ~150px to land on the shelf)
+    this.spawnThermalVent(3440, 290, 'updraft', 48, 160);
+
+    // Supporting cliff wall under shelf
+    for (let y = 192; y <= 290; y += 32) {
+      this.platforms.create(3480, y, 'tile_metal').refreshBody();
+    }
+
+    // Failsafe 04 elevated shelf (y=170, adjacent to the updraft column)
+    for (let x = 3480; x <= 3544; x += 32) {
+      this.platforms.create(x, 170, 'tile_metal').refreshBody();
+    }
+    const fs4 = this.physics.add.sprite(3512, 145, 'failsafe_component').setTint(0xff4400);
     fs4.setImmovable(true);
     (fs4.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-    this.tweens.add({ targets: fs4, y: 202, yoyo: true, repeat: -1, duration: 950 });
-    this.add.text(1862, 184, 'FAILSAFE 04', {
+    this.tweens.add({ targets: fs4, y: 139, yoyo: true, repeat: -1, duration: 950 });
+    this.add.text(3478, 118, 'FAILSAFE 04', {
       fontFamily: GAME_FONTS.primary,
       fontSize: '11px',
       fontStyle: 'bold',
@@ -589,13 +742,165 @@ export class Sector2Scene extends Phaser.Scene {
     });
     this.failsafeItems.push(fs4);
 
-    // Exit portal
-    this.spawnExitPortal(1960, 232);
+    // Lava gap before exit
+    for (let x = 3544; x <= 3632; x += 32) {
+      (this.lavaTiles.create(x, this.floorY + 4, 'tile_lava') as Phaser.Physics.Arcade.Sprite).refreshBody();
+    }
+
+    // Exit platform
+    for (let x = 3632; x <= 3760; x += 32) {
+      this.platforms.create(x, 270, 'tile_metal').refreshBody();
+    }
+
+    // Ember drone guarding exit
+    drones.push(this.spawnEmberDrone(3670, 230, 3632, 3720));
+
+    // Exit portal at 3720, 232
+    this.spawnExitPortal(3720, 232);
+
+    // Sealed right wall at 3760
+    for (let y = 0; y < 270; y += 32) {
+      this.platforms.create(3760, y, 'tile_metal').refreshBody();
+    }
 
     return { conduits, crystals, drones };
   }
 
+  // ── Moving Raft Carriage ───────────────────────────────────────────────
+
+  private updateRaftCarriage(): void {
+    const rafts = [this.raft1, this.raft2];
+    const kb = this.input.keyboard;
+    const isPressingMove = kb ? (
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown ||
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown ||
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT).isDown ||
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT).isDown
+    ) : false;
+
+    for (const raft of rafts) {
+      if (!raft || !raft.body) continue;
+      const prevX = (raft.getData('prevX') as number) ?? raft.x;
+      const dx = raft.x - prevX;
+      raft.setData('prevX', raft.x);
+
+      if (Math.abs(dx) < 0.001) continue;
+
+      if (this.player && !this.player.isDead && this.player.body) {
+        const pBody = this.player.body as Phaser.Physics.Arcade.Body;
+        const raftHalfW = (raft.displayWidth || 64) / 2;
+        const raftTop = raft.y - ((raft.displayHeight || 32) / 2);
+
+        // Player is grounded and resting on top of the moving raft
+        const isStandingOnRaft =
+          (pBody.blocked.down || pBody.touching.down) &&
+          Math.abs(pBody.bottom - raftTop) <= 6 &&
+          pBody.right > (raft.x - raftHalfW) &&
+          pBody.left < (raft.x + raftHalfW);
+
+        if (isStandingOnRaft) {
+          // Decreased middle blue sweet spot width: 20px (+/-10px from center)
+          const SAFE_CENTER_RADIUS = 10;
+          const distFromCenter = Math.abs(this.player.x - raft.x);
+
+          if (distFromCenter <= SAFE_CENTER_RADIUS) {
+            // Firm center lock: when not inputting manual movement, player is locked stationary in center
+            if (!isPressingMove) {
+              this.player.x = raft.x;
+              pBody.x = raft.x - pBody.halfWidth;
+            } else {
+              // Player is actively steering: carry raft delta along with walking input
+              this.player.x += dx;
+              pBody.x += dx;
+            }
+          } else {
+            // Stepped on arrow keys: high outgoing velocity pushes player off toward edges fast
+            const nudgeDir = this.player.x > raft.x ? 1 : -1;
+            const OUTGOING_VELOCITY = 3.2; // Fast outward ejection
+            this.player.x += nudgeDir * OUTGOING_VELOCITY;
+            pBody.x += nudgeDir * OUTGOING_VELOCITY;
+          }
+        }
+      }
+    }
+  }
+
+  private renderRaftIndicators(time: number): void {
+    if (!this.raftIndicatorGfx) return;
+    this.raftIndicatorGfx.clear();
+
+    const rafts = [this.raft1, this.raft2];
+    for (const raft of rafts) {
+      if (!raft || !raft.active) continue;
+
+      const rx = raft.x;
+      const ry = raft.y;
+      const topY = ry - 16;
+      const pBody = this.player?.body as Phaser.Physics.Arcade.Body | undefined;
+      const onRaft =
+        pBody &&
+        !this.player.isDead &&
+        (pBody.blocked.down || pBody.touching.down) &&
+        Math.abs(pBody.bottom - topY) <= 6 &&
+        pBody.right > (rx - 32) &&
+        pBody.left < (rx + 32);
+
+      const distFromCenter = onRaft ? Math.abs(this.player.x - rx) : 999;
+      // Middle blue zone: 20px wide (+/-10px from center)
+      const isCentered = onRaft && distFromCenter <= 10;
+
+      // 1. Middle blue glowing section [rx - 10, rx + 10]
+      const blueColor = 0x00f0ff;
+      this.raftIndicatorGfx.fillStyle(blueColor, isCentered ? 0.6 : 0.3);
+      this.raftIndicatorGfx.fillRect(rx - 10, topY + 2, 20, 6);
+
+      this.raftIndicatorGfx.lineStyle(1.5, blueColor, isCentered ? 1.0 : 0.75);
+      this.raftIndicatorGfx.strokeRect(rx - 10, topY + 2, 20, 6);
+
+      // Center alignment notch
+      this.raftIndicatorGfx.lineStyle(1, 0xffffff, isCentered ? 1.0 : 0.7);
+      this.raftIndicatorGfx.lineBetween(rx, topY, rx, topY + 4);
+
+      // 2. High-speed animated side arrows streaming outward toward either side
+      const flowPhase = (time * 0.08) % 8; // Rapid outward flow
+
+      // Left side arrows: streaming toward LEFT
+      const leftArrowColor = (onRaft && !isCentered && this.player.x < rx) ? 0xff1100 : 0xff5500;
+      this.raftIndicatorGfx.lineStyle(1.5, leftArrowColor, 0.95);
+      for (let i = 0; i < 2; i++) {
+        const ax = rx - 14 - (i * 8 + flowPhase);
+        if (ax >= rx - 30 && ax <= rx - 12) {
+          this.raftIndicatorGfx.lineBetween(ax + 3, topY + 1, ax, topY + 5);
+          this.raftIndicatorGfx.lineBetween(ax, topY + 5, ax + 3, topY + 9);
+        }
+      }
+
+      // Right side arrows: streaming toward RIGHT
+      const rightArrowColor = (onRaft && !isCentered && this.player.x > rx) ? 0xff1100 : 0xff5500;
+      this.raftIndicatorGfx.lineStyle(1.5, rightArrowColor, 0.95);
+      for (let i = 0; i < 2; i++) {
+        const ax = rx + 14 + (i * 8 + flowPhase);
+        if (ax <= rx + 30 && ax >= rx + 12) {
+          this.raftIndicatorGfx.lineBetween(ax - 3, topY + 1, ax, topY + 5);
+          this.raftIndicatorGfx.lineBetween(ax, topY + 5, ax - 3, topY + 9);
+        }
+      }
+    }
+  }
+
   // ── Spawner helpers ────────────────────────────────────────────────────
+
+  private spawnThermalVent(
+    x: number,
+    y: number,
+    type: ThermalVentType,
+    zoneWidth: number,
+    zoneHeight: number
+  ): ThermalVent {
+    const vent = new ThermalVent(this, x, y, type, zoneWidth, zoneHeight);
+    this.vents.push(vent);
+    return vent;
+  }
 
   private spawnHeatConduit(x: number, y: number): Phaser.Physics.Arcade.Sprite {
     const c = this.physics.add.sprite(x, y, 'heat_conduit');
@@ -672,89 +977,36 @@ export class Sector2Scene extends Phaser.Scene {
     });
   }
 
-  // ── Lava Solidification (Heat Age environment ability) ────────────────
+  // ── Thermal Vent Control (Heat Age Environment Ability) ───────────────
   //
-  //  Press [E/J] when standing near a lava chasm to fire a cryo-thermal beam
-  //  that crystallises the lava into an obsidian bridge for 8 seconds.
-  //  After 8 s the bridge melts. 13 s cooldown before the zone resets.
-  //  Shows a countdown banner at 3 s remaining.
+  // Staff [E/J] ignites the nearest dormant vent within ~150px.
+  // If no vent is in range, falls back to jet/drone stun.
+  // Running or cooling vents cannot be re-ignited, so the press falls through to stun.
 
-  private lavaBridgeZones = [
-    { x1: 288, x2: 640,  bridgeY: 306, active: false, cooldown: false, label: 'LAVA CHASM A' },
-    { x1: 1408, x2: 1760, bridgeY: 292, active: false, cooldown: false, label: 'LAVA CHASM B' },
-  ];
+  private handleStaffUse(): void {
+    let nearestVent: ThermalVent | null = null;
+    let minDist: number = THERMAL_VENT_CONFIG.ignitionRange;
 
-  /** Returns true if a bridge was created (prevents jet/drone stun on same press). */
-  private tryLavaSolidification(): boolean {
-    const px = this.player.x;
-    for (const zone of this.lavaBridgeZones) {
-      if (px >= zone.x1 - 80 && px <= zone.x2 + 80 && !zone.active && !zone.cooldown) {
-        this.activateLavaBridge(zone);
-        return true;
+    for (const vent of this.vents) {
+      if (vent.isDormant) {
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, vent.x, vent.y);
+        if (dist <= minDist) {
+          minDist = dist;
+          nearestVent = vent;
+        }
       }
     }
-    return false;
-  }
 
-  private activateLavaBridge(
-    zone: typeof this.lavaBridgeZones[0]
-  ): void {
-    zone.active   = true;
-    zone.cooldown = true;
-
-    const bridges: Phaser.Physics.Arcade.Sprite[] = [];
-    const BRIDGE_DUR = 8000;
-    const COOLDOWN   = 13000;
-
-    // Spawn obsidian tiles over the lava chasm
-    for (let x = zone.x1; x <= zone.x2; x += 32) {
-      const tile = this.platforms.create(x, zone.bridgeY, 'tile_obsidian') as Phaser.Physics.Arcade.Sprite;
-      tile.setAlpha(0);
-      tile.refreshBody();
-      bridges.push(tile);
-      this.tweens.add({ targets: tile, alpha: 1, duration: 350, ease: 'Power2' });
+    if (nearestVent) {
+      nearestVent.ignite();
+      AudioManager.playStoneRumble();
+      this.cameras.main.flash(120, 255, 120, 0);
+      this.hud.showBanner(`THERMAL VENT IGNITED (${nearestVent.type.toUpperCase()})`);
+    } else {
+      // Fallback to jet and drone suppression
+      this.tryStunNearbyJets();
+      this.tryStunNearbyDrones();
     }
-
-    // Visual effects
-    this.cameras.main.flash(250, 0, 160, 255);
-    this.cameras.main.shake(120, 0.008);
-    this.hud.showBanner(`LAVA SOLIDIFIED — ${zone.label} BRIDGED (8s)`);
-
-    // Cryo-burst particle effect along bridge line
-    const burstEmitter = this.add.particles(zone.x1, zone.bridgeY, 'proto_tile', {
-      x: { min: 0, max: zone.x2 - zone.x1 },
-      y: { min: -4, max: 4 },
-      speedY: { min: -40, max: -10 },
-      scale: { start: 0.15, end: 0 },
-      alpha: { start: 0.9, end: 0 },
-      tint: [0x00f0ff, 0x48cae4, 0xffffff],
-      lifespan: 800,
-      quantity: 30,
-      emitting: false
-    }).setDepth(10);
-    burstEmitter.explode(40);
-    this.time.delayedCall(1000, () => burstEmitter.destroy());
-
-    // 3-second warning
-    this.time.delayedCall(BRIDGE_DUR - 3000, () => {
-      if (zone.active) this.hud.showBanner(`${zone.label} MELTING IN 3s!`);
-    });
-
-    // Melt bridge after 8 s
-    this.time.delayedCall(BRIDGE_DUR, () => {
-      zone.active = false;
-      bridges.forEach(tile => {
-        this.tweens.add({
-          targets: tile, alpha: 0, duration: 600, ease: 'Power1',
-          onComplete: () => tile.destroy()
-        });
-      });
-      this.hud.showBanner(`${zone.label} BRIDGE MELTED`);
-      this.cameras.main.flash(150, 255, 60, 0);
-
-      // Reset cooldown after 13 s total
-      this.time.delayedCall(COOLDOWN - BRIDGE_DUR, () => { zone.cooldown = false; });
-    });
   }
 
 
@@ -790,6 +1042,8 @@ export class Sector2Scene extends Phaser.Scene {
   // ── Pause ──────────────────────────────────────────────────────────────
 
   private togglePause(): void {
+    // Ignore pause while dead, respawning, or leaving the scene
+    if (this.player.isDead || this.isRespawning || this.isLeavingScene) return;
     this.isPaused ? this.resumeGame() : this.pauseGame();
   }
 
@@ -838,6 +1092,20 @@ export class Sector2Scene extends Phaser.Scene {
           this.player.restoreStaffCharges(this.player.maxStaffCharges);
           this.hud.updateIntegrity(this.player.integrity);
           this.hud.updateCharges(this.player.staffCharges);
+
+          // Restore crumbled ember tiles
+          this.emberTiles.forEach(tile => {
+            this.tweens.killTweensOf(tile);
+            tile.setActive(true).setVisible(true).setAlpha(1);
+            tile.setData('crumbling', false);
+            if (tile.body) {
+              (tile.body as Phaser.Physics.Arcade.StaticBody).enable = true;
+            }
+          });
+
+          // Reset all vents to dormant
+          this.vents.forEach(v => v.reset());
+
           this.cameras.main.fadeIn(400, 0, 0, 0);
           this.isRespawning = false;
         },
@@ -852,8 +1120,10 @@ export class Sector2Scene extends Phaser.Scene {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
           this.isRespawning = false;
+          this.isLeavingScene = true;
           this.physics.resume();
-          this.cameras.main.fadeOut(300, 0, 0, 0, () => {
+          this.cameras.main.fadeOut(300, 0, 0, 0);
+          this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
             this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
           });
         }
@@ -897,22 +1167,20 @@ export class Sector2Scene extends Phaser.Scene {
   // ── Level Complete ─────────────────────────────────────────────────────
 
   private handleLevelComplete(): void {
-    if (this.physics.world.isPaused) return;
+    if (this.isLeavingScene || this.physics.world.isPaused) return;
+    this.isLeavingScene = true;
     this.physics.pause();
     this.hud.showBanner('SECTOR 2 CONQUERED! FAILSAFE ARRAY NEAR COMPLETE!');
-    this.cameras.main.fade(700, 180, 40, 0, false,
-      (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-        if (progress === 1) {
-          this.scene.start('LevelComplete', {
-            failsafeCollected: this.failsafeCollected + 2,
-            totalFailsafe: 5,
-            deathCount: this.deathCount,
-            timeMs: Date.now() - this.levelStartTime,
-            sectorNumber: 2
-          });
-        }
-      }
-    );
+    this.cameras.main.fadeOut(700, 180, 40, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('LevelComplete', {
+        failsafeCollected: this.failsafeCollected + 2,
+        totalFailsafe: 5,
+        deathCount: this.deathCount,
+        timeMs: Date.now() - this.levelStartTime,
+        sectorNumber: 2
+      });
+    });
   }
 
   // ── Scanlines ──────────────────────────────────────────────────────────
