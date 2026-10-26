@@ -1,21 +1,30 @@
+import Phaser from 'phaser';
 import { DeviceInfo } from './DeviceDetector';
 
 /**
- * OrientationManager — Enforces horizontal landscape mode on mobile devices.
+ * OrientationManager — Enforces horizontal landscape mode and ensures
+ * the game canvas seamlessly expands to fit the mobile screen on any device.
  *
- * Responsibilities:
- *  1. Attempts screen.orientation.lock('landscape') immediately and on first user gesture.
- *  2. Toggles the #landscape-barrier overlay on portrait mobile viewports.
- *  3. Connects the "ENTER LANDSCAPE" fullscreen button to lock landscape orientation.
- *  4. Completely inert on desktop (zero interference with keyboard/mouse play).
+ * Architecture:
+ *  1. Attaches a ResizeObserver to #game-container so any change in viewport,
+ *     fullscreen, or orientation immediately prompts Phaser to recalculate scale.
+ *  2. Executes staged scale refreshes (50ms - 1200ms) to ensure asynchronous
+ *     mobile rotation/fullscreen transitions finish at full size.
+ *  3. Connects the orientation barrier's "ENTER LANDSCAPE" button to dismiss
+ *     the overlay, request landscape fullscreen, and expand the game to full screen.
  */
 export class OrientationManager {
   private static instance: OrientationManager;
+  private game?: Phaser.Game;
   private barrierEl: HTMLElement | null = null;
   private btnEl: HTMLButtonElement | null = null;
+  private userDismissed = false;
+  private resizeObserver?: ResizeObserver;
 
-  private constructor() {
+  private constructor(game?: Phaser.Game) {
     if (typeof window === 'undefined') return;
+
+    this.game = game;
 
     if (DeviceInfo.isMobile && document.body) {
       document.body.classList.add('is-mobile-device');
@@ -29,15 +38,18 @@ export class OrientationManager {
     this.tryLockLandscape();
   }
 
-  public static init(): OrientationManager {
+  public static init(game?: Phaser.Game): OrientationManager {
     if (!OrientationManager.instance) {
-      OrientationManager.instance = new OrientationManager();
+      OrientationManager.instance = new OrientationManager(game);
+    } else if (game) {
+      OrientationManager.instance.game = game;
+      OrientationManager.instance.refreshGameScale();
     }
     return OrientationManager.instance;
   }
 
   private setupListeners(): void {
-    // Attempt lock on ANY user gesture (first touch/click anywhere on screen)
+    // Attempt landscape lock on first touch anywhere on screen
     const gestureHandler = () => {
       this.tryLockLandscape();
     };
@@ -45,22 +57,61 @@ export class OrientationManager {
     window.addEventListener('touchstart', gestureHandler, { passive: true });
 
     // Handle orientation & resize changes
-    window.addEventListener('resize', () => this.checkOrientation());
-    window.addEventListener('orientationchange', () => this.checkOrientation());
+    const onViewportChange = () => {
+      this.checkOrientation();
+      this.refreshGameScale();
+    };
+
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('orientationchange', onViewportChange);
+
     if (screen.orientation) {
-      screen.orientation.addEventListener('change', () => this.checkOrientation());
+      screen.orientation.addEventListener('change', onViewportChange);
+    }
+
+    document.addEventListener('fullscreenchange', onViewportChange);
+    document.addEventListener('webkitfullscreenchange', onViewportChange);
+
+    // Attach ResizeObserver to #game-container for 100% reliable layout tracking
+    const container = document.getElementById('game-container');
+    if (container && typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => {
+        this.refreshGameScale();
+      });
+      this.resizeObserver.observe(container);
     }
 
     // Button on the orientation barrier overlay
     if (this.btnEl) {
       const onBtnPress = async (e: Event) => {
         e.preventDefault();
+        e.stopPropagation();
+
+        // 1. Immediately dismiss barrier overlay
+        this.dismissBarrier();
+
+        // 2. Request landscape fullscreen & orientation lock
         await this.requestLandscapeFullscreen();
+
+        // 3. Force multi-stage scale refreshes to expand game to full screen
+        this.refreshGameScale();
         this.checkOrientation();
       };
+
       this.btnEl.addEventListener('click', onBtnPress);
       this.btnEl.addEventListener('touchend', onBtnPress);
     }
+  }
+
+  public dismissBarrier(): void {
+    this.userDismissed = true;
+    if (document.body) {
+      document.body.classList.remove('barrier-active');
+    }
+    if (this.barrierEl) {
+      this.barrierEl.style.display = 'none';
+    }
+    this.refreshGameScale();
   }
 
   public async tryLockLandscape(): Promise<boolean> {
@@ -70,10 +121,11 @@ export class OrientationManager {
       const sl = screen.orientation as unknown as { lock?: (orientation: string) => Promise<void> } | undefined;
       if (sl && typeof sl.lock === 'function') {
         await sl.lock('landscape');
+        this.refreshGameScale();
         return true;
       }
     } catch {
-      // Browsers often require fullscreen before screen.orientation.lock succeeds
+      // Ignored if device/browser requires fullscreen before locking
     }
 
     // Fallback for vendor-prefixed older APIs
@@ -115,17 +167,57 @@ export class OrientationManager {
   public checkOrientation(): void {
     if (!DeviceInfo.isMobile) {
       if (this.barrierEl) this.barrierEl.style.display = 'none';
+      document.body.classList.remove('barrier-active');
       return;
     }
 
     const isPortrait = window.innerHeight > window.innerWidth;
-    if (this.barrierEl) {
-      this.barrierEl.style.display = isPortrait ? 'flex' : 'none';
-    }
 
     if (!isPortrait) {
-      // Trigger resize to update Phaser canvas dimensions
-      window.dispatchEvent(new Event('resize'));
+      // In landscape orientation — hide barrier and reset dismissed state
+      if (this.barrierEl) {
+        this.barrierEl.style.display = 'none';
+      }
+      document.body.classList.remove('barrier-active');
+      this.userDismissed = false;
+      this.refreshGameScale();
+    } else {
+      // In portrait orientation — show barrier unless user explicitly dismissed it
+      if (!this.userDismissed) {
+        document.body.classList.add('barrier-active');
+        if (this.barrierEl) {
+          this.barrierEl.style.display = 'flex';
+        }
+      } else {
+        if (this.barrierEl) {
+          this.barrierEl.style.display = 'none';
+        }
+        document.body.classList.remove('barrier-active');
+      }
     }
+  }
+
+  /**
+   * Refreshes Phaser's ScaleManager across multiple staged intervals.
+   * Mobile browsers update their viewport dimensions asynchronously over 100-800ms
+   * after rotation or entering fullscreen.
+   */
+  public refreshGameScale(): void {
+    if (!this.game) return;
+
+    const doRefresh = () => {
+      if (!this.game) return;
+      try {
+        this.game.scale.refresh();
+      } catch {
+        // Ignore
+      }
+    };
+
+    doRefresh();
+
+    // Staged triggers catch the end of rotation animations and browser chrome hide events
+    const stages = [40, 100, 200, 350, 500, 800, 1200];
+    stages.forEach(ms => setTimeout(doRefresh, ms));
   }
 }
