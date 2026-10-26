@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { TextureGenerator } from '../utils/TextureGenerator';
 
 export class PreloadScene extends Phaser.Scene {
@@ -21,21 +21,30 @@ export class PreloadScene extends Phaser.Scene {
 
     // Title / System prompt
     this.add.text(width / 2, height / 2 - 50, 'GLITCHVERSE :: SIMULATION CORE', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '16px',
-      color: '#00f0ff'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     this.loadingText = this.add.text(width / 2, height / 2 - 20, 'INITIALIZING PROTOCOLS...', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
-      color: '#8b9bb4'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#8b9bb4',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     this.statusText = this.add.text(width / 2, height / 2 + 35, 'LOADING [ 0% ]', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
-      color: '#00f0ff'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     // Progress Bar Box

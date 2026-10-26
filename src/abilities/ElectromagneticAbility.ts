@@ -207,10 +207,11 @@ export class ElectromagneticAbility {
     this.hudWidget.add(hitZone);
 
     this.hudStatusText = this.scene.add.text(71, 14, '[E] EMP: SEARCHING...', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '10px',
+      fontStyle: 'bold',
       color: '#8b9bb4',
-      stroke: '#000000',
+      stroke: '#040711',
       strokeThickness: 2
     }).setOrigin(0.5);
     this.hudWidget.add(this.hudStatusText);

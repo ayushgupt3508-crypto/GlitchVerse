@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { SaveSystem } from '../systems/SaveSystem';
+import { AudioManager } from '../systems/AudioManager';
+import { GAME_FONTS } from '../config';
 
 export class SettingsModal extends Phaser.GameObjects.Container {
   private panelWidth = 360;
@@ -43,9 +45,12 @@ export class SettingsModal extends Phaser.GameObjects.Container {
 
     // Header Title
     const headerText = scene.add.text(width / 2, py + 15, 'SYSTEM SETTINGS', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '13px',
-      color: '#00f0ff'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5).setScrollFactor(0);
     this.add(headerText);
 
@@ -56,16 +61,19 @@ export class SettingsModal extends Phaser.GameObjects.Container {
     this.createSlider(scene, width / 2, startY, 'MASTER AUDIO', this.currentSettings.masterVolume, (val) => {
       this.currentSettings.masterVolume = val;
       SaveSystem.saveSettings({ masterVolume: val });
+      AudioManager.applyVolume();
     });
 
     this.createSlider(scene, width / 2, startY + spacingY, 'MUSIC VOLUME', this.currentSettings.musicVolume, (val) => {
       this.currentSettings.musicVolume = val;
       SaveSystem.saveSettings({ musicVolume: val });
+      AudioManager.applyVolume();
     });
 
     this.createSlider(scene, width / 2, startY + spacingY * 2, 'SFX VOLUME', this.currentSettings.sfxVolume, (val) => {
       this.currentSettings.sfxVolume = val;
       SaveSystem.saveSettings({ sfxVolume: val });
+      AudioManager.applyVolume();
     });
 
     // Close / Back Button
@@ -102,18 +110,24 @@ export class SettingsModal extends Phaser.GameObjects.Container {
     const leftX = centerX - sliderWidth / 2 + 30;
 
     // Label
-    const lbl = scene.add.text(leftX - 80, y, label, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '10px',
-      color: '#8b9bb4'
+    const lbl = scene.add.text(leftX - 85, y, label, {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#a0aec0',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0, 0.5).setScrollFactor(0);
     this.add(lbl);
 
     // Value percentage text
-    const valText = scene.add.text(leftX + sliderWidth + 20, y, `${Math.round(initialVal * 100)}%`, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '10px',
-      color: '#00f0ff'
+    const valText = scene.add.text(leftX + sliderWidth + 18, y, `${Math.round(initialVal * 100)}%`, {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0, 0.5).setScrollFactor(0);
     this.add(valText);
 
@@ -170,9 +184,12 @@ export class SettingsModal extends Phaser.GameObjects.Container {
     draw(0x142033, 0x00f0ff);
 
     const txt = scene.add.text(0, 0, label, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
-      color: '#e0fbfc'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#e0fbfc',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5).setScrollFactor(0);
 
     const hit = scene.add.zone(0, 0, w, h)

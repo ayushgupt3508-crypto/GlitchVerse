@@ -267,11 +267,11 @@ export class PhasingAbility {
     this.hudWidget.add(this.hudStateIndicator);
 
     this.hudStatusText = this.scene.add.text(71, 14, '[SHIFT/TAB] REALITY: A', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '10px',
       fontStyle: 'bold',
       color: '#00f0ff',
-      stroke: '#000000',
+      stroke: '#040711',
       strokeThickness: 2
     }).setOrigin(0.5);
     this.hudWidget.add(this.hudStatusText);

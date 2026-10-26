@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GAME_FONTS } from '../config';
 
 export class ExitModal extends Phaser.GameObjects.Container {
   private panelWidth = 320;
@@ -30,18 +31,24 @@ export class ExitModal extends Phaser.GameObjects.Container {
     this.add(panel);
 
     const header = scene.add.text(width / 2, py + 14, 'EXIT SIMULATION', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '12px',
-      color: '#00f0ff'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
     this.add(header);
 
     const msg = scene.add.text(width / 2, py + 70, 'You can close this browser tab\nto leave GlitchVerse safely.', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
+      fontStyle: 'bold',
       color: '#e0fbfc',
       align: 'center',
-      lineSpacing: 4
+      lineSpacing: 5,
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
     this.add(msg);
 
@@ -79,9 +86,12 @@ export class ExitModal extends Phaser.GameObjects.Container {
     draw(0x142033, 0x00f0ff);
 
     const txt = scene.add.text(0, 0, label, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
-      color: '#e0fbfc'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#e0fbfc',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     const hit = scene.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true });

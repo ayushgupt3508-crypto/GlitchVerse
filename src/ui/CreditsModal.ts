@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GAME_FONTS } from '../config';
 
 export class CreditsModal extends Phaser.GameObjects.Container {
   private panelWidth = 380;
@@ -34,9 +35,12 @@ export class CreditsModal extends Phaser.GameObjects.Container {
 
     // Title
     const header = scene.add.text(width / 2, py + 15, 'CREDITS // ARCHIVES', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '13px',
-      color: '#c77dff'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#c77dff',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
     this.add(header);
 
@@ -76,11 +80,14 @@ export class CreditsModal extends Phaser.GameObjects.Container {
     ];
 
     const creditsContent = scene.add.text(width / 2, py + 190, creditsLines.join('\n'), {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '12px',
+      fontStyle: 'bold',
       color: '#e0aaff',
       align: 'center',
-      lineSpacing: 4
+      lineSpacing: 5,
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5, 0);
 
     creditsContent.setMask(mask);
@@ -134,9 +141,12 @@ export class CreditsModal extends Phaser.GameObjects.Container {
     draw(0x1a1226, 0x9d4edd);
 
     const txt = scene.add.text(0, 0, label, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
-      color: '#e0fbfc'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#e0fbfc',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     const hit = scene.add.zone(0, 0, w, h).setInteractive({ useHandCursor: true });

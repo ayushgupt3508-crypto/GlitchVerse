@@ -118,9 +118,12 @@ export class SentinelDrone extends Phaser.Physics.Arcade.Sprite {
     // ! indicator
     if (!this.alertIcon) {
       this.alertIcon = this.scene.add.text(this.x, this.y - 20, '!', {
-        fontFamily: 'Courier New, monospace',
-        fontSize: '14px',
-        color: '#ff8800'
+        fontFamily: '"Pixelify Sans", monospace',
+        fontSize: '16px',
+        fontStyle: 'bold',
+        color: '#ff4400',
+        stroke: '#040711',
+        strokeThickness: 2
       }).setOrigin(0.5).setDepth(30);
     }
     this.alertIcon.setPosition(this.x, this.y - 20).setVisible(true);

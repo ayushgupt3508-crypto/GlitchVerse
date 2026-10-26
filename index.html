@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>GlitchVerse</title>
     <link rel="icon" type="image/png" href="/ffavicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
       * {
         margin: 0;
@@ -22,7 +25,9 @@
         align-items: center;
         user-select: none;
         -webkit-user-select: none;
-        font-family: 'Courier New', Courier, monospace;
+        font-family: 'Pixelify Sans', 'Share Tech Mono', 'Courier New', monospace;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
 
       #game-container {
@@ -42,16 +47,16 @@
       }
 
       @font-face {
-    font-family: 'Pixel Operator';
-    src: url('/fonts/PixelOperator.woff2') format('woff2');
-    font-display: swap;
-}
+        font-family: 'Pixelify Sans';
+        src: url('/assets/fonts/PixelifySans-VariableFont_wght.ttf') format('truetype');
+        font-display: swap;
+      }
 
-@font-face {
-    font-family: 'Press Start 2P';
-    src: url('/fonts/PressStart2P-Regular.ttf') format('truetype');
-    font-display: swap;
-}
+      @font-face {
+        font-family: 'Press Start 2P';
+        src: url('/assets/fonts/PressStart2P-Regular.ttf') format('truetype');
+        font-display: swap;
+      }
     </style>
   </head>
   <body>

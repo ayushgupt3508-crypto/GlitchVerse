@@ -141,6 +141,7 @@ export class Level3Scene extends Phaser.Scene {
 
   create(): void {
     AudioManager.init();
+    AudioManager.startMatrixMusic();
     this.levelStartTime = Date.now();
 
     // Generate textures

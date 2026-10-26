@@ -14,3 +14,9 @@ export const GAME_CONFIG = {
     Ending: 'EndingScene'
   }
 } as const;
+
+export const GAME_FONTS = {
+  primary: '"Pixelify Sans", "Share Tech Mono", monospace',
+  heading: '"Pixelify Sans", "Press Start 2P", monospace',
+  mono: '"Pixelify Sans", "Courier New", monospace'
+};
