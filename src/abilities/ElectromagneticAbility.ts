@@ -186,29 +186,28 @@ export class ElectromagneticAbility {
 
   private createHudWidget(): void {
     const W = this.scene.cameras.main.width;
-    const H = this.scene.cameras.main.height;
 
-    const widgetX = W - 152;
-    const widgetY = H - 38;
+    const widgetX = W - 156;
+    const widgetY = 48;
 
     this.hudWidget = this.scene.add.container(widgetX, widgetY).setScrollFactor(0).setDepth(52);
 
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0a0c16, 0.9);
-    bg.fillRoundedRect(0, 0, 142, 28, 8);
+    bg.fillStyle(0x0a0c16, 0.92);
+    bg.fillRoundedRect(0, 0, 146, 24, 7);
     bg.lineStyle(1.5, 0x00f0ff, 0.85);
-    bg.strokeRoundedRect(0, 0, 142, 28, 8);
+    bg.strokeRoundedRect(0, 0, 146, 24, 7);
     this.hudWidget.add(bg);
 
-    const hitZone = this.scene.add.zone(0, 0, 142, 28)
+    const hitZone = this.scene.add.zone(0, 0, 146, 24)
       .setOrigin(0)
       .setInteractive({ useHandCursor: true });
     hitZone.on('pointerdown', () => this.triggerEmp());
     this.hudWidget.add(hitZone);
 
-    this.hudStatusText = this.scene.add.text(71, 14, '[E] EMP: SEARCHING...', {
+    this.hudStatusText = this.scene.add.text(73, 12, '[E] EMP: SEARCHING...', {
       fontFamily: '"Pixelify Sans", monospace',
-      fontSize: '10px',
+      fontSize: '9px',
       fontStyle: 'bold',
       color: '#8b9bb4',
       stroke: '#040711',

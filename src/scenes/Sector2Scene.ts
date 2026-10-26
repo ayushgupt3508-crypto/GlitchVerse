@@ -9,6 +9,7 @@ import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
+import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 
 /**
  * Sector2Scene — Heat Age (Bug-fixed version)
@@ -51,6 +52,7 @@ export class Sector2Scene extends Phaser.Scene {
   private levelStartTime = 0;
   private staffStunRange = 90;
   private isRespawning = false;
+  private mobileHandle: MobileSetupHandle | null = null;
 
   // Level dimensions — floor at y=330 (lava surface)
   private readonly levelWidth  = 3760;
@@ -223,6 +225,19 @@ export class Sector2Scene extends Phaser.Scene {
     this.addScanlines();
     this.levelStartTime = Date.now();
     this.cameras.main.fadeIn(500, 20, 3, 0);
+
+    // ── Mobile Controls (additive — no-op on desktop) ─────────────────────
+    this.mobileHandle = setupMobileForScene({
+      scene: this,
+      player: this.player,
+      onAbilityPressed: () => this.player.useStaff(),
+      getAbilityState: () => ({
+        label: 'IGNITE',
+        available: this.player.staffCharges > 0 && !this.player.isDead,
+        tint: 0xff6b00,
+        cooldownProgress: 0
+      })
+    });
   }
 
   update(time: number, delta: number): void {
@@ -235,6 +250,7 @@ export class Sector2Scene extends Phaser.Scene {
     }
     if (this.isRespawning) return;
 
+    this.mobileHandle?.update();
     this.updateRaftCarriage();
     this.renderRaftIndicators(time);
     this.player.update(time, delta);

@@ -40,6 +40,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public isDead = false;
   private wasInAir = false;
 
+  /**
+   * Optional mobile input flags — set by MobileControls on touch devices.
+   * When present, these are OR'd into the keyboard poll. On desktop this
+   * is always undefined, so the existing keyboard path is untouched.
+   */
+  public mobileInput?: {
+    moveLeft: boolean;
+    moveRight: boolean;
+    jumpIsDown: boolean;
+    jumpJustPressed: boolean;
+    interactJustPressed: boolean;
+  };
+
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'scientist_idle');
     scene.add.existing(this);
@@ -84,20 +97,25 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Input polling
-    const moveLeft = (this.keyA && this.keyA.isDown) || (this.cursors?.left?.isDown ?? false);
-    const moveRight = (this.keyD && this.keyD.isDown) || (this.cursors?.right?.isDown ?? false);
+    const moveLeft = (this.keyA && this.keyA.isDown) || (this.cursors?.left?.isDown ?? false)
+      || (this.mobileInput?.moveLeft ?? false);
+    const moveRight = (this.keyD && this.keyD.isDown) || (this.cursors?.right?.isDown ?? false)
+      || (this.mobileInput?.moveRight ?? false);
     const jumpJustPressed =
       (this.keySpace && Phaser.Input.Keyboard.JustDown(this.keySpace)) ||
       (this.keyW && Phaser.Input.Keyboard.JustDown(this.keyW)) ||
-      (this.cursors?.up ? Phaser.Input.Keyboard.JustDown(this.cursors.up) : false);
+      (this.cursors?.up ? Phaser.Input.Keyboard.JustDown(this.cursors.up) : false)
+      || (this.mobileInput?.jumpJustPressed ?? false);
     const jumpIsDown =
       (this.keySpace && this.keySpace.isDown) ||
       (this.keyW && this.keyW.isDown) ||
-      (this.cursors?.up?.isDown ?? false);
+      (this.cursors?.up?.isDown ?? false)
+      || (this.mobileInput?.jumpIsDown ?? false);
     // Interact key is only queried for legacy useStaff if no StaffController is attached
     const interactJustPressed = !this.staffController && (
       (this.keyInteractE && Phaser.Input.Keyboard.JustDown(this.keyInteractE)) ||
       (this.keyInteractJ && Phaser.Input.Keyboard.JustDown(this.keyInteractJ))
+      || (this.mobileInput?.interactJustPressed ?? false)
     );
 
     // Jump Buffering

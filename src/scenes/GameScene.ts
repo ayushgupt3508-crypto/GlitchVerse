@@ -7,6 +7,7 @@ import { PauseMenu } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
+import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 
 /**
  * LEVEL 1 DATA SPECIFICATION — FROZEN AGE
@@ -116,6 +117,7 @@ export class GameScene extends Phaser.Scene {
   private levelStartTime = 0;
   private isRespawning = false;
   private isLeavingScene = false;
+  private mobileHandle: MobileSetupHandle | null = null;
 
   // Zone 2 state: Frozen Lake
   private slab1IceTiles: Phaser.GameObjects.Sprite[] = [];
@@ -513,6 +515,19 @@ export class GameScene extends Phaser.Scene {
 
     this.levelStartTime = Date.now();
     this.cameras.main.fadeIn(400, 7, 11, 20);
+
+    // ── Mobile Controls (additive — no-op on desktop) ─────────────────────
+    this.mobileHandle = setupMobileForScene({
+      scene: this,
+      player: this.player,
+      onAbilityPressed: () => this.player.useStaff(),
+      getAbilityState: () => ({
+        label: 'FREEZE',
+        available: this.player.staffCharges > 0 && !this.player.isDead,
+        tint: 0x48cae4,
+        cooldownProgress: 0
+      })
+    });
   }
 
   update(time: number, delta: number): void {
@@ -524,6 +539,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (this.isRespawning || this.isLeavingScene) return;
 
+    this.mobileHandle?.update();
     this.player.update(time, delta);
 
     // Update sentinel drones

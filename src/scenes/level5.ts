@@ -10,6 +10,7 @@ import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
+import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 
 /**
  * LEVEL 5 DATA SPECIFICATION — FUTURISTIC CORE & FINAL ESCAPE
@@ -92,6 +93,7 @@ export class Level5Scene extends Phaser.Scene {
 
   // Visuals
   private dataStreamGfx?: Phaser.GameObjects.Graphics;
+  private mobileHandle: MobileSetupHandle | null = null;
 
   constructor() {
     super('Level5Scene');
@@ -134,8 +136,8 @@ export class Level5Scene extends Phaser.Scene {
     this.phasing = new PhasingAbility(this, this.player);
     this.staffController.registerAbilityHandler('PHASE', () => this.phasing.toggleReality());
 
-    // Initialize Camouflage Ability (used during the collapsing chamber gauntlet)
-    this.camouflage = new CamouflageAbility(this, this.player);
+    // Initialize Camouflage Ability (positioned at hudY: 76, directly beneath Phasing shift bar)
+    this.camouflage = new CamouflageAbility(this, this.player, { hudY: 76 });
     this.staffController.registerAbilityHandler('CAMOUFLAGE', () => this.camouflage.activate());
 
     // Build Cybernetic Architecture & Phasing Platform Chain
@@ -195,6 +197,21 @@ export class Level5Scene extends Phaser.Scene {
 
     // Fade in
     this.cameras.main.fadeIn(600, 0, 0, 0);
+
+    // ── Mobile Controls (additive — no-op on desktop) ─────────────────────
+    this.mobileHandle = setupMobileForScene({
+      scene: this,
+      player: this.player,
+      onAbilityPressed: () => {
+        this.phasing.toggleReality();
+      },
+      getAbilityState: () => ({
+        label: this.phasing.reality === 'A' ? 'PHASE A' : 'PHASE B',
+        available: true,
+        tint: this.phasing.reality === 'A' ? LEVEL5_DATA.palette.cyan : LEVEL5_DATA.palette.magenta,
+        cooldownProgress: 0
+      })
+    });
   }
 
   update(time: number, delta: number): void {
@@ -208,6 +225,7 @@ export class Level5Scene extends Phaser.Scene {
     if (this.isRespawning) return;
 
     // Update Player
+    this.mobileHandle?.update();
     this.player.update(time, delta);
 
     // Update Staff Controller

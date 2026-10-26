@@ -34,7 +34,6 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     this.accent = accentColor;
 
     const W = scene.cameras.main.width;
-    const H = scene.cameras.main.height;
 
     // ── Full-width translucent top bar ─────────────────────────────────
     const topBar = scene.add.graphics();
@@ -54,8 +53,8 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     // ── Top-Right: Failsafe counter + Home button ─────────────────────
     this.buildTopRight(scene, W, accentColor);
 
-    // ── Bottom-Left: Staff charges ────────────────────────────────────
-    this.buildChargeBar(scene, H, accentColor);
+    // ── Staff charges: Just below heart bar section ───────────────────
+    this.buildChargeBar(scene, accentColor);
 
     // ── Center banner ─────────────────────────────────────────────────
     this.bannerText = scene.add.text(W / 2, 80, '', {
@@ -422,20 +421,20 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     }
   }
 
-  // ── Staff Charges ─────────────────────────────────────────────────────────
+  // ── Staff Charges (Just below heart bar section) ─────────────────────────
 
-  private buildChargeBar(scene: Phaser.Scene, H: number, accentColor: number): void {
+  private buildChargeBar(scene: Phaser.Scene, accentColor: number): void {
     const hex = '#' + accentColor.toString(16).padStart(6, '0');
     const bg = scene.add.graphics();
-    bg.fillStyle(0x0a0612, 0.9);
-    bg.fillRoundedRect(10, H - 40, 136, 32, 9);
-    bg.lineStyle(1, accentColor, 0.65);
-    bg.strokeRoundedRect(10, H - 40, 136, 32, 9);
+    bg.fillStyle(0x0a0612, 0.92);
+    bg.fillRoundedRect(6, 72, 158, 24, 8);
+    bg.lineStyle(1.5, accentColor, 0.65);
+    bg.strokeRoundedRect(6, 72, 158, 24, 8);
     this.add(bg);
 
-    this.add(scene.add.text(20, H - 24, 'STAFF', {
+    this.add(scene.add.text(18, 84, 'STAFF', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '10px',
+      fontSize: '9px',
       fontStyle: 'bold',
       color: hex,
       stroke: '#000000',
@@ -443,7 +442,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     }).setOrigin(0, 0.5));
 
     for (let i = 0; i < 3; i++) {
-      const crystal = scene.add.rectangle(76 + i * 22, H - 24, 15, 15, accentColor);
+      const crystal = scene.add.rectangle(76 + i * 22, 84, 14, 14, accentColor);
       crystal.setStrokeStyle(1, 0xffffff, 0.6);
       this.chargeCrystals.push(crystal);
       this.add(crystal);
@@ -459,14 +458,14 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
   }
 
   public updateCharges(current: number, max?: number): void {
-    const H = this.scene.cameras.main.height;
+    const crystalY = 84;
     // Reconfigure crystals array if max differs
     if (max !== undefined && max !== this.chargeCrystals.length && max > 0) {
       this.chargeCrystals.forEach(c => c.destroy());
       this.chargeCrystals = [];
       const crystalSpacing = Math.min(22, 70 / Math.max(1, max));
       for (let i = 0; i < max; i++) {
-        const crystal = this.scene.add.rectangle(76 + i * crystalSpacing, H - 24, 15, 15, this.accent);
+        const crystal = this.scene.add.rectangle(76 + i * crystalSpacing, crystalY, 14, 14, this.accent);
         crystal.setStrokeStyle(1, 0xffffff, 0.6);
         this.chargeCrystals.push(crystal);
         this.add(crystal);

@@ -11,6 +11,10 @@ import { Level3Scene } from './scenes/level3';
 import { Level4Scene } from './scenes/level4';
 import { Level5Scene } from './scenes/level5';
 import { EndingScene } from './scenes/EndingScene';
+import { OrientationManager } from './utils/OrientationManager';
+
+// Enforce landscape orientation on mobile devices
+OrientationManager.init();
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -23,6 +27,12 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  input: {
+    activePointers: 4,
+    touch: {
+      capture: true
+    }
   },
   physics: {
     default: 'arcade',

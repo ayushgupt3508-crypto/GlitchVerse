@@ -8,6 +8,7 @@ import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
+import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 
 /**
  * LEVEL 3 DATA SPECIFICATION — MEDIEVAL PALACE
@@ -130,6 +131,7 @@ export class Level3Scene extends Phaser.Scene {
   private gameOverScreen: GameOverScreen | null = null;
   private isPaused = false;
   private isRespawning = false;
+  private mobileHandle: MobileSetupHandle | null = null;
 
   // Lighting & Atmospheric Effects
   private torchLightGfx?: Phaser.GameObjects.Graphics;
@@ -224,6 +226,19 @@ export class Level3Scene extends Phaser.Scene {
     this.isRespawning = false;
     // Fade in
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    // ── Mobile Controls (additive — no-op on desktop) ─────────────────────
+    this.mobileHandle = setupMobileForScene({
+      scene: this,
+      player: this.player,
+      onAbilityPressed: () => this.camouflage.activate(),
+      getAbilityState: () => ({
+        label: 'CLOAK',
+        available: this.camouflage.isReady,
+        tint: LEVEL3_DATA.palette.mutedGold,
+        cooldownProgress: this.camouflage.cloaked ? 1 : 0
+      })
+    });
   }
 
   update(time: number, delta: number): void {
@@ -237,6 +252,7 @@ export class Level3Scene extends Phaser.Scene {
     if (this.isRespawning) return;
 
     // Update Player
+    this.mobileHandle?.update();
     this.player.update(time, delta);
 
     // Fall death check

@@ -14,6 +14,7 @@ import { HUD } from '../ui/HUD';
 import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { AudioManager } from '../systems/AudioManager';
+import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 
 /**
  * LEVEL 4 DATA SPECIFICATION — ANCIENT FOREST
@@ -102,6 +103,7 @@ export class Level4Scene extends Phaser.Scene {
   private isLeavingScene = false;
   private lastMissingComponentBanner = -Infinity;
   private component4Overlap?: Phaser.Physics.Arcade.Collider;
+  private mobileHandle: MobileSetupHandle | null = null;
 
   // Active Checkpoint
   private checkpointX: number = LEVEL4_DATA.spawn.x;
@@ -206,6 +208,24 @@ export class Level4Scene extends Phaser.Scene {
 
     // Informational intro banner
     this.hud.showBanner('SECTOR 4: ANCIENT FOREST — RESTORE THE COLLAPSED BRIDGES WITH [T/E]!');
+
+    // ── Mobile Controls (additive — no-op on desktop) ─────────────────────
+    this.mobileHandle = setupMobileForScene({
+      scene: this,
+      player: this.player,
+      onAbilityPressed: () => {
+        this.staffController.activate(this.player.x, this.player.y);
+      },
+      getAbilityState: () => {
+        const canAct = this.staffController.canActivate(this.player.x, this.player.y);
+        return {
+          label: 'TIME',
+          available: canAct.canActivate,
+          tint: LEVEL4_DATA.palette.mutedGold,
+          cooldownProgress: 0
+        };
+      }
+    });
   }
 
   // ── Background Architecture & Ancient Forest Aesthetics ───────────────────
@@ -870,6 +890,7 @@ export class Level4Scene extends Phaser.Scene {
     }
     if (this.isRespawning) return;
 
+    this.mobileHandle?.update();
     this.player.update(time, delta);
     this.timeAbility.update(time, delta);
     this.staffController.update(delta, this.player.x, this.player.y);
