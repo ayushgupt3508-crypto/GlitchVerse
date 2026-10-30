@@ -71,7 +71,7 @@ export class PreloadScene extends Phaser.Scene {
 
     // Load Main Menu reference background & UI icons
     this.load.image('main_menu_bg', 'assets/main_menu_bg.png');
-    this.load.image('pause_icon', 'assets/bi_pause-circle-fill.png');
+    this.load.image('pause_icon', 'assets/bi_pause-circle-fill.original.png');
     this.load.image('profile_icon', 'assets/icon_profile.png');
     this.load.image('game_over_screen', 'assets/game_over_screen.png');
     this.load.image('dead_scientist', 'assets/dead_scientist.png');

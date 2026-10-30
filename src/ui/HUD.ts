@@ -255,7 +255,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
       .setDepth(241);
 
     if (!scene.textures.exists('pause_icon')) {
-      scene.load.image('pause_icon', 'assets/bi_pause-circle-fill.png');
+      scene.load.image('pause_icon', 'assets/bi_pause-circle-fill.original.png');
       scene.load.once('complete', () => {
         this.pauseBtn?.setTexture('pause_icon');
         this.pauseBtn?.setDisplaySize(32, 32);
