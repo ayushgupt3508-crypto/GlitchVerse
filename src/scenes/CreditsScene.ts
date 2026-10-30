@@ -73,7 +73,7 @@ export class CreditsScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
 
     // Skip hint
-    this.add.text(W / 2, H - 14, '[ESC / CLICK TO RETURN TO MENU]', {
+    this.add.text(W / 2 + 225, H - 14, '[ESC / CLICK TO RETURN TO MENU]', {
       fontFamily: 'Courier New, monospace',
       fontSize: '8px',
       color: '#8b9bb4'
