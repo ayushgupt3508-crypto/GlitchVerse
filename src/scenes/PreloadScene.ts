@@ -90,6 +90,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.video(
       'main_menu_video',
       'assets/main_menu_video.mp4',
+      true
     );
 
     // Create initial procedural textures for placeholder testing (prevents asset 404s in Phase 1)
