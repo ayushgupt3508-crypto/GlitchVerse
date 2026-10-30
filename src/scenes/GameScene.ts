@@ -105,6 +105,14 @@ export class GameScene extends Phaser.Scene {
   private hasRecoveredComponent = false;
   private isWaterFrozen = false;
 
+  // Objective HUD Pill & World Indicators
+  private objectiveContainer!: Phaser.GameObjects.Container;
+  private objectiveBg!: Phaser.GameObjects.Graphics;
+  private objectiveText!: Phaser.GameObjects.Text;
+  private currentObjective = '';
+  private worldIndicators: Array<{ id: string; container: Phaser.GameObjects.Container }> = [];
+  private discoveredZones = new Set<number>();
+
   // Ice friction state
   private isOnIce = false;
 
@@ -198,6 +206,13 @@ export class GameScene extends Phaser.Scene {
     this.slab1IceTiles = [];
     this.slab2IceTiles = [];
     this.slab3IceTiles = [];
+    this.worldIndicators = [];
+    this.discoveredZones = new Set<number>();
+
+    this.events.once('shutdown', () => {
+      this.worldIndicators.forEach(w => w.container.destroy());
+      this.worldIndicators = [];
+    });
 
     TextureGenerator.generatePlayerTextures(this);
     TextureGenerator.generateEnvironmentTextures(this);
@@ -291,7 +306,15 @@ export class GameScene extends Phaser.Scene {
         this.hud.updateCharges(this.player.staffCharges);
         this.hud.showBanner('STAFF ENERGY FULLY RECHARGED!');
         AudioManager.playConduitRecharge();
-        this.cameras.main.flash(120, 0, 200, 100);
+        this.cameras.main.flash(140, 0, 240, 160);
+        const emitter = this.add.particles(conduit.x, conduit.y, 'proto_tile', {
+          speed: { min: 40, max: 110 },
+          scale: { start: 0.45, end: 0 },
+          tint: [0x00f0ff, 0x48cae4, 0xffffff],
+          lifespan: 600,
+          quantity: 18
+        }).setDepth(20);
+        this.time.delayedCall(650, () => emitter.destroy());
         this.tweens.killTweensOf(conduit);
         conduit.setAlpha(0.25).setTint(0x444444);
         this.time.delayedCall(12000, () => {
@@ -313,10 +336,18 @@ export class GameScene extends Phaser.Scene {
         this.cameras.main.flash(200, 0, 240, 255);
         AudioManager.playCheckpoint();
         this.hud.showBanner('CHECKPOINT ACTIVATED');
-        this.add.particles(cx, cy, 'proto_tile', {
-          speed: { min: 30, max: 90 }, scale: { start: 0.3, end: 0 },
-          tint: [0x00f0ff, 0xd85ef5], lifespan: 600, quantity: 16
+        this.tweens.add({
+          targets: crystal,
+          scale: 1.35,
+          duration: 200,
+          yoyo: true,
+          repeat: 2
+        });
+        const emitter = this.add.particles(cx, cy, 'proto_tile', {
+          speed: { min: 40, max: 120 }, scale: { start: 0.5, end: 0 },
+          tint: [0x00f0ff, 0xd85ef5, 0xffffff], lifespan: 700, quantity: 22
         }).setDepth(20);
+        this.time.delayedCall(750, () => emitter.destroy());
       });
     });
 
@@ -399,9 +430,20 @@ export class GameScene extends Phaser.Scene {
     this.hud.updateCharges(this.player.staffCharges);
     this.hud.updateIntegrity(this.player.integrity);
 
+    this.setupObjectiveHUD();
+    this.setObjective('FREEZE WATER & RETRIEVE FAILSAFE 01 [CRYO-VAULT]');
+    this.setupWorldIndicators();
+
+    this.time.delayedCall(1200, () => {
+      this.hud.showBanner('ZONE 1: CRYOGENIC CHASM & VAULT');
+    });
+    this.time.delayedCall(4500, () => {
+      this.hud.showBanner('HINT: [E] OR [J] TO FREEZE WATER INTO ICE BRIDGES');
+    });
+
     // Audio init (needs user gesture — the Play button click counts)
     AudioManager.init();
-    AudioManager.startMatrixMusic();
+    AudioManager.startLevel1Music();
 
     // Player event → audio + game logic hooks
     this.player.on('staff_used', (chargesLeft: number) => {
@@ -540,6 +582,8 @@ export class GameScene extends Phaser.Scene {
     if (this.isRespawning || this.isLeavingScene) return;
 
     this.mobileHandle?.update();
+    this.checkZoneDiscovery();
+    this.updateMovingPlatforms();
     this.player.update(time, delta);
 
     // Update sentinel drones
@@ -596,6 +640,69 @@ export class GameScene extends Phaser.Scene {
         this.player.x, this.player.y, this.exitPortal.x, this.exitPortal.y
       );
       if (dist < 32) this.handleLevelComplete();
+    }
+  }
+
+  /**
+   * Carriage logic for all moving platforms in Level 1 (Frozen Age).
+   * The player stays static on the moving platform while the platform is moving,
+   * maintaining their exact standing position unless moving themselves.
+   */
+  private updateMovingPlatforms(): void {
+    if (!this.player || this.player.isDead || !this.player.body) return;
+    const pBody = this.player.body as Phaser.Physics.Arcade.Body;
+    const kb = this.input.keyboard;
+    const isPressingMove = kb ? (
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.A).isDown ||
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.D).isDown ||
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT).isDown ||
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT).isDown
+    ) : false;
+
+    for (const plat of this.movingPlatformSprites) {
+      if (!plat || !plat.body || !plat.active) continue;
+      const prevX = (plat.getData('prevX') as number) ?? plat.x;
+      const dx = plat.x - prevX;
+      plat.setData('prevX', plat.x);
+
+      const platHalfW = (plat.displayWidth || 64) / 2;
+      const platTop = plat.y - ((plat.displayHeight || 32) / 2);
+
+      // Player is grounded and resting on top of the moving platform
+      const isStandingOnPlat =
+        (pBody.blocked.down || pBody.touching.down) &&
+        Math.abs(pBody.bottom - platTop) <= 6 &&
+        pBody.right > (plat.x - platHalfW) &&
+        pBody.left < (plat.x + platHalfW);
+
+      if (isStandingOnPlat) {
+        let riderOffset = plat.getData('riderOffset') as number | undefined;
+
+        if (isPressingMove) {
+          // Player is walking across the moving platform: carry movement along with input
+          this.player.x += dx;
+          pBody.reset(this.player.x, this.player.y);
+          pBody.blocked.down = true;
+          pBody.touching.down = true;
+          const maxOffset = platHalfW - 8;
+          riderOffset = Phaser.Math.Clamp(this.player.x - plat.x, -maxOffset, maxOffset);
+          plat.setData('riderOffset', riderOffset);
+        } else {
+          // Player is not moving themselves: stay completely static at whatever position they are at
+          if (riderOffset === undefined) {
+            const maxOffset = platHalfW - 8;
+            riderOffset = Phaser.Math.Clamp(this.player.x - plat.x, -maxOffset, maxOffset);
+            plat.setData('riderOffset', riderOffset);
+          }
+          this.player.x = plat.x + riderOffset;
+          pBody.reset(this.player.x, this.player.y);
+          pBody.blocked.down = true;
+          pBody.touching.down = true;
+          pBody.setVelocityX(0);
+        }
+      } else {
+        plat.setData('riderOffset', undefined);
+      }
     }
   }
 
@@ -832,8 +939,11 @@ export class GameScene extends Phaser.Scene {
     // ── Moving Platform (Phase 5) ────────────────────────────────────
     // Floats between x=500 and x=760, bridging the gap before the water chasm
     const movPlat = this.platforms.create(600, 260, 'tile_snow_top') as Phaser.Physics.Arcade.Sprite;
+    movPlat.setDisplaySize(64, 32);
+    (movPlat.body as Phaser.Physics.Arcade.StaticBody).setSize(64, 32);
     movPlat.refreshBody();
     movPlat.setData('isMoving', true);
+    movPlat.setData('prevX', 600);
     this.movingPlatformSprites.push(movPlat);
     this.tweens.add({
       targets: movPlat,
@@ -846,7 +956,7 @@ export class GameScene extends Phaser.Scene {
         (movPlat.body as Phaser.Physics.Arcade.StaticBody).reset(movPlat.x, movPlat.y);
       }
     });
-    this.add.text(555, 234, '← MOVING PLATFORM →', {
+    this.add.text(545, 234, '↔ CRYO MOVING PLATFORM ↔', {
       fontFamily: GAME_FONTS.primary,
       fontSize: '10px',
       fontStyle: 'bold',
@@ -1602,6 +1712,9 @@ export class GameScene extends Phaser.Scene {
   private triggerPressurePlate(): void {
     if (this.isPressurePlatePressed) return;
     this.isPressurePlatePressed = true;
+    this.removeWorldIndicator('ind_plate');
+    this.removeWorldIndicator('ind_barrier1');
+    this.setObjective('MELT FROST BULWARK & ADVANCE EAST');
     AudioManager.playCheckpoint();
     this.hud.showBanner('HYDRAULIC PRESSURE ENGAGED — CRYO-BARRIER BREACHED!');
     this.cameras.main.flash(150, 0, 240, 255);
@@ -1640,6 +1753,7 @@ export class GameScene extends Phaser.Scene {
   private meltBarrier2(): void {
     if (this.isBarrier2Melted || !this.iceBarrier2Sprite) return;
     this.isBarrier2Melted = true;
+    this.removeWorldIndicator('ind_barrier2');
     AudioManager.playStaffUse();
     this.hud.showBanner('FROST BULWARK MELTED — PASSAGE OPEN!');
     this.cameras.main.flash(150, 0, 119, 182);
@@ -1659,6 +1773,7 @@ export class GameScene extends Phaser.Scene {
   private meltTimedDoor(): void {
     if (this.isTimedDoorOpen || !this.timedDoorSprite) return;
     this.isTimedDoorOpen = true;
+    this.setObjective('TIMED DOOR OPEN — SPRINT THROUGH NOW! (4.5s)');
     AudioManager.playStaffUse();
     this.hud.showBanner('CRYO-LOCK MELTED! RUN! (4.5s)');
     this.cameras.main.flash(150, 0, 180, 220);
@@ -1736,7 +1851,12 @@ export class GameScene extends Phaser.Scene {
     AudioManager.playFailsafe();
 
     // Unlock exit once all level failsafes are collected
-    if (this.failsafeCollected >= this.levelFailsafeTotal) {
+    if (this.failsafeCollected === 1) {
+      this.removeWorldIndicator('ind_fs1');
+      this.setObjective('CROSS FROZEN LAKE TO ICE CAVERN');
+    } else if (this.failsafeCollected >= this.levelFailsafeTotal) {
+      this.removeWorldIndicator('ind_fs2');
+      this.setObjective('ALL SECTOR FAILSAFES RECOVERED! ESCAPE TO RIFT [➡]');
       this.hasRecoveredComponent = true;
       this.hud.showBanner('ALL SECTOR FAILSAFES RECOVERED — EXIT UNLOCKED!');
       this.cameras.main.flash(300, 0, 240, 80);
@@ -1905,5 +2025,152 @@ export class GameScene extends Phaser.Scene {
     this.pauseMenu = null;
     this.isPaused = false;
     this.physics.resume();
+  }
+
+  // ── Objective HUD Pill & Guidance Indicators ──────────────────────────────
+
+  private setupObjectiveHUD(): void {
+    const W = this.cameras.main.width;
+    this.objectiveContainer = this.add.container(W / 2, 53).setScrollFactor(0).setDepth(55);
+
+    this.objectiveBg = this.add.graphics();
+    this.objectiveText = this.add.text(0, 0, '', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+
+    this.objectiveContainer.add([this.objectiveBg, this.objectiveText]);
+  }
+
+  public setObjective(text: string): void {
+    this.currentObjective = text;
+    this.objectiveText.setText(`🎯 ${text}`);
+
+    const textWidth = this.objectiveText.width + 24;
+    const pillWidth = Math.max(textWidth, 240);
+    const pillHeight = 18;
+
+    this.objectiveBg.clear();
+    this.objectiveBg.fillStyle(0x060810, 0.92);
+    this.objectiveBg.fillRoundedRect(-pillWidth / 2, -pillHeight / 2, pillWidth, pillHeight, 9);
+    this.objectiveBg.lineStyle(1.5, 0x48cae4, 0.85);
+    this.objectiveBg.strokeRoundedRect(-pillWidth / 2, -pillHeight / 2, pillWidth, pillHeight, 9);
+
+    // Pulse animation on update
+    this.tweens.killTweensOf(this.objectiveContainer);
+    this.objectiveContainer.setScale(1.1);
+    this.tweens.add({
+      targets: this.objectiveContainer,
+      scale: 1,
+      duration: 250,
+      ease: 'Back.easeOut'
+    });
+  }
+
+  public get objective(): string {
+    return this.currentObjective;
+  }
+
+  private setupWorldIndicators(): void {
+    // Zone 1
+    this.createWorldIndicator('ind_hint_freeze', 100, 220, '[E] / [J] FREEZE WATER', 0x00f0ff, '❄');
+    this.createWorldIndicator('ind_conduit1', 200, 240, 'ENERGY CONDUIT', 0x00f0ff, '⚡');
+    this.createWorldIndicator('ind_chasm', 380, 230, 'FREEZE WATER TO CROSS', 0x48cae4, '❄');
+    this.createWorldIndicator('ind_movplat', 680, 225, 'CRYO MOVING PLATFORM', 0x00f0ff, '▲');
+    this.createWorldIndicator('ind_fs1', 970, 175, 'FAILSAFE 01 [CRYO-VAULT]', 0xd85ef5, '★');
+    this.createWorldIndicator('ind_conduit2', 1060, 210, 'ENERGY CONDUIT', 0x00f0ff, '⚡');
+    this.createWorldIndicator('ind_cp1', 1090, 200, 'CHECKPOINT 01', 0x00f0ff, '▲');
+
+    // Zone 2
+    this.createWorldIndicator('ind_lake', 1220, 220, 'FREEZE SLABS TO CROSS', 0x00f0ff, '▲');
+    this.createWorldIndicator('ind_cp2', 1850, 155, 'CHECKPOINT 02', 0x00f0ff, '▲');
+
+    // Zone 3
+    this.createWorldIndicator('ind_plate', 1950, 215, 'STEP ON PRESSURE PLATE', 0xffd166, '⬇');
+    this.createWorldIndicator('ind_barrier1', 2000, 150, 'FROZEN BARRIER 1', 0xff4444, '🔒');
+    this.createWorldIndicator('ind_icicles', 2140, 110, 'CAUTION: FALLING ICICLES', 0xffaa00, '⚠');
+    this.createWorldIndicator('ind_conduit3', 2180, 210, 'ENERGY CONDUIT', 0x00f0ff, '⚡');
+    this.createWorldIndicator('ind_barrier2', 2320, 150, '[E/J] MELT BARRIER 2', 0x00f0ff, '❄');
+
+    // Zone 4
+    this.createWorldIndicator('ind_door', 2660, 140, 'TIMED SECURITY DOOR (4.5s)', 0xffaa00, '⏳');
+    this.createWorldIndicator('ind_fs2', 2740, 130, 'FAILSAFE 02 [CRYO-CORE]', 0xd85ef5, '★');
+    this.createWorldIndicator('ind_exit', 2775, 180, 'EXTRACTION PORTAL', 0x00f0ff, '🎯');
+  }
+
+  private createWorldIndicator(id: string, x: number, y: number, text: string, color: number, icon = '▲'): void {
+    const container = this.add.container(x, y).setDepth(22);
+
+    const txt = this.add.text(0, 0, `${icon} ${text}`, {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#' + color.toString(16).padStart(6, '0'),
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setOrigin(0.5);
+
+    const w = txt.width + 16;
+    const h = 18;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x070912, 0.88);
+    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
+    bg.lineStyle(1.5, color, 0.85);
+    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
+
+    container.add([bg, txt]);
+
+    this.tweens.add({
+      targets: container,
+      y: y - 8,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    this.worldIndicators.push({ id, container });
+  }
+
+  private removeWorldIndicator(id: string): void {
+    const idx = this.worldIndicators.findIndex(w => w.id === id);
+    if (idx !== -1) {
+      const item = this.worldIndicators[idx];
+      this.worldIndicators.splice(idx, 1);
+      this.tweens.add({
+        targets: item.container,
+        alpha: 0,
+        scale: 0.5,
+        duration: 300,
+        onComplete: () => item.container.destroy()
+      });
+    }
+  }
+
+  private checkZoneDiscovery(): void {
+    const px = this.player.x;
+    let zoneNum = 1;
+    let zoneName = '';
+
+    if (px >= 2350) { zoneNum = 4; zoneName = 'ZONE 4: BURIED FACILITY APPROACH'; }
+    else if (px >= 1800) { zoneNum = 3; zoneName = 'ZONE 3: ICE CAVE & PRESSURE GEYSER'; }
+    else if (px >= 1120) { zoneNum = 2; zoneName = 'ZONE 2: FROZEN LAKE OF EXTINCTION'; }
+    else { zoneNum = 1; zoneName = 'ZONE 1: CRYOGENIC CHASM & VAULT'; }
+
+    if (zoneNum > 1 && !this.discoveredZones.has(zoneNum)) {
+      this.discoveredZones.add(zoneNum);
+      this.hud.showBanner(zoneName);
+      if (zoneNum === 2 && this.failsafeCollected >= 1) {
+        this.setObjective('CROSS FROZEN LAKE TO ICE CAVERN');
+      } else if (zoneNum === 3) {
+        this.setObjective('TRIGGER PRESSURE PLATE & CLEAR ICE CAVERN');
+      } else if (zoneNum === 4 && this.failsafeCollected < 2) {
+        this.setObjective('SPRINT THROUGH TIMED DOOR & SECURE FAILSAFE 02');
+      }
+    }
   }
 }

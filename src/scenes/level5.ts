@@ -90,6 +90,7 @@ export class Level5Scene extends Phaser.Scene {
   private gameOverScreen: GameOverScreen | null = null;
   private isPaused = false;
   private isRespawning = false;
+  private isLeavingScene = false;
 
   // Visuals
   private dataStreamGfx?: Phaser.GameObjects.Graphics;
@@ -101,8 +102,16 @@ export class Level5Scene extends Phaser.Scene {
 
   create(): void {
     AudioManager.init();
-    AudioManager.startMatrixMusic();
+    AudioManager.startLevel5Music();
     this.levelStartTime = Date.now();
+
+    // Reset progression flags if spawning at origin
+    if (this.checkpointX === LEVEL5_DATA.spawn.x) {
+      this.hasCollectedComponent5 = false;
+      this.isFailsafeRepaired = false;
+      this.isChamberCollapsing = false;
+      this.collapseProgress = 0;
+    }
 
     // Generate textures
     TextureGenerator.generatePlayerTextures(this);
@@ -254,6 +263,18 @@ export class Level5Scene extends Phaser.Scene {
     // Animate collapsing chamber disintegration wave if active
     if (this.isChamberCollapsing) {
       this.updateChamberCollapse(delta);
+    }
+
+    // Checkpoint activation checks across all checkpoints
+    const cps = LEVEL5_DATA.checkpoints;
+    for (const cp of cps) {
+      if (this.player.x >= cp.x && this.checkpointX < cp.x) {
+        this.checkpointX = cp.x;
+        this.checkpointY = cp.y;
+        AudioManager.playCheckpoint();
+        this.cameras.main.flash(200, 0, 240, 255);
+        this.hud.showBanner(`CHECKPOINT REACHED — ${cp.label}`);
+      }
     }
   }
 
@@ -716,7 +737,10 @@ export class Level5Scene extends Phaser.Scene {
           this.physics.resume();
           this.player.restoreIntegrity();
           this.player.respawnAt(this.checkpointX, this.checkpointY);
-          this.player.restoreStaffCharges(3);
+          if (this.staffController) {
+            this.staffController.chargeManager.setCharges(this.player.maxStaffCharges);
+          }
+          this.player.restoreStaffCharges(this.player.maxStaffCharges);
           this.hud.updateIntegrity(this.player.integrity);
           this.hud.updateCharges(this.player.staffCharges);
           this.isChamberCollapsing = false;
@@ -728,8 +752,7 @@ export class Level5Scene extends Phaser.Scene {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
           this.isRespawning = false;
-          this.physics.resume();
-          this.scene.restart();
+          this.restartLevelFromBeginning();
         },
         onMainMenu: () => {
           this.gameOverScreen?.destroy();
@@ -773,26 +796,34 @@ export class Level5Scene extends Phaser.Scene {
     this.cameras.main.setDeadzone(40, 20);
   }
 
-  // ── Pause Menu ────────────────────────────────────────────────────────────
+  // ── Pause Menu & Restart Helpers ──────────────────────────────────────────
 
   private togglePause(): void {
     this.isPaused ? this.resumeGame() : this.pauseGame();
   }
 
   private pauseGame(): void {
+    if (this.isPaused || this.isRespawning || this.isLeavingScene) return;
     this.isPaused = true;
     this.physics.pause();
     const cb: PauseMenuCallbacks = {
       onResume: () => this.resumeGame(),
+      onCheckpoint: () => this.restartAtCheckpoint(),
       onRestart: () => {
-        this.isPaused = false;
-        this.physics.resume();
-        this.scene.restart();
+        this.resumeGame();
+        this.restartLevelFromBeginning();
       },
       onMainMenu: () => {
+        if (this.isLeavingScene) return;
+        this.isLeavingScene = true;
+        this.pauseMenu?.destroy();
+        this.pauseMenu = null;
         this.isPaused = false;
         this.physics.resume();
-        this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+          this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
+        });
+        this.cameras.main.fadeOut(300, 0, 0, 0);
       }
     };
     this.pauseMenu = new PauseMenu(this, cb);
@@ -803,6 +834,43 @@ export class Level5Scene extends Phaser.Scene {
     this.pauseMenu = null;
     this.isPaused = false;
     this.physics.resume();
+  }
+
+  private restartLevelFromBeginning(): void {
+    this.checkpointX = LEVEL5_DATA.spawn.x;
+    this.checkpointY = LEVEL5_DATA.spawn.y;
+    this.deathCount = 0;
+    this.hasCollectedComponent5 = false;
+    this.isFailsafeRepaired = false;
+    this.isChamberCollapsing = false;
+    this.collapseProgress = 0;
+    this.isPaused = false;
+    this.isRespawning = false;
+    this.isLeavingScene = false;
+    this.physics.resume();
+    this.scene.restart();
+  }
+
+  private restartAtCheckpoint(): void {
+    this.resumeGame();
+    this.player.restoreIntegrity();
+    this.player.respawnAt(this.checkpointX, this.checkpointY);
+    if (this.staffController) {
+      this.staffController.chargeManager.setCharges(this.player.maxStaffCharges);
+    }
+    this.player.restoreStaffCharges(this.player.maxStaffCharges);
+    this.hud.updateIntegrity(this.player.integrity);
+    this.hud.updateCharges(this.player.staffCharges);
+
+    // Reset collapse state if active
+    if (this.isChamberCollapsing) {
+      this.collapseWallGfx?.clear();
+      this.collapseProgress = Math.max(0, this.checkpointX - 500);
+    }
+
+    this.cameras.main.fadeIn(400, 0, 0, 0);
+    AudioManager.playCheckpoint();
+    this.hud.showBanner('WARPED TO ACTIVE CHECKPOINT');
   }
 
   // ── Scanlines Overlay ─────────────────────────────────────────────────────

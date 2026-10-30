@@ -413,13 +413,13 @@ export class GuideModal extends Phaser.GameObjects.Container {
           desc: 'Staff freezes water into solid slippery runways to cross gaps, or thaws ice back.'
         },
         {
-          title: 'CRYO BLOCKS & LOCKS:',
+          title: 'MOVING CRYO PLATFORMS:',
           color: '#00f0ff',
-          desc: 'Drop overhead ice stalactites into solid ground blocks to trigger floor locks & open doors.'
+          desc: 'Jump onto moving snow platforms to cross abyssal gaps. Platforms smoothly carry you across.'
         }
       ],
       directive1: '⚡ Energy Conduits: Stand close to recharge Staff.',
-      directive2: '💎 5 Crystals: Recover shattered components to unlock Exit Portal.'
+      directive2: '💎 Failsafes 01 & 02: Collect both cryogenic components to unlock the Exit Portal.'
     };
   }
 }

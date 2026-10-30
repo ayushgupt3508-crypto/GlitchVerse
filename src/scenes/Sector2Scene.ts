@@ -54,6 +54,14 @@ export class Sector2Scene extends Phaser.Scene {
   private isRespawning = false;
   private mobileHandle: MobileSetupHandle | null = null;
 
+  // Objective HUD Pill & World Indicators
+  private objectiveContainer!: Phaser.GameObjects.Container;
+  private objectiveBg!: Phaser.GameObjects.Graphics;
+  private objectiveText!: Phaser.GameObjects.Text;
+  private currentObjective = '';
+  private worldIndicators: Array<{ id: string; container: Phaser.GameObjects.Container }> = [];
+  private discoveredZones = new Set<number>();
+
   // Level dimensions — floor at y=330 (lava surface)
   private readonly levelWidth  = 3760;
   private readonly levelHeight = 420;
@@ -81,6 +89,13 @@ export class Sector2Scene extends Phaser.Scene {
     this.gameOverScreen = null;
     this.raftIndicatorGfx?.destroy();
     this.raftIndicatorGfx = this.add.graphics().setDepth(12);
+    this.worldIndicators = [];
+    this.discoveredZones = new Set<number>();
+
+    this.events.once('shutdown', () => {
+      this.worldIndicators.forEach(w => w.container.destroy());
+      this.worldIndicators = [];
+    });
 
     // Generate all textures first
     TextureGenerator.generatePlayerTextures(this);
@@ -155,7 +170,15 @@ export class Sector2Scene extends Phaser.Scene {
         this.hud.updateCharges(this.player.staffCharges);
         this.hud.showBanner('STAFF ENERGY RECHARGED!');
         AudioManager.playConduitRecharge();
-        this.cameras.main.flash(120, 255, 80, 0);
+        this.cameras.main.flash(140, 255, 120, 0);
+        const emitter = this.add.particles(c.x, c.y, 'proto_tile', {
+          speed: { min: 40, max: 110 },
+          scale: { start: 0.45, end: 0 },
+          tint: [0xff8800, 0xffd166, 0xffffff],
+          lifespan: 600,
+          quantity: 18
+        }).setDepth(20);
+        this.time.delayedCall(650, () => emitter.destroy());
         c.setAlpha(0.25).setTint(0x444444);
         this.time.delayedCall(12000, () => {
           c.setData('used', false);
@@ -174,6 +197,18 @@ export class Sector2Scene extends Phaser.Scene {
         this.cameras.main.flash(200, 255, 100, 0);
         AudioManager.playCheckpoint();
         this.hud.showBanner('CHECKPOINT ACTIVATED');
+        this.tweens.add({
+          targets: sprite,
+          scale: 1.35,
+          duration: 200,
+          yoyo: true,
+          repeat: 2
+        });
+        const emitter = this.add.particles(cx, cy, 'proto_tile', {
+          speed: { min: 40, max: 120 }, scale: { start: 0.5, end: 0 },
+          tint: [0xff8800, 0xffd166, 0xffffff], lifespan: 700, quantity: 22
+        }).setDepth(20);
+        this.time.delayedCall(750, () => emitter.destroy());
       });
     });
 
@@ -192,9 +227,20 @@ export class Sector2Scene extends Phaser.Scene {
     this.hud.updateCharges(this.player.staffCharges);
     this.hud.updateIntegrity(this.player.integrity);
 
+    this.setupObjectiveHUD();
+    this.setObjective('NAVIGATE LAVA CHASM & RECOVER FAILSAFE 03');
+    this.setupWorldIndicators();
+
+    this.time.delayedCall(1200, () => {
+      this.hud.showBanner('SECTOR 2: LAVA CHASM & EMBER VAULT');
+    });
+    this.time.delayedCall(4500, () => {
+      this.hud.showBanner('HINT: [E] OR [J] TO IGNITE VENTS & STAY IN BLUE CENTER OF RAFTS');
+    });
+
     // Audio
     AudioManager.init();
-    AudioManager.startMatrixMusic();
+    AudioManager.startLevel2Music();
 
     // Player events
     this.player.on('staff_used', (chargesLeft: number) => {
@@ -248,11 +294,12 @@ export class Sector2Scene extends Phaser.Scene {
       this.handleDeath('EMBER CORRUPTION');
       return;
     }
+    this.renderRaftIndicators(time);
     if (this.isRespawning) return;
 
     this.mobileHandle?.update();
+    this.checkZoneDiscovery();
     this.updateRaftCarriage();
-    this.renderRaftIndicators(time);
     this.player.update(time, delta);
     this.drones.forEach(d => d.update(time, delta, this.player.x, this.player.y));
     this.fireJets.forEach(j => j.update(time));
@@ -815,7 +862,7 @@ export class Sector2Scene extends Phaser.Scene {
           pBody.left < (raft.x + raftHalfW);
 
         if (isStandingOnRaft) {
-          // Decreased middle blue sweet spot width: 20px (+/-10px from center)
+          // Middle blue sweet spot width: 20px (+/-10px from center)
           const SAFE_CENTER_RADIUS = 10;
           const distFromCenter = Math.abs(this.player.x - raft.x);
 
@@ -823,18 +870,24 @@ export class Sector2Scene extends Phaser.Scene {
             // Firm center lock: when not inputting manual movement, player is locked stationary in center
             if (!isPressingMove) {
               this.player.x = raft.x;
-              pBody.x = raft.x - pBody.halfWidth;
+              pBody.reset(this.player.x, this.player.y);
+              pBody.blocked.down = true;
+              pBody.touching.down = true;
             } else {
               // Player is actively steering: carry raft delta along with walking input
               this.player.x += dx;
-              pBody.x += dx;
+              pBody.reset(this.player.x, this.player.y);
+              pBody.blocked.down = true;
+              pBody.touching.down = true;
             }
           } else {
             // Stepped on arrow keys: high outgoing velocity pushes player off toward edges fast
             const nudgeDir = this.player.x > raft.x ? 1 : -1;
             const OUTGOING_VELOCITY = 3.2; // Fast outward ejection
             this.player.x += nudgeDir * OUTGOING_VELOCITY;
-            pBody.x += nudgeDir * OUTGOING_VELOCITY;
+            pBody.reset(this.player.x, this.player.y);
+            pBody.blocked.down = true;
+            pBody.touching.down = true;
           }
         }
       }
@@ -1173,7 +1226,12 @@ export class Sector2Scene extends Phaser.Scene {
     this.hud.updateCharges(this.player.staffCharges);
     AudioManager.playFailsafe();
 
-    if (this.failsafeCollected >= 2) {
+    if (this.failsafeCollected === 1) {
+      this.removeWorldIndicator('ind_fs3');
+      this.setObjective('CROSS LAVA LEDGES & ADVANCE TO VENTILATION SECTORS');
+    } else if (this.failsafeCollected >= 2) {
+      this.removeWorldIndicator('ind_fs4');
+      this.setObjective('ALL SECTOR FAILSAFES SECURED! ESCAPE TO RIFT [➡]');
       this.hasRecoveredAll = true;
       this.hud.showBanner('ALL HEAT AGE FAILSAFES RECOVERED — EXIT UNLOCKED!');
       this.cameras.main.flash(350, 255, 100, 0);
@@ -1207,5 +1265,166 @@ export class Sector2Scene extends Phaser.Scene {
     const g = this.add.graphics().setScrollFactor(0).setAlpha(0.05).setDepth(100);
     g.lineStyle(1, 0x000000, 1);
     for (let y = 0; y < H; y += 3) g.lineBetween(0, y, W, y);
+  }
+
+  // ── Objective HUD Pill & Guidance Indicators ──────────────────────────────
+
+  private setupObjectiveHUD(): void {
+    const W = this.cameras.main.width;
+    this.objectiveContainer = this.add.container(W / 2, 53).setScrollFactor(0).setDepth(55);
+
+    this.objectiveBg = this.add.graphics();
+    this.objectiveText = this.add.text(0, 0, '', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ffd166',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+
+    this.objectiveContainer.add([this.objectiveBg, this.objectiveText]);
+  }
+
+  public setObjective(text: string): void {
+    this.currentObjective = text;
+    this.objectiveText.setText(`🎯 ${text}`);
+
+    const textWidth = this.objectiveText.width + 24;
+    const pillWidth = Math.max(textWidth, 240);
+    const pillHeight = 18;
+
+    this.objectiveBg.clear();
+    this.objectiveBg.fillStyle(0x060810, 0.92);
+    this.objectiveBg.fillRoundedRect(-pillWidth / 2, -pillHeight / 2, pillWidth, pillHeight, 9);
+    this.objectiveBg.lineStyle(1.5, 0xff6b00, 0.85);
+    this.objectiveBg.strokeRoundedRect(-pillWidth / 2, -pillHeight / 2, pillWidth, pillHeight, 9);
+
+    // Pulse animation on update
+    this.tweens.killTweensOf(this.objectiveContainer);
+    this.objectiveContainer.setScale(1.1);
+    this.tweens.add({
+      targets: this.objectiveContainer,
+      scale: 1,
+      duration: 250,
+      ease: 'Back.easeOut'
+    });
+  }
+
+  public get objective(): string {
+    return this.currentObjective;
+  }
+
+  private setupWorldIndicators(): void {
+    // Starting platform & Segment 2
+    this.createWorldIndicator('ind_hint_staff', 100, 210, '[E] / [J] THERMAL STAFF IGNITION', 0xff8800, '🔥');
+    this.createWorldIndicator('ind_conduit1', 230, 210, 'HEAT CONDUIT', 0x00f0ff, '⚡');
+    this.createWorldIndicator('ind_raft1', 440, 210, 'STAY IN BLUE CENTER OF RAFT', 0x00f0ff, '▲');
+
+    // Fire jet maze & Segment 4
+    this.createWorldIndicator('ind_firejets', 820, 210, 'FIRE JET MAZE — TIME YOUR RUN', 0xff4400, '⚠');
+    this.createWorldIndicator('ind_cp1', 1170, 200, 'CHECKPOINT 01', 0xff8800, '▲');
+    this.createWorldIndicator('ind_fs3', 1230, 175, 'FAILSAFE 03 [EMBER VAULT]', 0xffd166, '★');
+    this.createWorldIndicator('ind_conduit2', 1370, 200, 'HEAT CONDUIT', 0x00f0ff, '⚡');
+
+    // Segment 5 & Tutorial vent
+    this.createWorldIndicator('ind_raft2', 1720, 210, 'STAY IN BLUE CENTER OF RAFT', 0x00f0ff, '▲');
+    this.createWorldIndicator('ind_tut_vent', 1940, 190, '[E/J] IGNITE VENT TO RIDE UPDRAFT', 0xffaa00, '🔥');
+
+    // Z1 Vent Foyer
+    this.createWorldIndicator('ind_conduit3', 2120, 200, 'HEAT CONDUIT', 0x00f0ff, '⚡');
+    this.createWorldIndicator('ind_cliff_vent', 2200, 210, 'IGNITE UPDRAFT TO SCALE CLIFF', 0xffaa00, '🔥');
+    this.createWorldIndicator('ind_cp2', 2280, 80, 'CHECKPOINT 02', 0xff8800, '▲');
+    this.createWorldIndicator('ind_conduit4', 2360, 80, 'HEAT CONDUIT', 0x00f0ff, '⚡');
+
+    // Z2 Convection Relay
+    this.createWorldIndicator('ind_convection1', 2440, 130, 'HORIZONTAL CONVECTION GLIDE', 0xffaa00, '🔥');
+    this.createWorldIndicator('ind_convection2', 2700, 130, 'CONVECTION RELAY VENT 2', 0xffaa00, '🔥');
+
+    // Z3 Furnace Gauntlet
+    this.createWorldIndicator('ind_conduit5', 2940, 110, 'HEAT CONDUIT', 0x00f0ff, '⚡');
+    this.createWorldIndicator('ind_catwalk', 3060, 220, 'IGNITE UPDRAFT → CATWALK ROUTE', 0xffaa00, '🔥');
+
+    // Z4 Finale
+    this.createWorldIndicator('ind_cp3', 3360, 200, 'CHECKPOINT 03', 0xff8800, '▲');
+    this.createWorldIndicator('ind_conduit6', 3400, 200, 'HEAT CONDUIT', 0x00f0ff, '⚡');
+    this.createWorldIndicator('ind_final_vent', 3440, 210, 'IGNITE UPDRAFT TO REACH FAILSAFE 04', 0xffaa00, '🔥');
+    this.createWorldIndicator('ind_fs4', 3512, 90, 'FAILSAFE 04 [THERMAL CORE]', 0xffd166, '★');
+    this.createWorldIndicator('ind_exit', 3720, 175, 'EXTRACTION PORTAL', 0x00f0ff, '🎯');
+  }
+
+  private createWorldIndicator(id: string, x: number, y: number, text: string, color: number, icon = '▲'): void {
+    const container = this.add.container(x, y).setDepth(22);
+
+    const txt = this.add.text(0, 0, `${icon} ${text}`, {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#' + color.toString(16).padStart(6, '0'),
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setOrigin(0.5);
+
+    const w = txt.width + 16;
+    const h = 18;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x070912, 0.88);
+    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
+    bg.lineStyle(1.5, color, 0.85);
+    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
+
+    container.add([bg, txt]);
+
+    this.tweens.add({
+      targets: container,
+      y: y - 8,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    this.worldIndicators.push({ id, container });
+  }
+
+  private removeWorldIndicator(id: string): void {
+    const idx = this.worldIndicators.findIndex(w => w.id === id);
+    if (idx !== -1) {
+      const item = this.worldIndicators[idx];
+      this.worldIndicators.splice(idx, 1);
+      this.tweens.add({
+        targets: item.container,
+        alpha: 0,
+        scale: 0.5,
+        duration: 300,
+        onComplete: () => item.container.destroy()
+      });
+    }
+  }
+
+  private checkZoneDiscovery(): void {
+    const px = this.player.x;
+    let zoneNum = 1;
+    let zoneName = '';
+
+    if (px >= 3340) { zoneNum = 5; zoneName = 'SECTOR 2 · Z4: THERMAL FINALE'; }
+    else if (px >= 2920) { zoneNum = 4; zoneName = 'SECTOR 2 · Z3: FURNACE GAUNTLET'; }
+    else if (px >= 2400) { zoneNum = 3; zoneName = 'SECTOR 2 · Z2: CONVECTION RELAY'; }
+    else if (px >= 2080) { zoneNum = 2; zoneName = 'SECTOR 2 · Z1: VENT FOYER'; }
+    else if (px >= 1060) { zoneNum = 1; zoneName = 'SECTOR 2: MID EMBER VAULT'; }
+
+    if (zoneNum > 0 && !this.discoveredZones.has(zoneNum)) {
+      this.discoveredZones.add(zoneNum);
+      this.hud.showBanner(zoneName);
+      if (zoneNum === 2) {
+        this.setObjective('IGNITE UPDRAFT VENTS TO SCALE HIGH LEDGES');
+      } else if (zoneNum === 3) {
+        this.setObjective('RIDE CONVECTION CURRENTS OVER LAVA LAKES');
+      } else if (zoneNum === 4) {
+        this.setObjective('TAKE OVERHEAD CATWALK TO BYPASS FIRE JETS');
+      } else if (zoneNum === 5 && this.failsafeCollected < 2) {
+        this.setObjective('RIDE FINAL UPDRAFT & SECURE FAILSAFE 04');
+      }
+    }
   }
 }

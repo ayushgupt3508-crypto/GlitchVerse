@@ -277,6 +277,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public restoreStaffCharges(amount = 1): void {
     if (this.staffController) {
       this.staffController.chargeManager.refill(amount);
+      this.staffCharges = this.staffController.chargeManager.getCharges();
+      this.emit('staff_recharged', this.staffCharges);
     } else {
       this.staffCharges = Math.min(this.maxStaffCharges, this.staffCharges + amount);
       this.emit('staff_recharged', this.staffCharges);

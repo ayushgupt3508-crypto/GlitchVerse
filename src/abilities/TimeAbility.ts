@@ -68,6 +68,11 @@ export class TimeAbility {
   private setupInput(): void {
     if (!this.scene.input.keyboard) return;
 
+    // If the scene already binds and handles staff pulses (e.g. level4), do not bind duplicate listeners
+    if (typeof (this.scene as any).handleStaffPulse === 'function') {
+      return;
+    }
+
     this.scene.input.keyboard.addCapture([
       Phaser.Input.Keyboard.KeyCodes.T,
       Phaser.Input.Keyboard.KeyCodes.E,
@@ -138,6 +143,7 @@ export class TimeAbility {
     // Scan for nearby time-affected objects
     let affectedCount = 0;
     for (const obj of this.timeObjects) {
+      if ((obj as any).type === 'ALTAR_SLOT') continue;
       const dist = Phaser.Math.Distance.Between(px, py, obj.x, obj.y);
       if (dist <= this.RADIUS) {
         const success = obj.applyTimeAction('TOGGLE');

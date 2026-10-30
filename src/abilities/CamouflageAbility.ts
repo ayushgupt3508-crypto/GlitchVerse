@@ -22,6 +22,7 @@ import { AudioManager } from '../systems/AudioManager';
  */
 export interface CamouflageAbilityOptions {
   hudY?: number;
+  consumesCharges?: boolean;
 }
 
 export class CamouflageAbility {
@@ -56,11 +57,13 @@ export class CamouflageAbility {
   private hudStatusText?: Phaser.GameObjects.Text;
   private hudBarFill?: Phaser.GameObjects.Graphics;
   private hudY: number;
+  private consumesCharges: boolean;
 
   constructor(scene: Phaser.Scene, player: Player, options?: CamouflageAbilityOptions) {
     this.scene = scene;
     this.player = player;
     this.hudY = options?.hudY ?? 48;
+    this.consumesCharges = options?.consumesCharges ?? true;
 
     // Graphics layers (rendered at depth 8 - above background, below foreground)
     this.refractionGfx = scene.add.graphics().setDepth(8);
@@ -90,7 +93,8 @@ export class CamouflageAbility {
 
   /** True if the ability is ready to be triggered. */
   public get isReady(): boolean {
-    return !this.isCloaked && this.cooldownTimer <= 0 && !this.player.isDead;
+    const hasCharge = !this.consumesCharges || this.player.staffCharges > 0;
+    return !this.isCloaked && this.cooldownTimer <= 0 && !this.player.isDead && hasCharge;
   }
 
   /**
@@ -99,6 +103,11 @@ export class CamouflageAbility {
    */
   public activate(): boolean {
     if (!this.isReady) return false;
+
+    if (this.consumesCharges) {
+      if (this.player.staffCharges <= 0) return false;
+      this.player.useStaff();
+    }
 
     this.isCloaked = true;
     this.activeTimer = this.DURATION;
@@ -452,6 +461,11 @@ export class CamouflageAbility {
       const pct = 1 - (this.cooldownTimer / this.COOLDOWN);
       this.hudBarFill.fillStyle(0xffaa44, 0.9);
       this.hudBarFill.fillRoundedRect(6, 16, 134 * pct, 4, 2);
+    } else if (this.consumesCharges && this.player.staffCharges <= 0) {
+      this.hudStatusText.setText('[C] NO CHARGES');
+      this.hudStatusText.setColor('#ff4444');
+      this.hudBarFill.fillStyle(0x552222, 0.8);
+      this.hudBarFill.fillRoundedRect(6, 16, 134, 4, 2);
     } else {
       this.hudStatusText.setText('[C] ILLUSION: READY');
       this.hudStatusText.setColor('#ffd166');

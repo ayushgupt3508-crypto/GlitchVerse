@@ -1,6 +1,7 @@
 import { SaveSystem } from './SaveSystem';
+import { LevelSoundtracks } from './LevelSoundtracks';
 
-export type MusicTrack = 'none' | 'matrix' | 'story';
+export type MusicTrack = 'none' | 'matrix' | 'story' | 'level1' | 'level2' | 'level3' | 'level4' | 'level5';
 
 /**
  * AudioManager — Procedural Matrix Cyberpunk & Calming Story Soundtracks + Chiptune SFX using Web Audio API.
@@ -20,6 +21,7 @@ export class AudioManager {
   private static nextNoteTime = 0;
   private static current16thStep = 0;
   private static storyStep = 0;
+  private static levelStep = 0;
 
   // ── Initialization & Audio Graph ──────────────────────────────────────
 
@@ -67,19 +69,11 @@ export class AudioManager {
         if (this.ctx && this.ctx.state === 'suspended') {
           this.ctx.resume().then(() => {
             if (!this.isMusicPlaying) {
-              if (this.currentTrack === 'story') {
-                this.startStoryMusic();
-              } else {
-                this.startMatrixMusic();
-              }
+              this.resumeCurrentTrack();
             }
           }).catch(() => {});
         } else if (!this.isMusicPlaying) {
-          if (this.currentTrack === 'story') {
-            this.startStoryMusic();
-          } else {
-            this.startMatrixMusic();
-          }
+          this.resumeCurrentTrack();
         }
       };
 
@@ -87,11 +81,7 @@ export class AudioManager {
       window.addEventListener('keydown', unlockAndPlay, { once: true });
 
       if (this.ctx.state === 'running' && !this.isMusicPlaying) {
-        if (this.currentTrack === 'story') {
-          this.startStoryMusic();
-        } else {
-          this.startMatrixMusic();
-        }
+        this.resumeCurrentTrack();
       }
     } catch {
       console.warn('AudioManager: Web Audio API not available');
@@ -191,6 +181,209 @@ export class AudioManager {
     this.musicSchedulerId = window.setInterval(() => {
       this.storyMusicScheduler();
     }, 25);
+  }
+
+  /** Starts Level 1: Frozen Age (Cryo-Glitch) — 120 BPM chiptune & crystalline bells. */
+  public static startLevel1Music(): void {
+    if (this.currentTrack === 'level1' && this.isMusicPlaying) return;
+    this.stopMusic();
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+
+    this.currentTrack = 'level1';
+    this.isMusicPlaying = true;
+    this.nextNoteTime = this.ctx.currentTime + 0.05;
+    this.levelStep = 0;
+
+    if (this.musicFilter) {
+      this.musicFilter.frequency.setValueAtTime(14000, this.ctx.currentTime);
+      this.musicFilter.Q.setValueAtTime(1.0, this.ctx.currentTime);
+    }
+    if (this.musicDuckGain) this.musicDuckGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    const bpm = 120;
+    const stepDuration = 60 / (bpm * 4);
+    this.musicSchedulerId = window.setInterval(() => {
+      if (!this.ctx || !this.isMusicPlaying || this.currentTrack !== 'level1' || !this.musicFilter) return;
+      if (this.nextNoteTime < this.ctx.currentTime) this.nextNoteTime = this.ctx.currentTime + 0.02;
+      while (this.nextNoteTime < this.ctx.currentTime + 0.12) {
+        LevelSoundtracks.scheduleLevel1Step(this.ctx, this.musicFilter, this.levelStep, this.nextNoteTime, stepDuration);
+        this.nextNoteTime += stepDuration;
+        this.levelStep = (this.levelStep + 1) % 64;
+      }
+    }, 25);
+  }
+
+  /** Starts Level 2: Heat Age (Volcanic Forge) — 132 BPM industrial kicks, anvil strikes & searing saw bass. */
+  public static startLevel2Music(): void {
+    if (this.currentTrack === 'level2' && this.isMusicPlaying) return;
+    this.stopMusic();
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+
+    this.currentTrack = 'level2';
+    this.isMusicPlaying = true;
+    this.nextNoteTime = this.ctx.currentTime + 0.05;
+    this.levelStep = 0;
+
+    if (this.musicFilter) {
+      this.musicFilter.frequency.setValueAtTime(16000, this.ctx.currentTime);
+      this.musicFilter.Q.setValueAtTime(1.4, this.ctx.currentTime);
+    }
+    if (this.musicDuckGain) this.musicDuckGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    const bpm = 132;
+    const stepDuration = 60 / (bpm * 4);
+    this.musicSchedulerId = window.setInterval(() => {
+      if (!this.ctx || !this.isMusicPlaying || this.currentTrack !== 'level2' || !this.musicFilter) return;
+      if (this.nextNoteTime < this.ctx.currentTime) this.nextNoteTime = this.ctx.currentTime + 0.02;
+      while (this.nextNoteTime < this.ctx.currentTime + 0.12) {
+        LevelSoundtracks.scheduleLevel2Step(this.ctx, this.musicFilter, this.levelStep, this.nextNoteTime, stepDuration);
+        this.nextNoteTime += stepDuration;
+        this.levelStep = (this.levelStep + 1) % 64;
+      }
+    }, 25);
+  }
+
+  /** Starts Level 3: Medieval Palace (Royal Infiltration) — 106 BPM lute plucks, flute & court tambourine. */
+  public static startLevel3Music(): void {
+    if (this.currentTrack === 'level3' && this.isMusicPlaying) return;
+    this.stopMusic();
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+
+    this.currentTrack = 'level3';
+    this.isMusicPlaying = true;
+    this.nextNoteTime = this.ctx.currentTime + 0.05;
+    this.levelStep = 0;
+
+    if (this.musicFilter) {
+      this.musicFilter.frequency.setValueAtTime(11000, this.ctx.currentTime);
+      this.musicFilter.Q.setValueAtTime(1.1, this.ctx.currentTime);
+    }
+    if (this.musicDuckGain) this.musicDuckGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    const bpm = 106;
+    const stepDuration = 60 / (bpm * 2);
+    this.musicSchedulerId = window.setInterval(() => {
+      if (!this.ctx || !this.isMusicPlaying || this.currentTrack !== 'level3' || !this.musicFilter) return;
+      if (this.nextNoteTime < this.ctx.currentTime) this.nextNoteTime = this.ctx.currentTime + 0.02;
+      while (this.nextNoteTime < this.ctx.currentTime + 0.14) {
+        LevelSoundtracks.scheduleLevel3Step(this.ctx, this.musicFilter, this.levelStep, this.nextNoteTime, stepDuration);
+        this.nextNoteTime += stepDuration;
+        this.levelStep = (this.levelStep + 1) % 64;
+      }
+    }, 25);
+  }
+
+  /** Starts Level 4: Ancient Forest (Elder Grove) — 92 BPM pan-flute, wooden marimba & dewdrop bells. */
+  public static startLevel4Music(): void {
+    if (this.currentTrack === 'level4' && this.isMusicPlaying) return;
+    this.stopMusic();
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+
+    this.currentTrack = 'level4';
+    this.isMusicPlaying = true;
+    this.nextNoteTime = this.ctx.currentTime + 0.05;
+    this.levelStep = 0;
+
+    if (this.musicFilter) {
+      this.musicFilter.frequency.setValueAtTime(9500, this.ctx.currentTime);
+      this.musicFilter.Q.setValueAtTime(0.9, this.ctx.currentTime);
+    }
+    if (this.musicDuckGain) this.musicDuckGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    const bpm = 92;
+    const stepDuration = 60 / (bpm * 2);
+    this.musicSchedulerId = window.setInterval(() => {
+      if (!this.ctx || !this.isMusicPlaying || this.currentTrack !== 'level4' || !this.musicFilter) return;
+      if (this.nextNoteTime < this.ctx.currentTime) this.nextNoteTime = this.ctx.currentTime + 0.02;
+      while (this.nextNoteTime < this.ctx.currentTime + 0.15) {
+        LevelSoundtracks.scheduleLevel4Step(this.ctx, this.musicFilter, this.levelStep, this.nextNoteTime, stepDuration);
+        this.nextNoteTime += stepDuration;
+        this.levelStep = (this.levelStep + 1) % 64;
+      }
+    }, 25);
+  }
+
+  /** Starts Level 5: Futuristic Core (Quantum Singularity) — 140 BPM rolling acid 303 & laser stabs. */
+  public static startLevel5Music(): void {
+    if (this.currentTrack === 'level5' && this.isMusicPlaying) return;
+    this.stopMusic();
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+
+    this.currentTrack = 'level5';
+    this.isMusicPlaying = true;
+    this.nextNoteTime = this.ctx.currentTime + 0.05;
+    this.levelStep = 0;
+
+    if (this.musicFilter) {
+      this.musicFilter.frequency.setValueAtTime(18000, this.ctx.currentTime);
+      this.musicFilter.Q.setValueAtTime(1.2, this.ctx.currentTime);
+    }
+    if (this.musicDuckGain) this.musicDuckGain.gain.setValueAtTime(1.0, this.ctx.currentTime);
+
+    const bpm = 140;
+    const stepDuration = 60 / (bpm * 4);
+    this.musicSchedulerId = window.setInterval(() => {
+      if (!this.ctx || !this.isMusicPlaying || this.currentTrack !== 'level5' || !this.musicFilter) return;
+      if (this.nextNoteTime < this.ctx.currentTime) this.nextNoteTime = this.ctx.currentTime + 0.02;
+      while (this.nextNoteTime < this.ctx.currentTime + 0.12) {
+        LevelSoundtracks.scheduleLevel5Step(this.ctx, this.musicFilter, this.levelStep, this.nextNoteTime, stepDuration);
+        this.nextNoteTime += stepDuration;
+        this.levelStep = (this.levelStep + 1) % 64;
+      }
+    }, 25);
+  }
+
+  /**
+   * Universal level soundtrack selector: plays the specific procedural theme for the given level.
+   *  1 / 'level1' / 'GameScene': Frozen Age
+   *  2 / 'level2' / 'Sector2Scene': Heat Age
+   *  3 / 'level3' / 'Level3Scene': Medieval Palace
+   *  4 / 'level4' / 'Level4Scene': Ancient Forest
+   *  5 / 'level5' / 'Level5Scene': Futuristic Core
+   */
+  public static playLevelMusic(level: number | string): void {
+    const key = String(level).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (key === '1' || key === 'level1' || key === 'gamescene' || key === 'frozenage') {
+      this.startLevel1Music();
+    } else if (key === '2' || key === 'level2' || key === 'sector2scene' || key === 'heatage') {
+      this.startLevel2Music();
+    } else if (key === '3' || key === 'level3' || key === 'level3scene' || key === 'medievalpalace') {
+      this.startLevel3Music();
+    } else if (key === '4' || key === 'level4' || key === 'level4scene' || key === 'ancientforest') {
+      this.startLevel4Music();
+    } else if (key === '5' || key === 'level5' || key === 'level5scene' || key === 'futuristiccore') {
+      this.startLevel5Music();
+    } else if (key === 'story' || key === 'storyscene') {
+      this.startStoryMusic();
+    } else {
+      this.startMatrixMusic();
+    }
+  }
+
+  /** Resumes the active music track upon browser audio unlock. */
+  private static resumeCurrentTrack(): void {
+    switch (this.currentTrack) {
+      case 'level1': this.startLevel1Music(); break;
+      case 'level2': this.startLevel2Music(); break;
+      case 'level3': this.startLevel3Music(); break;
+      case 'level4': this.startLevel4Music(); break;
+      case 'level5': this.startLevel5Music(); break;
+      case 'story': this.startStoryMusic(); break;
+      case 'matrix':
+      default:
+        this.startMatrixMusic();
+        break;
+    }
   }
 
   /** Stops any currently playing music. */
