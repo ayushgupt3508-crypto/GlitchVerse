@@ -250,7 +250,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     const pauseIconKey = scene.textures.exists('pause_icon') ? 'pause_icon' : 'proto_tile';
     this.pauseBtn = scene.add.image(W - 28, 26, pauseIconKey)
       .setDisplaySize(32, 32)
-      .setTint(0xffd166) // Radiant failsafe gold matching score counter
+      .setTint(accentColor)
       .setScrollFactor(0)
       .setDepth(241);
 
@@ -259,7 +259,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
       scene.load.once('complete', () => {
         this.pauseBtn?.setTexture('pause_icon');
         this.pauseBtn?.setDisplaySize(32, 32);
-        this.pauseBtn?.setTint(0xffd166);
+        this.pauseBtn?.setTint(accentColor);
       });
       scene.load.start();
     }
@@ -271,7 +271,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
       .setInteractive({ useHandCursor: true });
 
     this.pauseZone.on('pointerover', () => {
-      this.pausePlate?.setStrokeStyle(2, 0xffffff, 1);
+      this.pausePlate?.setStrokeStyle(2, accentColor, 1);
       this.pausePlate?.setFillStyle(0x1a2638, 0.98);
       if (this.pauseBtn) {
         scene.tweens.killTweensOf(this.pauseBtn);
