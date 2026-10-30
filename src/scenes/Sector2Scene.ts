@@ -9,6 +9,7 @@ import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
 import { FullscreenManager } from '../systems/FullscreenManager';
+import { SaveSystem } from '../systems/SaveSystem';
 
 /**
  * Sector2Scene — Heat Age (Bug-fixed version)
@@ -50,9 +51,9 @@ export class Sector2Scene extends Phaser.Scene {
   private isRespawning = false;
 
   // Level dimensions — floor at y=330 (lava surface)
-  private readonly levelWidth  = 2000;
+  private readonly levelWidth = 2000;
   private readonly levelHeight = 420;
-  private readonly floorY      = 330; // lava surface y
+  private readonly floorY = 330; // lava surface y
 
   constructor() { super('Sector2Scene'); }
 
@@ -69,9 +70,9 @@ export class Sector2Scene extends Phaser.Scene {
     this.createHellBackground();
 
     // Physics groups
-    this.platforms    = this.physics.add.staticGroup();
-    this.lavaTiles    = this.physics.add.staticGroup();
-    this.fireHazards  = this.physics.add.staticGroup();
+    this.platforms = this.physics.add.staticGroup();
+    this.lavaTiles = this.physics.add.staticGroup();
+    this.fireHazards = this.physics.add.staticGroup();
 
     // Player (spawns above entry platform)
     this.player = new Player(this, 60, 268);
@@ -450,10 +451,10 @@ export class Sector2Scene extends Phaser.Scene {
 
     // Fire jets at staggered offsets so they aren't all synced
     const jetPositions: [number, number, number, number][] = [
-      [745,  290, 70,    0],
-      [815,  290, 70,  650],
-      [890,  290, 70, 1300],
-      [965,  290, 70,  325],
+      [745, 290, 70, 0],
+      [815, 290, 70, 650],
+      [890, 290, 70, 1300],
+      [965, 290, 70, 325],
     ];
     jetPositions.forEach(([jx, jy, h, off]) => {
       const jet = new FireJet(this, this.fireHazards, jx, jy, h, off);
@@ -646,7 +647,7 @@ export class Sector2Scene extends Phaser.Scene {
   //  Shows a countdown banner at 3 s remaining.
 
   private lavaBridgeZones = [
-    { x1: 288, x2: 640,  bridgeY: 306, active: false, cooldown: false, label: 'LAVA CHASM A' },
+    { x1: 288, x2: 640, bridgeY: 306, active: false, cooldown: false, label: 'LAVA CHASM A' },
     { x1: 1408, x2: 1760, bridgeY: 292, active: false, cooldown: false, label: 'LAVA CHASM B' },
   ];
 
@@ -665,12 +666,12 @@ export class Sector2Scene extends Phaser.Scene {
   private activateLavaBridge(
     zone: typeof this.lavaBridgeZones[0]
   ): void {
-    zone.active   = true;
+    zone.active = true;
     zone.cooldown = true;
 
     const bridges: Phaser.Physics.Arcade.Sprite[] = [];
     const BRIDGE_DUR = 8000;
-    const COOLDOWN   = 13000;
+    const COOLDOWN = 13000;
 
     // Spawn obsidian tiles over the lava chasm
     for (let x = zone.x1; x <= zone.x2; x += 32) {
@@ -763,8 +764,8 @@ export class Sector2Scene extends Phaser.Scene {
     this.isPaused = true;
     this.physics.pause();
     const cb: PauseMenuCallbacks = {
-      onResume:   () => this.resumeGame(),
-      onRestart:  () => { this.isPaused = false; this.physics.resume(); this.scene.restart(); },
+      onResume: () => this.resumeGame(),
+      onRestart: () => { this.isPaused = false; this.physics.resume(); this.scene.restart(); },
       onMainMenu: () => { this.isPaused = false; this.physics.resume(); this.scene.start(GAME_CONFIG.sceneKeys.MainMenu); }
     };
     this.pauseMenu = new PauseMenu(this, cb);
@@ -864,6 +865,9 @@ export class Sector2Scene extends Phaser.Scene {
 
   private handleLevelComplete(): void {
     if (this.physics.world.isPaused) return;
+
+    SaveSystem.markLevelCompleted(2);
+
     this.physics.pause();
     this.hud.showBanner('SECTOR 2 CONQUERED! FAILSAFE ARRAY NEAR COMPLETE!');
     this.cameras.main.fade(700, 180, 40, 0, false,

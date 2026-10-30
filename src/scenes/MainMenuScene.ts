@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
 import { SettingsModal } from '../ui/SettingsModal';
 import { ExitModal } from '../ui/ExitModal';
-import { hasCompletedAllLevels } from '../utils/progress';
 import { SaveSystem } from '../systems/SaveSystem';
 
 export class MainMenuScene extends Phaser.Scene {
@@ -118,16 +117,6 @@ export class MainMenuScene extends Phaser.Scene {
 
     // Default pointer position to the first button (PLAY)
     this.setPointerToButton(this.buttons[0]);
-
-
-    if (!hasCompletedAllLevels()) {
-      const creditsBtn = this.buttons[2];
-      if (creditsBtn) {
-        creditsBtn.setVisible(false);
-        const hitArea = creditsBtn.list.find(obj => obj instanceof Phaser.GameObjects.Zone) as Phaser.GameObjects.Zone | undefined;
-        hitArea?.disableInteractive();
-      }
-    }
 
     // Keyboard shortcuts for level testing: [1] S1, [2] S2, [3] S3, [4] S4 (Ancient Forest), [5] S5 (Futuristic Core)
     if (this.input.keyboard) {
@@ -356,7 +345,6 @@ export class MainMenuScene extends Phaser.Scene {
 
   private handlePlay(): void {
     if (this.activeModal) return;
-    SaveSystem.resetProgress();
     const cam = this.cameras.main;
     cam.fadeOut(500);
     cam.once('camerafadeoutcomplete', () => {

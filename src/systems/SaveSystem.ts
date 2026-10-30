@@ -131,45 +131,13 @@ export class SaveSystem {
     this.saveProgress(resetData);
   }
 
-  public static isAllLevelsCompleted(): boolean {
-    try {
-      const raw = localStorage.getItem(PROGRESS_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed.completedLevels) && parsed.completedLevels.includes(TOTAL_LEVELS)) {
-          return true;
-        }
-        if (typeof parsed.highestUnlockedIndex === 'number' && parsed.highestUnlockedIndex >= TOTAL_LEVELS) {
-          return true;
-        }
-        if (typeof parsed.unlockedLevel === 'number' && parsed.unlockedLevel > TOTAL_LEVELS) {
-          return true;
-        }
-        if (parsed.allCompleted === true) {
-          return true;
-        }
-      }
+public static isAllLevelsCompleted(): boolean {
+  const progress = this.getProgress();
 
-      // Check fallback keys if any external test harness used alternative naming
-      const fallbackKeys = ['progress', 'unlocked', 'completedLevels'];
-      for (const k of fallbackKeys) {
-        const alt = localStorage.getItem(k);
-        if (alt) {
-          const parsed = JSON.parse(alt);
-          if (Array.isArray(parsed) && parsed.includes(TOTAL_LEVELS)) return true;
-          if (typeof parsed === 'number' && parsed >= TOTAL_LEVELS) return true;
-          if (parsed && typeof parsed === 'object') {
-            if (Array.isArray(parsed.completedLevels) && parsed.completedLevels.includes(TOTAL_LEVELS)) return true;
-            if (typeof parsed.highestUnlockedIndex === 'number' && parsed.highestUnlockedIndex >= TOTAL_LEVELS) return true;
-            if (typeof parsed.unlockedLevel === 'number' && parsed.unlockedLevel > TOTAL_LEVELS) return true;
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to evaluate completion status from localStorage.', e);
-    }
-    return false;
-  }
+  return [1, 2, 3, 4, 5].every(level =>
+    progress.completedLevels.includes(level)
+  );
+}
 
   public static getBestScore(): number | undefined {
     return this.getProgress().bestScore;

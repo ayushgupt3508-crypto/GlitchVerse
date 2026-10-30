@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
+import { SaveSystem } from '../systems/SaveSystem';
 import { AudioManager } from '../systems/AudioManager';
 
 interface EndingData {
@@ -35,6 +36,11 @@ export class EndingScene extends Phaser.Scene {
   }
 
   create(): void {
+    if (!SaveSystem.isAllLevelsCompleted()) {
+      this.scene.start('MainMenu');
+      return;
+    }
+    
     AudioManager.init();
     AudioManager.playVictory();
 

@@ -8,6 +8,7 @@ import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
 import { FullscreenManager } from '../systems/FullscreenManager';
+import { SaveSystem } from '../systems/SaveSystem';
 
 export class GameScene extends Phaser.Scene {
   private player!: Player;
@@ -777,8 +778,12 @@ export class GameScene extends Phaser.Scene {
   // ── Level Complete ─────────────────────────────────────────────────────
 
   private handleLevelComplete(): void {
-    if (this.physics.world.isPaused) return;
-    this.physics.pause();
+  if (this.physics.world.isPaused) return;
+
+  // Save Level 1 completion
+  SaveSystem.markLevelCompleted(1);
+
+  this.physics.pause();
     this.hud.showBanner(`SECTOR 1 ESCAPED! ${this.failsafeCollected}/5 FAILSAFES RECOVERED.`);
     this.cameras.main.fade(600, 0, 240, 255, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
       if (progress === 1) {

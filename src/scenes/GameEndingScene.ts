@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SaveSystem } from '../systems/SaveSystem';
 
 export class GameEndingScene extends Phaser.Scene {
   private endData: any = {};
@@ -14,6 +15,12 @@ export class GameEndingScene extends Phaser.Scene {
   }
 
   create(): void {
+
+    if (!SaveSystem.isAllLevelsCompleted()) {
+      this.scene.start('MainMenu');
+      return;
+    }
+
     this.cameras.main.fadeIn(500);
 
     const W = this.cameras.main.width;

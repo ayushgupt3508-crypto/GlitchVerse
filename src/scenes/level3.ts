@@ -9,6 +9,7 @@ import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
 import { FullscreenManager } from '../systems/FullscreenManager';
+import { SaveSystem } from '../systems/SaveSystem';
 
 /**
  * LEVEL 3 DATA SPECIFICATION — MEDIEVAL PALACE
@@ -755,7 +756,10 @@ export class Level3Scene extends Phaser.Scene {
     }
 
     if (this.physics.world.isPaused) return;
-    this.physics.pause();
+
+SaveSystem.markLevelCompleted(3);
+
+this.physics.pause();
 
     this.hud.showBanner('SECTOR 3 INFILTRATION COMPLETE! EXTRACTION COMMENCED!');
     AudioManager.playFailsafe();

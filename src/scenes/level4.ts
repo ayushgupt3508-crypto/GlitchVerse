@@ -3,6 +3,7 @@ import { GAME_CONFIG } from '../config';
 import { Player } from '../entities/Player';
 import { StaffController } from '../systems/staff/StaffController';
 import { TimeAbility } from '../abilities/TimeAbility';
+import { SaveSystem } from '../systems/SaveSystem';
 import {
   ITimeStateObject,
   BrokenBridgeSection,
@@ -45,10 +46,10 @@ export const LEVEL4_DATA = {
   },
   spawn: { x: 80, y: 320 },
   checkpoints: [
-    { id: 'cp_canopy',  x: 80,   y: 320, label: 'FOREST PERIMETER' },
+    { id: 'cp_canopy', x: 80, y: 320, label: 'FOREST PERIMETER' },
     // y was 280, which is INSIDE the Ravine West Anchor platform (top edge ~269).
     // Respawning embedded in a static body makes the player sink through it.
-    { id: 'cp_ravine',  x: 1320, y: 235, label: 'THE GREAT RAVINE' },
+    { id: 'cp_ravine', x: 1320, y: 235, label: 'THE GREAT RAVINE' },
     { id: 'cp_station', x: 2600, y: 320, label: 'RESEARCH STATION' }
   ],
   puzzle: {
@@ -344,21 +345,21 @@ export class Level4Scene extends Phaser.Scene {
     // Ancient Stone Ruin Platforms & Stepped High Ledges (all jump rises 35-50px)
     const ruins = [
       // Zone 1 steps up to Moving Platform 1 (y: 240)
-      { x: 260,  y: 325, w: 80,  h: 18 }, // Step 1 (Δ45 from 370)
-      { x: 380,  y: 280, w: 85,  h: 18 }, // Step 2 (Δ45 from 325)
-      { x: 520,  y: 240, w: 90,  h: 18 }, // Step 3 (Δ40 from 280) -> Leaps to Moving Plat 1
+      { x: 260, y: 325, w: 80, h: 18 }, // Step 1 (Δ45 from 370)
+      { x: 380, y: 280, w: 85, h: 18 }, // Step 2 (Δ45 from 325)
+      { x: 520, y: 240, w: 90, h: 18 }, // Step 3 (Δ40 from 280) -> Leaps to Moving Plat 1
       // Landing ledge after Moving Plat 1
-      { x: 1020, y: 270, w: 90,  h: 18 }, // Landing platform with Conduit Crystal
+      { x: 1020, y: 270, w: 90, h: 18 }, // Landing platform with Conduit Crystal
       // Approach to the Great Ravine
-      { x: 1180, y: 325, w: 80,  h: 18 }, // Stepping ledge (Δ45 from 370)
-      { x: 1320, y: 280, w: 90,  h: 22 }, // Ravine West Anchor (Δ45 from 325, Checkpoint 2!)
+      { x: 1180, y: 325, w: 80, h: 18 }, // Stepping ledge (Δ45 from 370)
+      { x: 1320, y: 280, w: 90, h: 22 }, // Ravine West Anchor (Δ45 from 325, Checkpoint 2!)
       // Across the bridge (Bridge A: 1440, B: 1560, C: 1680)
-      { x: 1800, y: 280, w: 90,  h: 22 }, // Ravine East Anchor (Landing from Bridge C!)
-      { x: 1930, y: 325, w: 80,  h: 18 }, // East Exit Step (Smooth descent to ground 370)
+      { x: 1800, y: 280, w: 90, h: 22 }, // Ravine East Anchor (Landing from Bridge C!)
+      { x: 1930, y: 325, w: 80, h: 18 }, // East Exit Step (Smooth descent to ground 370)
       // Zone 3: Ascent to Ancient Machinery & Research Station
-      { x: 2100, y: 325, w: 80,  h: 18 },
-      { x: 2220, y: 280, w: 80,  h: 18 },
-      { x: 2600, y: 280, w: 90,  h: 18 }, // Observation Balcony after Moving Plat 2
+      { x: 2100, y: 325, w: 80, h: 18 },
+      { x: 2220, y: 280, w: 80, h: 18 },
+      { x: 2600, y: 280, w: 90, h: 18 }, // Observation Balcony after Moving Plat 2
       { x: 2760, y: 320, w: 140, h: 22 }  // Research Station Altar with Component 4
     ];
 
@@ -448,8 +449,8 @@ export class Level4Scene extends Phaser.Scene {
   private buildHazards(): void {
     // 1. Falling Branches (Crush hazards that can be rewound or frozen)
     const branchCoords = [
-      { x: 420,  origY: 90, targetY: 265 },
-      { x: 960,  origY: 80, targetY: 350 },
+      { x: 420, origY: 90, targetY: 265 },
+      { x: 960, origY: 80, targetY: 350 },
       { x: 2280, origY: 80, targetY: 350 }
     ];
 
@@ -461,7 +462,7 @@ export class Level4Scene extends Phaser.Scene {
 
     // 2. Patrolling Ancient Forest Golems (Can be locked in Chrono-Stasis)
     const golems = [
-      { x: 680,  y: 355, minX: 600,  maxX: 790 },
+      { x: 680, y: 355, minX: 600, maxX: 790 },
       { x: 2100, y: 355, minX: 1980, maxX: 2220 },
       { x: 2600, y: 355, minX: 2500, maxX: 2700 }
     ];
@@ -474,7 +475,7 @@ export class Level4Scene extends Phaser.Scene {
 
     // 3. Briar Thorn Beds on the ground
     const thornCoords = [
-      { x: 800,  y: LEVEL4_DATA.dimensions.floorY },
+      { x: 800, y: LEVEL4_DATA.dimensions.floorY },
       { x: 2250, y: LEVEL4_DATA.dimensions.floorY },
       { x: 2420, y: LEVEL4_DATA.dimensions.floorY }
     ];
@@ -785,6 +786,10 @@ export class Level4Scene extends Phaser.Scene {
 
     this.isLevelComplete = true;
     this.isLeavingScene = true;
+
+    // Save Level 4 completion
+    SaveSystem.markLevelCompleted(4);
+
     this.physics.pause();
 
     this.hud.showBanner('SECTOR 4 RESTORATION COMPLETE! ADVANCING TO FUTURISTIC CORE!');
