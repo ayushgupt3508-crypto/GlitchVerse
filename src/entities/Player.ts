@@ -39,18 +39,100 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public isInteracting = false;
   public isDead = false;
   private wasInAir = false;
+  private isLanding = false;
+  private isWandAnimating = false;
+
+  private createAnimations(): void {
+    const anims = this.scene.anims;
+
+    if (!anims.exists('player_idle')) {
+      anims.create({
+        key: 'player_idle',
+        frames: anims.generateFrameNumbers('scientist_idle', { start: 0, end: 3 }),
+        frameRate: 5,
+        repeat: -1
+      });
+    }
+
+    if (!anims.exists('player_run')) {
+      anims.create({
+        key: 'player_run',
+        frames: anims.generateFrameNumbers('scientist_run', { start: 0, end: 7 }),
+        frameRate: 12,
+        repeat: -1
+      });
+    }
+
+    // The first four frames cover takeoff and ascent. At 9 FPS, the
+    // 4-frame sequence lasts about 444 ms, close to this jump's 438 ms apex.
+    if (!anims.exists('player_jump')) {
+      anims.create({
+        key: 'player_jump',
+        frames: anims.generateFrameNumbers('scientist_jump', { start: 0, end: 3 }),
+        frameRate: 9,
+        repeat: 0
+      });
+    }
+
+    // Hold the dedicated falling pose until the physics body lands.
+    if (!anims.exists('player_fall')) {
+      anims.create({
+        key: 'player_fall',
+        frames: [{ key: 'scientist_jump', frame: 4 }],
+        frameRate: 1,
+        repeat: -1
+      });
+    }
+
+    // A short one-frame landing pose. Normal movement animation resumes after it.
+    if (!anims.exists('player_land')) {
+      anims.create({
+        key: 'player_land',
+        frames: [{ key: 'scientist_jump', frame: 5 }],
+        frameRate: 10,
+        repeat: 0
+      });
+    }
+
+    if (!anims.exists('player_wand')) {
+      anims.create({
+        key: 'player_wand',
+        frames: anims.generateFrameNumbers('scientist_wand', { start: 0, end: 5 }),
+        frameRate: 10,
+        repeat: 0
+      });
+    }
+  }
+
+  private handleAnimationComplete(animation: Phaser.Animations.Animation): void {
+    if (animation.key === 'player_wand') {
+      this.isWandAnimating = false;
+    } else if (animation.key === 'player_land') {
+      this.isLanding = false;
+    }
+  }
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, 'scientist_idle');
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    // Physics Body tuning
+    // Display the 120x104 sprite frames at half scale. The custom origin
+    // (0.42, 0.5) places the character's torso near the physics body's center.
+    this.setScale(0.5);
+    this.setOrigin(0.42, 0.5);
+
+    // Keep a compact body around the scientist's torso and legs, rather than
+    // using the large transparent sprite-sheet frame as the collision shape.
     this.setCollideWorldBounds(true);
-    // Align 12x30 hitbox to 20x36 sprite, preventing snagging on platform edges
-    this.setSize(12, 30);
-    this.setOffset(4, 6);
+    this.setSize(24, 60);
+    this.setOffset(38, 24);
     this.setMaxVelocity(this.moveSpeed, 600);
+
+    // Register animations before the first update.
+    this.createAnimations();
+    this.on(Phaser.Animations.Events.ANIMATION_COMPLETE, this.handleAnimationComplete, this);
+    this.play('player_idle');
 
     // Setup input keys (A/D or Arrows to move, Space/W/Up to jump, E/J to interact)
     this.ensureKeys();
@@ -64,6 +146,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Landing detection — emit once when transitioning from air to ground
     if (onGround && this.wasInAir) {
       this.wasInAir = false;
+      this.isJumpKeyHeld = false;
+      this.isLanding = true;
+      this.play('player_land');
       this.emit('player_land');
     } else if (!onGround) {
       this.wasInAir = true;
@@ -106,15 +191,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Horizontal Movement
-    if (moveLeft && !moveRight) {
+    // The one-shot wand and landing poses have planted feet, so briefly stop
+    // horizontal motion rather than letting the character slide through them.
+    if (this.isWandAnimating || this.isLanding) {
+      this.setVelocityX(0);
+    } else if (moveLeft && !moveRight) {
       this.setVelocityX(-this.moveSpeed);
       this.setFlipX(true);
-      // Adjust offset when flipped to maintain centered collider
-      this.setOffset(4, 6);
     } else if (moveRight && !moveLeft) {
       this.setVelocityX(this.moveSpeed);
       this.setFlipX(false);
-      this.setOffset(4, 6);
     } else {
       // Snappy deceleration
       this.setVelocityX(0);
@@ -126,6 +212,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (canJump && wantsJump) {
       this.setVelocityY(this.jumpVelocity);
+      this.wasInAir = true;
+      this.isLanding = false;
       this.coyoteTimer = 0;
       this.jumpBufferTimer = 0;
       this.isJumpKeyHeld = true;
@@ -148,32 +236,56 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   private updateAnimation(onGround: boolean): void {
-    if (!this.body) return;
+    if (!this.body || this.isDead) return;
 
+    // One-shot actions have priority over locomotion animations.
+    if (this.isWandAnimating || this.isLanding) return;
+
+    const verticalSpeed = this.body.velocity.y;
+    const currentKey = this.anims.currentAnim?.key;
+
+    if (verticalSpeed < -40) {
+      if (currentKey !== 'player_jump') {
+        this.play('player_jump');
+      }
+      return;
+    }
+
+    if (verticalSpeed > 40) {
+      if (currentKey !== 'player_fall') {
+        this.play('player_fall');
+      }
+      return;
+    }
+
+    // Near the jump apex, keep the current airborne pose instead of
+    // switching to idle for a frame while vertical velocity crosses zero.
     if (!onGround) {
-      if (this.body.velocity.y < -40) {
-        if (this.anims.currentAnim?.key !== 'player_jump') {
-          this.play('player_jump');
-        }
-      } else if (this.body.velocity.y > 40) {
-        if (this.anims.currentAnim?.key !== 'player_fall') {
-          this.play('player_fall');
-        }
+      if (currentKey !== 'player_jump' && currentKey !== 'player_fall') {
+        this.play('player_jump');
       }
-    } else {
-      if (Math.abs(this.body.velocity.x) > 10) {
-        if (this.anims.currentAnim?.key !== 'player_run') {
-          this.play('player_run');
-        }
-      } else {
-        if (this.anims.currentAnim?.key !== 'player_idle') {
-          this.play('player_idle');
-        }
+      return;
+    }
+
+    if (Math.abs(this.body.velocity.x) > 10) {
+      if (currentKey !== 'player_run') {
+        this.play('player_run');
       }
+    } else if (currentKey !== 'player_idle') {
+      this.play('player_idle');
     }
   }
 
+  public playWandAnimation(): void {
+    if (this.isDead) return;
+    this.isWandAnimating = true;
+    this.setVelocityX(0);
+    this.play('player_wand');
+  }
+
   public useStaff(): void {
+    if (this.isDead) return;
+
     if (this.staffCharges <= 0) {
       this.emit('staff_empty');
       return;
@@ -181,6 +293,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     this.staffCharges--;
     this.emit('staff_used', this.staffCharges);
+    this.playWandAnimation();
 
     // Glowing cyan pulse fx from staff tip
     const staffTipX = this.flipX ? this.x - 10 : this.x + 10;
@@ -247,6 +360,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.isDead = true;
     this.integrity = 0;
     this.setVelocity(0, 0);
+    this.isLanding = false;
+    this.isWandAnimating = false;
+    this.anims.stop();
     this.emit('player_damaged', 0);
     this.emit('player_died');
   }
@@ -296,6 +412,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.jumpBufferTimer = 0;
     this.coyoteTimer = 0;
     this.wasInAir = false;
+    this.isLanding = false;
+    this.isWandAnimating = false;
+    this.play('player_idle');
 
     // Reset input states and ensure keys are registered in the keyboard plugin
     if (this.scene.input.keyboard) {

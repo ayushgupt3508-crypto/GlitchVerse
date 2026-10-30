@@ -69,6 +69,24 @@ export class PreloadScene extends Phaser.Scene {
       this.statusText.setText('PRESS ANY KEY TO CONTINUE');
     });
 
+    // Scientist character animation sprite sheets (120x104 per frame)
+    this.load.spritesheet('scientist_idle', 'assets/Char_Animation/idle_sheet.png', {
+      frameWidth: 120,
+      frameHeight: 104
+    });
+    this.load.spritesheet('scientist_run', 'assets/Char_Animation/run_sheet.png', {
+      frameWidth: 120,
+      frameHeight: 104
+    });
+    this.load.spritesheet('scientist_jump', 'assets/Char_Animation/jump_sheet.png', {
+      frameWidth: 120,
+      frameHeight: 104
+    });
+    this.load.spritesheet('scientist_wand', 'assets/Char_Animation/wand_sheet.png', {
+      frameWidth: 120,
+      frameHeight: 104
+    });
+
     // Load Main Menu reference background & UI icons
     this.load.image('main_menu_bg', 'assets/main_menu_bg.png');
     this.load.image('pause_icon', 'assets/bi_pause-circle-fill.original.png');
