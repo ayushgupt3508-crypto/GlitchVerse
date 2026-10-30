@@ -11,6 +11,7 @@ import { Level3Scene } from './scenes/level3';
 import { Level4Scene } from './scenes/level4';
 import { Level5Scene } from './scenes/level5';
 import { EndingScene } from './scenes/EndingScene';
+import { FullscreenManager } from './systems/FullscreenManager';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -47,3 +48,4 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 export const game = new Phaser.Game(config);
+FullscreenManager.init(game);

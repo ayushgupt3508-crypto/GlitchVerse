@@ -1,6 +1,7 @@
 
 import Phaser from 'phaser';
 import { AudioManager } from '../systems/AudioManager';
+import { FullscreenManager } from '../systems/FullscreenManager';
 
 export interface GameOverCallbacks {
     onRespawn: () => void;
@@ -379,6 +380,9 @@ export class GameOverScreen extends Phaser.GameObjects.Container {
                 this.scene?.input?.keyboard?.resetKeys();
                 callbacks.onRestart();
             } else if (code === 'Escape' || code === 'KeyM') {
+                if (code === 'Escape' && FullscreenManager.shouldBlockEsc()) {
+                    return;
+                }
                 handled = true;
                 event.preventDefault();
                 event.stopPropagation();

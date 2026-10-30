@@ -7,6 +7,7 @@ import { PauseMenu } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
+import { FullscreenManager } from '../systems/FullscreenManager';
 
 export class GameScene extends Phaser.Scene {
   private player!: Player;
@@ -222,7 +223,10 @@ export class GameScene extends Phaser.Scene {
     this.hud.onPauseClicked(() => this.togglePause());
     if (this.input.keyboard) {
       const esc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-      esc.on('down', () => this.togglePause());
+      esc.on('down', () => {
+        if (FullscreenManager.shouldBlockEsc()) return;
+        this.togglePause();
+      });
     }
 
     this.createScanlineOverlay();

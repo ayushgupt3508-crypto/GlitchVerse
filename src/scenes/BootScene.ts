@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
+import { FullscreenManager } from '../systems/FullscreenManager';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -15,6 +16,9 @@ export class BootScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.BLUR, () => {
       // Suspend audio or emit pause event when player leaves tab
     });
+
+    // Initialize global fullscreen handling once
+    FullscreenManager.init(this.scale);
 
     this.scene.start(GAME_CONFIG.sceneKeys.Preload);
   }

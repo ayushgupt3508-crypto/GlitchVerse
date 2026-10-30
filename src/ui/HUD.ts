@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { IHudChargeDisplay } from '../systems/staff/StaffController';
 import { AudioManager } from '../systems/AudioManager';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { FullscreenManager } from '../systems/FullscreenManager';
 
 const GAME_FONTS = {
   primary: 'Pixel Operator',
@@ -313,6 +314,9 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     if (scene.input.keyboard) {
       const escKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
       escKey.on('down', () => {
+        if (FullscreenManager.shouldBlockEsc()) {
+          return;
+        }
         AudioManager.playMenuSelect();
         this.emit('pause_requested');
       });

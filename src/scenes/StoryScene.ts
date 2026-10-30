@@ -5,6 +5,7 @@
 
 import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
+import { FullscreenManager } from '../systems/FullscreenManager';
 
 const SLIDES = [
   {
@@ -192,7 +193,10 @@ export class StoryScene extends Phaser.Scene {
       .once('down', () => this.advanceSlide());
     this.input.keyboard
       ?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
-      .once('down', () => this.skipAll());
+      .on('down', () => {
+        if (FullscreenManager.shouldBlockEsc()) return;
+        this.skipAll();
+      });
 
     // Camera fade-in from black
     this.cameras.main.fadeIn(350, 0, 0, 0);

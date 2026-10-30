@@ -8,6 +8,7 @@ import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
+import { FullscreenManager } from '../systems/FullscreenManager';
 
 /**
  * Sector2Scene — Heat Age (Bug-fixed version)
@@ -197,7 +198,10 @@ export class Sector2Scene extends Phaser.Scene {
     // Pause key & HUD Home Button
     this.hud.onPauseClicked(() => this.togglePause());
     if (this.input.keyboard) {
-      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.togglePause());
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => {
+        if (FullscreenManager.shouldBlockEsc()) return;
+        this.togglePause();
+      });
     }
 
     this.addScanlines();
