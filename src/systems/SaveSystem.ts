@@ -24,7 +24,6 @@ const TOTAL_LEVELS = 5;
 
 export class SaveSystem {
   private static cachedSettings: GameSettings | null = null;
-  private static cachedProgress: GameProgress | null = null;
 
   public static getSettings(): GameSettings {
     if (this.cachedSettings) {
@@ -92,13 +91,12 @@ export class SaveSystem {
   }
 
   public static saveProgress(progress: GameProgress): void {
-    this.cachedProgress = progress;
     try {
-      localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+        localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
     } catch (e) {
-      console.warn('Failed to persist progress to localStorage.', e);
+        console.warn('Failed to persist progress to localStorage.', e);
     }
-  }
+}
 
   public static markLevelCompleted(levelNumber: number, score?: number): void {
     const progress = this.getProgress();
@@ -132,11 +130,12 @@ export class SaveSystem {
   }
 
 public static isAllLevelsCompleted(): boolean {
-  const progress = this.getProgress();
+    const progress = this.getProgress();
 
-  return [1, 2, 3, 4, 5].every(level =>
-    progress.completedLevels.includes(level)
-  );
+    return Array.from(
+        { length: TOTAL_LEVELS },
+        (_, index) => index + 1
+    ).every(level => progress.completedLevels.includes(level));
 }
 
   public static getBestScore(): number | undefined {

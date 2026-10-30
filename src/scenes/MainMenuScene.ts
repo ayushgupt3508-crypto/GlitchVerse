@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
 import { SettingsModal } from '../ui/SettingsModal';
 import { ExitModal } from '../ui/ExitModal';
-import { SaveSystem } from '../systems/SaveSystem';
 
 export class MainMenuScene extends Phaser.Scene {
   private activeModal: Phaser.GameObjects.Container | null = null;
