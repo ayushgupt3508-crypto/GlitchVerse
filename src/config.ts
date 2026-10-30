@@ -6,11 +6,14 @@ export const GAME_CONFIG = {
   sceneKeys: {
     Boot: 'BootScene',
     Preload: 'PreloadScene',
-    MainMenu: 'MainMenuScene',
+    MainMenu: 'MainMenu',
     Game: 'GameScene',
     Level3: 'Level3Scene',
     Level4: 'Level4Scene',
     Level5: 'Level5Scene',
+    GameEnding: 'GameEnding',
+    FinalScore: 'FinalScore',
+    Credits: 'Credits',
     Ending: 'EndingScene'
   }
 } as const;

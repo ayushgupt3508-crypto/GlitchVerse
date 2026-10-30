@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { GAME_CONFIG } from '../config';
 import { SettingsModal } from '../ui/SettingsModal';
-import { CreditsModal } from '../ui/CreditsModal';
 import { ExitModal } from '../ui/ExitModal';
+import { hasCompletedAllLevels } from '../utils/progress';
+import { SaveSystem } from '../systems/SaveSystem';
 
 export class MainMenuScene extends Phaser.Scene {
   private activeModal: Phaser.GameObjects.Container | null = null;
@@ -15,6 +16,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.cameras.main.fadeIn(500);
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
@@ -58,20 +60,21 @@ export class MainMenuScene extends Phaser.Scene {
       });
       this.load.start();
     }
-this.time.addEvent({
-    delay: 2000,
-    loop: true,
-    callback: () => {
+
+    this.time.addEvent({
+      delay: 2000,
+      loop: true,
+      callback: () => {
         this.tweens.add({
-            targets: titleLogo,
-            x: titleLogo.x + Phaser.Math.Between(-7, 7),
-            y: titleLogo.y + Phaser.Math.Between(-2, 2),
-            duration: 40,
-            yoyo: true,
-            ease: 'Stepped'
+          targets: titleLogo,
+          x: titleLogo.x + Phaser.Math.Between(-7, 7),
+          y: titleLogo.y + Phaser.Math.Between(-2, 2),
+          duration: 40,
+          yoyo: true,
+          ease: 'Stepped'
         });
-    }
-});
+      }
+    });
 
     // Subtitle
     this.add.text(titleX, titleY + 34, '// GLITCHVERSE SIMULATION //', {
@@ -116,7 +119,14 @@ this.time.addEvent({
     this.setPointerToButton(this.buttons[0]);
 
 
-
+    if (!hasCompletedAllLevels()) {
+      const creditsBtn = this.buttons[2];
+      if (creditsBtn) {
+        creditsBtn.setVisible(false);
+        const hitArea = creditsBtn.list.find(obj => obj instanceof Phaser.GameObjects.Zone) as Phaser.GameObjects.Zone | undefined;
+        hitArea?.disableInteractive();
+      }
+    }
 
     // Keyboard shortcuts for level testing: [1] S1, [2] S2, [3] S3, [4] S4 (Ancient Forest), [5] S5 (Futuristic Core)
     if (this.input.keyboard) {
@@ -128,9 +138,7 @@ this.time.addEvent({
       key3.on('down', () => this.startLevel3());
       const key2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
       key2.on('down', () => {
-        this.cameras.main.fade(300, 7, 11, 20, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-          if (progress === 1) this.scene.start('Sector2Scene');
-        });
+        this.scene.start('Sector2Scene');
       });
       const key1 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
       key1.on('down', () => this.handlePlay());
@@ -347,10 +355,11 @@ this.time.addEvent({
 
   private handlePlay(): void {
     if (this.activeModal) return;
-    this.cameras.main.fade(300, 7, 11, 20, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-      if (progress === 1) {
-        this.scene.start('StoryScene');
-      }
+    SaveSystem.resetProgress();
+    const cam = this.cameras.main;
+    cam.fadeOut(500);
+    cam.once('camerafadeoutcomplete', () => {
+      this.scene.start('StoryScene');
     });
   }
 
@@ -363,8 +372,10 @@ this.time.addEvent({
 
   private openCredits(): void {
     if (this.activeModal) return;
-    this.activeModal = new CreditsModal(this, () => {
-      this.activeModal = null;
+    const cam = this.cameras.main;
+    cam.fadeOut(500);
+    cam.once('camerafadeoutcomplete', () => {
+      this.scene.start('Credits');
     });
   }
 

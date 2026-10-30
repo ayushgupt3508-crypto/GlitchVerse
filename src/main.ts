@@ -10,8 +10,20 @@ import { Sector2Scene } from './scenes/Sector2Scene';
 import { Level3Scene } from './scenes/level3';
 import { Level4Scene } from './scenes/level4';
 import { Level5Scene } from './scenes/level5';
+import { GameEndingScene } from './scenes/GameEndingScene';
+import { FinalScoreScene } from './scenes/FinalScoreScene';
+import { CreditsScene } from './scenes/CreditsScene';
 import { EndingScene } from './scenes/EndingScene';
 import { FullscreenManager } from './systems/FullscreenManager';
+
+class MainMenuAliasScene extends Phaser.Scene {
+  constructor() {
+    super('MainMenuScene');
+  }
+  create() {
+    this.scene.start('MainMenu');
+  }
+}
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -36,6 +48,7 @@ const config: Phaser.Types.Core.GameConfig = {
     BootScene,
     PreloadScene,
     MainMenuScene,
+    MainMenuAliasScene,
     StoryScene,
     GameScene,
     LevelCompleteScene,
@@ -43,6 +56,9 @@ const config: Phaser.Types.Core.GameConfig = {
     Level3Scene,
     Level4Scene,
     Level5Scene,
+    GameEndingScene,
+    FinalScoreScene,
+    CreditsScene,
     EndingScene
   ]
 };

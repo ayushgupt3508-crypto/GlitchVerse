@@ -156,7 +156,7 @@ export class LevelCompleteScene extends Phaser.Scene {
       nextColor = '#ff007f';
     } else if (sector === 5) {
       nextLabel = 'PROCEED TO EXTRACTION EPILOGUE ▶';
-      nextTarget = 'EndingScene';
+      nextTarget = 'GameEnding';
       nextColor = '#00f0ff';
     }
 

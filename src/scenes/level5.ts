@@ -11,6 +11,7 @@ import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
 import { FullscreenManager } from '../systems/FullscreenManager';
+import { SaveSystem } from '../systems/SaveSystem';
 
 /**
  * LEVEL 5 DATA SPECIFICATION — FUTURISTIC CORE & FINAL ESCAPE
@@ -665,6 +666,20 @@ export class Level5Scene extends Phaser.Scene {
     this.hud.showBanner('SIMULATION ESCAPE SUCCESSFUL! CONSCIOUSNESS DE-REZZING...');
     AudioManager.playVictory();
 
+    const timeMs = Date.now() - this.levelStartTime;
+    const score = Math.max(1000, 10000 - this.deathCount * 500 - Math.floor(timeMs / 1000) * 10);
+    SaveSystem.markLevelCompleted(5, score);
+
+    const cam = this.cameras.main;
+    cam.fadeOut(500);
+    cam.once('camerafadeoutcomplete', () => {
+      this.scene.start('GameEnding', {
+        deathCount: this.deathCount,
+        timeMs,
+        score
+      });
+    });
+    return;
     // Brilliant whiteout flash fading into EndingScene
     this.cameras.main.fade(1000, 255, 255, 255, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
       if (progress === 1) {
