@@ -20,26 +20,27 @@ export class MainMenuScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    // 1. Visual Foundation: Provided Reference Image
-    if (this.textures.exists('main_menu_bg')) {
-      const bg = this.add.image(width / 2, height / 2, 'main_menu_bg');
-      // Scale to fit canvas while preserving aspect ratio
-      const scaleX = width / bg.width;
-      const scaleY = height / bg.height;
-      const scale = Math.max(scaleX, scaleY);
-      bg.setScale(scale).setScrollFactor(0);
+    // 1. Animated Video Background
+    if (this.cache.video.exists('main_menu_video')) {
+      const bgVideo = this.add.video(width / 2, height / 2, 'main_menu_video');
+
+      bgVideo.setMute(true);
+      bgVideo.setLoop(true);
+      bgVideo.setScrollFactor(0);
+      bgVideo.setDepth(-10);
+
+      // Fires once the video texture exists and bgVideo.width/height == real video size
+      bgVideo.on(Phaser.GameObjects.Events.VIDEO_CREATED, (_v: Phaser.GameObjects.Video, vw: number, vh: number) => {
+        const scale = Math.min(width / vw, height / vh) * 0.95; // "contain"
+        // const scale = Math.max(width / vw, height / vh);     // "cover" (fills screen, crops edges)
+        bgVideo.setScale(scale);
+        bgVideo.setPosition(width / 2, height / 2);
+      });
+
+      bgVideo.play();
     } else {
-      // Fallback dark gradient
-      this.add.rectangle(width / 2, height / 2, width, height, 0x070b14);
+      this.add.rectangle(width / 2, height / 2, width, height, 0x070b14).setDepth(-10);
     }
-
-    // Subtle atmospheric scanlines overlay
-    const scanlines = this.add.graphics();
-    scanlines.lineStyle(1, 0x000000, 0.15);
-    for (let y = 0; y < height; y += 4) {
-      scanlines.lineBetween(0, y, width, y);
-    }
-
     // 2. Title: GraphVerse Logo Image
     const titleX = 135;
     const titleY = 60;

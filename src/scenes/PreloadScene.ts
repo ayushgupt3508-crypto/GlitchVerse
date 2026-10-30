@@ -87,6 +87,14 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('graphverse_logo', 'assets/GraphVerse.png');
     this.load.image('GraphVerse', 'assets/GraphVerse.png');
 
+    this.load.video(
+      'main_menu_video',
+      'assets/main_menu_video.mp4',
+      'loadeddata',
+      false,
+      true
+    );
+
     // Create initial procedural textures for placeholder testing (prevents asset 404s in Phase 1)
     this.createPlaceholderTextures();
   }
