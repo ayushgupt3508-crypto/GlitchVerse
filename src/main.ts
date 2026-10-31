@@ -14,6 +14,7 @@ import { GameEndingScene } from './scenes/GameEndingScene';
 import { FinalScoreScene } from './scenes/FinalScoreScene';
 import { CreditsScene } from './scenes/CreditsScene';
 import { EndingScene } from './scenes/EndingScene';
+import { OrientationManager } from './utils/OrientationManager';
 import { FullscreenManager } from './systems/FullscreenManager';
 
 class MainMenuAliasScene extends Phaser.Scene {
@@ -34,8 +35,17 @@ const config: Phaser.Types.Core.GameConfig = {
   roundPixels: true,
   backgroundColor: '#070b14',
   scale: {
+    parent: 'game-container',
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: GAME_CONFIG.width,
+    height: GAME_CONFIG.height
+  },
+  input: {
+    activePointers: 4,
+    touch: {
+      capture: true
+    }
   },
   physics: {
     default: 'arcade',
@@ -64,4 +74,7 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 export const game = new Phaser.Game(config);
+
+// Enforce landscape orientation on mobile devices and manage responsive auto-scaling
+OrientationManager.init(game);
 FullscreenManager.init(game);

@@ -20,6 +20,11 @@ import { AudioManager } from '../systems/AudioManager';
  *     - Decoy hologram: shimmering scanline phantom clone with pulse ring.
  *  • Input: [C] or [Q] key, or screen click / ability button.
  */
+export interface CamouflageAbilityOptions {
+  hudY?: number;
+  consumesCharges?: boolean;
+}
+
 export class CamouflageAbility {
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
@@ -51,10 +56,14 @@ export class CamouflageAbility {
   private hudWidget?: Phaser.GameObjects.Container;
   private hudStatusText?: Phaser.GameObjects.Text;
   private hudBarFill?: Phaser.GameObjects.Graphics;
+  private hudY: number;
+  private consumesCharges: boolean;
 
-  constructor(scene: Phaser.Scene, player: Player) {
+  constructor(scene: Phaser.Scene, player: Player, options?: CamouflageAbilityOptions) {
     this.scene = scene;
     this.player = player;
+    this.hudY = options?.hudY ?? 48;
+    this.consumesCharges = options?.consumesCharges ?? true;
 
     // Graphics layers (rendered at depth 8 - above background, below foreground)
     this.refractionGfx = scene.add.graphics().setDepth(8);
@@ -84,7 +93,8 @@ export class CamouflageAbility {
 
   /** True if the ability is ready to be triggered. */
   public get isReady(): boolean {
-    return !this.isCloaked && this.cooldownTimer <= 0 && !this.player.isDead;
+    const hasCharge = !this.consumesCharges || this.player.staffCharges > 0;
+    return !this.isCloaked && this.cooldownTimer <= 0 && !this.player.isDead && hasCharge;
   }
 
   /**
@@ -93,6 +103,11 @@ export class CamouflageAbility {
    */
   public activate(): boolean {
     if (!this.isReady) return false;
+
+    if (this.consumesCharges) {
+      if (this.player.staffCharges <= 0) return false;
+      this.player.useStaff();
+    }
 
     this.isCloaked = true;
     this.activeTimer = this.DURATION;
@@ -379,24 +394,23 @@ export class CamouflageAbility {
 
   private createHudWidget(): void {
     const W = this.scene.cameras.main.width;
-    const H = this.scene.cameras.main.height;
 
-    // Positioned at bottom-right corner
-    const widgetX = W - 148;
-    const widgetY = H - 38;
+    // Positioned directly below top-right pause & guide icons (configurable y)
+    const widgetX = W - 156;
+    const widgetY = this.hudY;
 
     this.hudWidget = this.scene.add.container(widgetX, widgetY).setScrollFactor(0).setDepth(52);
 
     // Dark pill container
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0a0c14, 0.9);
-    bg.fillRoundedRect(0, 0, 138, 28, 8);
+    bg.fillStyle(0x0a0c14, 0.92);
+    bg.fillRoundedRect(0, 0, 146, 24, 7);
     bg.lineStyle(1.5, 0xd4af37, 0.85);
-    bg.strokeRoundedRect(0, 0, 138, 28, 8);
+    bg.strokeRoundedRect(0, 0, 146, 24, 7);
     this.hudWidget.add(bg);
 
     // Interactive button click trigger
-    const hitZone = this.scene.add.zone(0, 0, 138, 28)
+    const hitZone = this.scene.add.zone(0, 0, 146, 24)
       .setOrigin(0)
       .setInteractive({ useHandCursor: true });
     hitZone.on('pointerdown', () => this.activate());
@@ -405,7 +419,7 @@ export class CamouflageAbility {
     // Gauge bar background
     const barBg = this.scene.add.graphics();
     barBg.fillStyle(0x1a1e28, 0.95);
-    barBg.fillRoundedRect(6, 17, 126, 6, 3);
+    barBg.fillRoundedRect(6, 16, 134, 4, 2);
     this.hudWidget.add(barBg);
 
     // Gauge bar fill
@@ -413,11 +427,12 @@ export class CamouflageAbility {
     this.hudWidget.add(this.hudBarFill);
 
     // Status text
-    this.hudStatusText = this.scene.add.text(69, 9, '[C] ILLUSION: READY', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
+    this.hudStatusText = this.scene.add.text(73, 8, '[C] ILLUSION: READY', {
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '9px',
+      fontStyle: 'bold',
       color: '#ffd166',
-      stroke: '#000000',
+      stroke: '#040711',
       strokeThickness: 2
     }).setOrigin(0.5);
     this.hudWidget.add(this.hudStatusText);
@@ -430,13 +445,13 @@ export class CamouflageAbility {
 
     if (this.isCloaked) {
       const remainingSec = (this.activeTimer / 1000).toFixed(1);
-      this.hudStatusText.setText(`[C] ILLUSION: ACTIVE [${remainingSec}s]`);
+      this.hudStatusText.setText(`[C] ILLUSION [${remainingSec}s]`);
       this.hudStatusText.setColor('#00f0ff');
 
       // Cyan draining bar
       const pct = Math.max(0, this.activeTimer / this.DURATION);
       this.hudBarFill.fillStyle(0x00f0ff, 1);
-      this.hudBarFill.fillRoundedRect(6, 17, 126 * pct, 6, 3);
+      this.hudBarFill.fillRoundedRect(6, 16, 134 * pct, 4, 2);
     } else if (this.cooldownTimer > 0) {
       const remainingSec = (this.cooldownTimer / 1000).toFixed(1);
       this.hudStatusText.setText(`[C] RECHARGING [${remainingSec}s]`);
@@ -445,14 +460,19 @@ export class CamouflageAbility {
       // Orange filling bar
       const pct = 1 - (this.cooldownTimer / this.COOLDOWN);
       this.hudBarFill.fillStyle(0xffaa44, 0.9);
-      this.hudBarFill.fillRoundedRect(6, 17, 126 * pct, 6, 3);
+      this.hudBarFill.fillRoundedRect(6, 16, 134 * pct, 4, 2);
+    } else if (this.consumesCharges && this.player.staffCharges <= 0) {
+      this.hudStatusText.setText('[C] NO CHARGES');
+      this.hudStatusText.setColor('#ff4444');
+      this.hudBarFill.fillStyle(0x552222, 0.8);
+      this.hudBarFill.fillRoundedRect(6, 16, 134, 4, 2);
     } else {
       this.hudStatusText.setText('[C] ILLUSION: READY');
       this.hudStatusText.setColor('#ffd166');
 
       // Full gold bar with subtle shimmer
       this.hudBarFill.fillStyle(0xd4af37, 1);
-      this.hudBarFill.fillRoundedRect(6, 17, 126, 6, 3);
+      this.hudBarFill.fillRoundedRect(6, 16, 134, 4, 2);
     }
   }
 

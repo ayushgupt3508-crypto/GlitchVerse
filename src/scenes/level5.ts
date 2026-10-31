@@ -10,15 +10,17 @@ import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
+import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
+import { RealitySwapSystem, RiftNodeDef } from '../systems/RealitySwapSystem';
 import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 
 
 /**
- * LEVEL 5 DATA SPECIFICATION — FUTURISTIC CORE & FINAL ESCAPE
+ * LEVEL 5 DATA SPECIFICATION — FUTURISTIC CORE & FINAL ESCAPE (EXTENDED)
  * ─────────────────────────────────────────────────────────────
  * Look: Floating structures, holographic ads, neon architecture, glitching platforms,
- *       data streams, fragments of the original lab.
+ *       data streams, echo reality rifts, fragments of the original lab.
  * Palette: Navy (0x061124), Black (0x030814), Cyan (0x00f0ff), Electric Blue (0x00a8ff),
  *          Purple (0x7209b7), Magenta (0xff007f).
  */
@@ -37,21 +39,23 @@ export const LEVEL5_DATA = {
     skyBottom: 0x080f1e
   },
   dimensions: {
-    width: 3300,
+    width: 5400,
     height: 440,
     floorY: 340
   },
   spawn: { x: 80, y: 300 },
   checkpoints: [
-    { id: 'cp_origin',    x: 80,   y: 300, label: 'CYBER-PROJECTION SPHERE' },
-    { id: 'cp_chain',     x: 1640, y: 220, label: 'LAB FRAGMENT OBSERVATORY' },
-    { id: 'cp_pedestal',  x: 2360, y: 300, label: 'FAILSAFE MATRIX PEDESTAL' }
+    { id: 'cp_origin',           x: 80,   y: 300, label: 'CYBER-PROJECTION SPHERE' },
+    { id: 'cp_chain',            x: 1640, y: 220, label: 'LAB FRAGMENT OBSERVATORY' },
+    { id: 'cp_rift_junction',    x: 3200, y: 300, label: 'RIFT JUNCTION' },
+    { id: 'cp_altar_threshold',  x: 4640, y: 300, label: 'ALTAR THRESHOLD' },
+    { id: 'cp_pedestal',         x: 4940, y: 300, label: 'FAILSAFE MATRIX PEDESTAL' }
   ],
   puzzle: {
-    component5:    { x: 2180, y: 290 },
-    failsafePedestal: { x: 2360, y: 300 },
-    escapeBulkhead: { x: 2780, y: 280 },
-    exitPortal:    { x: 3150, y: 220 }
+    component5:       { x: 4800, y: 290 },
+    failsafePedestal: { x: 4940, y: 300 },
+    escapeBulkhead:   { x: 5120, y: 280 },
+    exitPortal:       { x: 5350, y: 220 }
   }
 } as const;
 
@@ -61,12 +65,28 @@ export class Level5Scene extends Phaser.Scene {
   private staffController!: StaffController;
   private phasing!: PhasingAbility;
   private camouflage!: CamouflageAbility;
+  public realitySwap!: RealitySwapSystem;
   private drones: SentinelDrone[] = [];
 
   // Physics Groups
   private persistentPlatforms!: Phaser.Physics.Arcade.StaticGroup;
   private phaseAPlatforms: { sprite: Phaser.Physics.Arcade.Sprite; body: Phaser.Physics.Arcade.Body }[] = [];
   private phaseBPlatforms: { sprite: Phaser.Physics.Arcade.Sprite; body: Phaser.Physics.Arcade.Body }[] = [];
+
+  // Reality Swap & In-World Extended Elements
+  private puzzleBarriers: { sprite: Phaser.Physics.Arcade.Sprite; active: boolean }[] = [];
+  private lightBridge?: Phaser.Physics.Arcade.Sprite;
+  private conduitCrystals: Phaser.Physics.Arcade.Sprite[] = [];
+  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+  private keyA?: Phaser.Input.Keyboard.Key;
+  private keyD?: Phaser.Input.Keyboard.Key;
+  private keyW?: Phaser.Input.Keyboard.Key;
+  private keyE?: Phaser.Input.Keyboard.Key;
+  private keyJ?: Phaser.Input.Keyboard.Key;
+  private keySpace?: Phaser.Input.Keyboard.Key;
+  private hintZone4Shown = false;
+  private hintZone6Shown = false;
+  private hintZone7Shown = false;
 
   // Finale Sequence
   private component5Sprite?: Phaser.Physics.Arcade.Sprite;
@@ -92,9 +112,16 @@ export class Level5Scene extends Phaser.Scene {
   private gameOverScreen: GameOverScreen | null = null;
   private isPaused = false;
   private isRespawning = false;
+  private isLeavingScene = false;
 
   // Visuals
   private dataStreamGfx?: Phaser.GameObjects.Graphics;
+  private mobileHandle: MobileSetupHandle | null = null;
+
+  // Level-5-only mobile SHIFT button (reality toggle, no energy cost)
+  private mobileShiftBtn?: Phaser.GameObjects.Container;
+  private mobileShiftBtnBg?: Phaser.GameObjects.Arc;
+  private mobileShiftBtnLabel?: Phaser.GameObjects.Text;
 
   constructor() {
     super('Level5Scene');
@@ -102,7 +129,16 @@ export class Level5Scene extends Phaser.Scene {
 
   create(): void {
     AudioManager.init();
+    AudioManager.startLevel5Music();
     this.levelStartTime = Date.now();
+
+    // Reset progression flags if spawning at origin
+    if (this.checkpointX === LEVEL5_DATA.spawn.x) {
+      this.hasCollectedComponent5 = false;
+      this.isFailsafeRepaired = false;
+      this.isChamberCollapsing = false;
+      this.collapseProgress = 0;
+    }
 
     // Generate textures
     TextureGenerator.generatePlayerTextures(this);
@@ -134,14 +170,155 @@ export class Level5Scene extends Phaser.Scene {
 
     // Initialize Phasing Ability
     this.phasing = new PhasingAbility(this, this.player);
-    this.staffController.registerAbilityHandler('PHASE', () => this.phasing.toggleReality());
 
-    // Initialize Camouflage Ability (used during the collapsing chamber gauntlet)
-    this.camouflage = new CamouflageAbility(this, this.player);
-    this.staffController.registerAbilityHandler('CAMOUFLAGE', () => this.camouflage.activate());
+    // Initialize Camouflage Ability (positioned at hudY: 76, directly beneath Phasing shift bar)
+    this.camouflage = new CamouflageAbility(this, this.player, { hudY: 76 });
+
+    // Setup Keyboard cursors & keys for Sentinel and Player
+    if (this.input.keyboard) {
+      this.cursors = this.input.keyboard.createCursorKeys();
+      this.keyA     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+      this.keyD     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+      this.keyW     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+      this.keyE     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+      this.keyJ     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J);
+      this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    }
 
     // Build Cybernetic Architecture & Phasing Platform Chain
     this.buildCoreArchitecture();
+
+    // Define the 5 Reality Swap Rift Nodes across the extended zones
+    const nodeDefs: RiftNodeDef[] = [
+      // Node 1: Zone 4 Vault Ingress
+      {
+        id: 'node_01_vault',
+        x: 2020,
+        y: LEVEL5_DATA.dimensions.floorY,
+        label: 'NODE 01 · VAULT INGRESS',
+        sentinelSpawnX: 2060,
+        sentinelSpawnY: 300,
+        objectiveX: 2380,
+        objectiveY: 200,
+        objectiveLabel: 'VAULT OVERRIDE',
+        swapDestinationX: 2380,
+        swapDestinationY: LEVEL5_DATA.dimensions.floorY,
+        ghostPlatforms: [
+          { x: 2040, y: 340, w: 90, h: 20 },
+          { x: 2110, y: 285, w: 85, h: 18 },
+          { x: 2210, y: 235, w: 85, h: 18 },
+          { x: 2310, y: 210, w: 85, h: 18 }
+        ],
+        onObjectiveCompleted: () => {
+          this.deactivateBarrier(0);
+        }
+      },
+      // Node 2: Zone 5 Phased Void Chasm
+      {
+        id: 'node_02_bridge',
+        x: 2640,
+        y: LEVEL5_DATA.dimensions.floorY,
+        label: 'NODE 02 · DESYNC BRIDGE',
+        sentinelSpawnX: 2680,
+        sentinelSpawnY: 300,
+        objectiveX: 3100,
+        objectiveY: 180,
+        objectiveLabel: 'LIGHT BRIDGE GENERATOR',
+        swapDestinationX: 3180,
+        swapDestinationY: LEVEL5_DATA.dimensions.floorY,
+        ghostPlatforms: [
+          { x: 2740, y: 280, w: 96, h: 18 },
+          { x: 2870, y: 240, w: 96, h: 18 },
+          { x: 3000, y: 205, w: 96, h: 18 }
+        ],
+        hazards: [
+          { x: 2720, y: 390, w: 420, h: 40 }
+        ],
+        onObjectiveCompleted: () => {
+          this.activateLightBridge();
+        }
+      },
+      // Node 3: Zone 6 Drone Infiltration Corridor
+      {
+        id: 'node_03_infiltrate',
+        x: 3360,
+        y: LEVEL5_DATA.dimensions.floorY,
+        label: 'NODE 03 · CLOAK OVERRIDE',
+        sentinelSpawnX: 3380,
+        sentinelSpawnY: 300,
+        objectiveX: 3800,
+        objectiveY: 160,
+        objectiveLabel: 'LASER GRID DECOUPLER',
+        swapDestinationX: 3880,
+        swapDestinationY: LEVEL5_DATA.dimensions.floorY,
+        ghostPlatforms: [
+          { x: 3380, y: 280, w: 85, h: 18 },
+          { x: 3490, y: 230, w: 85, h: 18 },
+          { x: 3610, y: 190, w: 85, h: 18 },
+          { x: 3720, y: 185, w: 85, h: 18 }
+        ],
+        onObjectiveCompleted: () => {
+          this.deactivateBarrier(1);
+        }
+      },
+      // Node 4A: Zone 7 Dual Relay First Stage
+      {
+        id: 'node_04a_relay1',
+        x: 4050,
+        y: LEVEL5_DATA.dimensions.floorY,
+        label: 'NODE 04A · FIRST RELAY',
+        sentinelSpawnX: 4080,
+        sentinelSpawnY: 300,
+        objectiveX: 4280,
+        objectiveY: 200,
+        objectiveLabel: 'RELAY SYNAPSE 1',
+        swapDestinationX: 4330,
+        swapDestinationY: LEVEL5_DATA.dimensions.floorY,
+        ghostPlatforms: [
+          { x: 4130, y: 275, w: 85, h: 18 },
+          { x: 4220, y: 235, w: 85, h: 18 }
+        ],
+        hazards: [
+          { x: 4100, y: 390, w: 200, h: 40 }
+        ],
+        onObjectiveCompleted: () => {
+          // Relay 1 activated
+        }
+      },
+      // Node 4B: Zone 7 Dual Relay Final Stage
+      {
+        id: 'node_04b_relay2',
+        x: 4380,
+        y: LEVEL5_DATA.dimensions.floorY,
+        label: 'NODE 04B · FINAL SYNAPSE',
+        sentinelSpawnX: 4400,
+        sentinelSpawnY: 300,
+        objectiveX: 4600,
+        objectiveY: 180,
+        objectiveLabel: 'SINGULARITY GATE OVERRIDE',
+        swapDestinationX: 4660,
+        swapDestinationY: LEVEL5_DATA.dimensions.floorY,
+        ghostPlatforms: [
+          { x: 4460, y: 265, w: 85, h: 18 },
+          { x: 4540, y: 225, w: 85, h: 18 }
+        ],
+        hazards: [
+          { x: 4420, y: 390, w: 200, h: 40 }
+        ],
+        onObjectiveCompleted: () => {
+          this.deactivateBarrier(2);
+        }
+      }
+    ];
+
+    // Initialize RealitySwapSystem with ghost platforms and persistent platforms colliders
+    this.realitySwap = new RealitySwapSystem(this, this.player, nodeDefs, this.persistentPlatforms);
+
+    // Register Staff Ability Handlers — must return `true` so StaffController.activate()
+    // knows the ability executed and calls chargeManager.consumeCharge(). Returning void/
+    // undefined (falsy) causes the charge-consumption block to be skipped silently.
+    this.staffController.registerAbilityHandler('PHASE', () => { this.phasing.toggleReality(); return true; });
+    this.staffController.registerAbilityHandler('CAMOUFLAGE', () => { this.camouflage.activate(); return true; });
 
     // Setup Finale Elements (Component 5, Failsafe Pedestal, Bulkhead, Exit)
     this.setupFinaleElements();
@@ -186,20 +363,164 @@ export class Level5Scene extends Phaser.Scene {
       this.hud.showBanner('DIMENSIONAL PHASING: PRESS [SHIFT], [TAB], OR [X] TO SHIFT REALITY A & B');
     });
 
+    // Reset hints
+    this.hintZone4Shown = false;
+    this.hintZone6Shown = false;
+    this.hintZone7Shown = false;
+
     // Cleanup listener on shutdown
     this.events.once('shutdown', () => {
+      this.realitySwap.destroy();
       this.staffController.destroy();
       this.phasing.destroy();
       this.camouflage.destroy();
       this.drones.forEach(d => d.destroy());
       this.dataStreamGfx?.destroy();
       this.collapseWallGfx?.destroy();
+      this.mobileShiftBtn?.destroy();
     });
 
     this.isRespawning = false;
 
     // Fade in
     this.cameras.main.fadeIn(600, 0, 0, 0);
+
+    // ── Mobile Controls (additive — no-op on desktop) ─────────────────────
+    this.mobileHandle = setupMobileForScene({
+      scene: this,
+      player: this.player,
+      onAbilityPressed: () => {
+        if (this.realitySwap.handleAbilityInput()) {
+          return;
+        }
+        this.staffController.activate(this.player.x, this.player.y);
+      },
+      getAbilityState: () => {
+        if (this.realitySwap.isPossessing) {
+          return {
+            label: 'SWAP',
+            available: true,
+            tint: 0xff007f,
+            cooldownProgress: 0
+          };
+        }
+        const nearby = this.realitySwap.getNearbyAvailableNode();
+        if (nearby !== -1) {
+          return {
+            label: 'POSSESS',
+            available: true,
+            tint: 0x00f0ff,
+            cooldownProgress: 0
+          };
+        }
+        return {
+          label: this.phasing.reality === 'A' ? 'PHASE A' : 'PHASE B',
+          available: true,
+          tint: this.phasing.reality === 'A' ? LEVEL5_DATA.palette.cyan : LEVEL5_DATA.palette.magenta,
+          cooldownProgress: 0
+        };
+      }
+    });
+
+    // Level-5-only SHIFT button (mobile only — desktop uses Shift/Tab)
+    if (this.mobileHandle) {
+      this.buildMobileShiftButton();
+    }
+  }
+
+  /**
+   * Creates a Level-5-exclusive mobile button that toggles PHASE A/B reality
+   * without consuming any staff energy — exactly what Shift/Tab does on desktop.
+   * Positioned above the jump+ability cluster so it's easy to reach.
+   */
+  private buildMobileShiftButton(): void {
+    const R     = 26;          // slightly smaller than main buttons (30)
+    const alpha = 0.62;
+    const depth = 205;         // above MobileControls (depth 200)
+    const cam   = this.cameras.main;
+    const W     = cam.width;
+    const H     = cam.height;
+    const margin = 16;
+
+    // Mirror the MobileControls positioning formula
+    const jumpX    = W - margin - 30;
+    const jumpY    = H - margin - 30;
+    const abilityX = jumpX - 30 * 2 - 16;
+    // Centre of the two buttons horizontally, one row above them
+    const btnX = Math.round((abilityX + jumpX) / 2);
+    const btnY = jumpY - 30 * 2 - 18;
+
+    const container = this.add.container(btnX, btnY)
+      .setScrollFactor(0)
+      .setDepth(depth);
+
+    // Background fill — cyan for Reality A, magenta for B
+    const initColor = this.phasing.reality === 'A'
+      ? LEVEL5_DATA.palette.cyan
+      : LEVEL5_DATA.palette.magenta;
+
+    const bg = this.add.circle(0, 0, R, initColor, alpha);
+    container.add(bg);
+
+    // Border ring
+    const ring = this.add.graphics();
+    ring.lineStyle(2, 0xffffff, 0.7);
+    ring.strokeCircle(0, 0, R);
+    container.add(ring);
+
+    // Icon: swap arrows ⇄
+    const icon = this.add.text(0, -4, '⇄', {
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+    container.add(icon);
+
+    // Label below icon
+    const lbl = this.add.text(0, R + 7, 'SHIFT', {
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '7px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+    container.add(lbl);
+
+    // Generous hit zone
+    const zone = this.add.zone(0, 0, R * 2.8, R * 2.8)
+      .setInteractive()
+      .setScrollFactor(0);
+    container.add(zone);
+
+    // Press handler — toggle reality, zero energy consumed
+    zone.on('pointerdown', () => {
+      if (this.isPaused || this.isRespawning || this.realitySwap.isPossessing) return;
+      this.phasing.toggleReality();
+      // Tactile press feedback
+      container.setScale(0.88);
+      this.time.delayedCall(100, () => container.setScale(1));
+    });
+
+    // Reposition on resize
+    this.scale.on('resize', () => {
+      const nW  = this.cameras.main.width;
+      const nH  = this.cameras.main.height;
+      const nJX = nW - margin - 30;
+      const nJY = nH - margin - 30;
+      const nAX = nJX - 30 * 2 - 16;
+      container.setPosition(
+        Math.round((nAX + nJX) / 2),
+        nJY - 30 * 2 - 18
+      );
+    });
+
+    this.mobileShiftBtn      = container;
+    this.mobileShiftBtnBg    = bg;
+    this.mobileShiftBtnLabel = lbl;
   }
 
   update(time: number, delta: number): void {
@@ -212,20 +533,68 @@ export class Level5Scene extends Phaser.Scene {
     }
     if (this.isRespawning) return;
 
-    // Update Player
-    this.player.update(time, delta);
+    // Handle Ability Input / Reality Swap
+    const activateJustPressed =
+      (this.keyE ? Phaser.Input.Keyboard.JustDown(this.keyE) : false) ||
+      (this.keyJ ? Phaser.Input.Keyboard.JustDown(this.keyJ) : false);
 
-    // Update Staff Controller
-    this.staffController.update(delta, this.player.x, this.player.y);
+    if (activateJustPressed) {
+      if (this.realitySwap.handleAbilityInput()) {
+        // Handled by Reality Swap (start possession or execute swap)
+        // Zero staff energy consumed!
+      } else if (!this.realitySwap.isPossessing) {
+        this.staffController.activate(this.player.x, this.player.y);
+      }
+    }
 
-    // Fall death check
-    if (this.player.y > 440 && !this.player.isDead) {
+    // Update Reality Swap System
+    this.realitySwap.update(time, delta, this.cursors, { a: this.keyA, d: this.keyD, w: this.keyW, space: this.keySpace });
+
+    // Update Player & Controls
+    // IMPORTANT: mobileHandle.update() must run every frame (including during possession)
+    // because updateSentinelControls() reads player.mobileInput for sentinel movement/jump.
+    // Skipping it during possession means the sentinel gets zero mobile input → can't move on mobile.
+    this.mobileHandle?.update();
+
+    if (this.realitySwap.isPossessing) {
+      // Vance is frozen in stasis: zero velocity and disable body movement.
+      // mobileInput flags are still updated above so the SENTINEL can use them.
+      const pBody = this.player.body as Phaser.Physics.Arcade.Body;
+      pBody.setVelocity(0, 0);
+    } else {
+      this.player.update(time, delta);
+    }
+
+    // Update Staff Controller (only when not possessing)
+    if (!this.realitySwap.isPossessing) {
+      this.staffController.update(delta, this.player.x, this.player.y);
+    }
+
+    // Fall death check (only applies if player is not in stasis)
+    if (this.player.y > 440 && !this.player.isDead && !this.realitySwap.isPossessing) {
       this.handleDeath('DISINTEGRATION IN THE VOID');
       return;
     }
 
     // Update Phasing Ability
     this.phasing.update(time, delta);
+
+    // Sync SHIFT button to current state (mobile only)
+    if (this.mobileShiftBtnBg && this.mobileShiftBtnLabel && this.mobileShiftBtn) {
+      if (this.realitySwap.isPossessing) {
+        // Dim: can't shift reality while controlling the sentinel
+        this.mobileShiftBtnBg.setFillStyle(0x333333, 0.3);
+        this.mobileShiftBtnLabel.setColor('#555555');
+        this.mobileShiftBtn.setAlpha(0.45);
+      } else {
+        const isA    = this.phasing.reality === 'A';
+        const color  = isA ? LEVEL5_DATA.palette.cyan : LEVEL5_DATA.palette.magenta;
+        const hexStr = '#' + color.toString(16).padStart(6, '0');
+        this.mobileShiftBtnBg.setFillStyle(color, 0.62);
+        this.mobileShiftBtnLabel.setColor(hexStr);
+        this.mobileShiftBtn.setAlpha(1);
+      }
+    }
 
     // Update Camouflage Ability
     this.camouflage.update(time, delta);
@@ -241,6 +610,31 @@ export class Level5Scene extends Phaser.Scene {
     // Animate collapsing chamber disintegration wave if active
     if (this.isChamberCollapsing) {
       this.updateChamberCollapse(delta);
+    }
+
+    // In-World Guiding Hints at Important Puzzle Stages
+    if (this.player.x > 1920 && !this.hintZone4Shown) {
+      this.hintZone4Shown = true;
+      this.hud.showBanner('RIFT NODE DETECTED · PRESS ABILITY KEY TO POSSESS ECHO SENTINEL');
+    }
+    if (this.player.x > 3300 && !this.hintZone6Shown) {
+      this.hintZone6Shown = true;
+      this.hud.showBanner('ECHO PROJECTION IS UNSEEN BY PATROL DRONES · INFILTRATE HIGH ECHO ROUTE');
+    }
+    if (this.player.x > 4000 && !this.hintZone7Shown) {
+      this.hintZone7Shown = true;
+      this.hud.showBanner('DUAL DESYNC RELAYS · CHAIN REALITY SWAPS ACROSS THE SINGULARITY CHASM');
+    }
+
+    // Checkpoint activation checks across all checkpoints (sound + flash only)
+    const cps = LEVEL5_DATA.checkpoints;
+    for (const cp of cps) {
+      if (this.player.x >= cp.x && this.checkpointX < cp.x) {
+        this.checkpointX = cp.x;
+        this.checkpointY = cp.y;
+        AudioManager.playCheckpoint();
+        this.cameras.main.flash(200, 0, 240, 255);
+      }
     }
   }
 
@@ -395,28 +789,134 @@ export class Level5Scene extends Phaser.Scene {
     // ── Zone 3: Lab Fragment Observatory Checkpoint (x: 1640 to 1900) ──────
     addPersistent(1640, 1900, floorY);
 
-    // ── Zone 4: The Altar of the Singularity (x: 1900 to 2400) ────────────
-    addPersistent(1900, 2400, floorY);
+    // ── Zone 4: Echo Ingress & The Sealed Vault (x: 1900 to 2550) ────────────
+    addPersistent(1900, 2160, floorY);
+
+    // Vault Barrier 0 blocking direct progress across the gap
+    const barrier0 = this.physics.add.sprite(2160, floorY - 70, 'electronic_door')
+      .setDisplaySize(24, 140)
+      .setTint(0xff007f)
+      .setImmovable(true)
+      .setDepth(10);
+    (barrier0.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.puzzleBarriers.push({ sprite: barrier0, active: true });
+
+    addPersistent(2340, 2550, floorY);
+
+    // ── Zone 5: Phased Void Chasm & Desync Bridge (x: 2550 to 3250) ─────────
+    addPersistent(2550, 2680, floorY);
+
+    // Holographic Light Bridge (solidified when Node 2 objective is achieved)
+    this.lightBridge = this.physics.add.sprite(2930, floorY - 6, 'tile_glitch')
+      .setDisplaySize(460, 16)
+      .setTint(0x00f0ff)
+      .setAlpha(0)
+      .setImmovable(true)
+      .setDepth(8);
+    (this.lightBridge.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    (this.lightBridge.body as Phaser.Physics.Arcade.Body).enable = false;
+
+    // Landing ledge on the far side of the chasm
+    addPersistent(3160, 3300, floorY);
+
+    // Conduit Crystal 1 (charge refill at Rift Junction)
+    const crystal1 = this.physics.add.sprite(3220, floorY - 28, 'conduit_crystal')
+      .setDepth(11);
+    (crystal1.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.conduitCrystals.push(crystal1);
+
+    // ── Zone 6: Cloaked Drone Infiltration Corridor (x: 3250 to 3950) ───────
+    addPersistent(3300, 3950, floorY);
+
+    // Laser Grid Barrier 1 at corridor terminus
+    const barrier1 = this.physics.add.sprite(3820, floorY - 70, 'electronic_door')
+      .setDisplaySize(24, 140)
+      .setTint(0xff007f)
+      .setImmovable(true)
+      .setDepth(10);
+    (barrier1.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.puzzleBarriers.push({ sprite: barrier1, active: true });
+
+    // Guard Drone patrolling lower infiltration lane
+    const drone1 = new SentinelDrone(this, 3580, floorY - 60, 3450, 3720);
+    this.drones.push(drone1);
+
+    // ── Zone 7: Dual Relay Desync Chasm (x: 3950 to 4700) ───────────────────
+    addPersistent(3950, 4100, floorY);
+
+    // Mid-Chasm Floating Island (landing platform for first swap)
+    addPersistent(4300, 4420, floorY);
+
+    // Singularity Forcefield Barrier 2 guarding the Altar entry
+    const barrier2 = this.physics.add.sprite(4620, floorY - 70, 'electronic_door')
+      .setDisplaySize(24, 140)
+      .setTint(0xff007f)
+      .setImmovable(true)
+      .setDepth(10);
+    (barrier2.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.puzzleBarriers.push({ sprite: barrier2, active: true });
+
+    addPersistent(4620, 4700, floorY);
+
+    // Conduit Crystal 2 (charge refill before Altar)
+    const crystal2 = this.physics.add.sprite(4680, floorY - 28, 'conduit_crystal')
+      .setDepth(11);
+    (crystal2.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.conduitCrystals.push(crystal2);
+
+    // ── Zone 8: The Altar of the Singularity (x: 4700 to 5050) ─────────────
+    addPersistent(4700, 5050, floorY);
 
     // Altar pedestal for Component 5
-    for (let x = 2160; x <= 2220; x += 32) {
+    for (let x = 4780; x <= 4840; x += 32) {
       const p = this.persistentPlatforms.create(x, floorY - 24, 'tile_glitch') as Phaser.Physics.Arcade.Sprite;
       p.setOrigin(0, 0).refreshBody();
     }
 
-    // ── Zone 5: The Collapsing Escape Gauntlet (x: 2400 to 3200) ───────────
-    addPersistent(2400, 2520, floorY);
+    // ── Zone 9: The Collapsing Escape Gauntlet (x: 5050 to 5400) ────────────
+    addPersistent(5050, 5120, floorY);
 
     // Collapsing phasing bridges
-    addPhasePlatform(2560, floorY - 30, 2, 'A');
-    addPhasePlatform(2660, floorY - 60, 2, 'B');
+    addPhasePlatform(5160, floorY - 30, 2, 'A');
+    addPhasePlatform(5240, floorY - 60, 2, 'B');
 
-    addPersistent(2720, 2860, floorY);
-    addPersistent(2900, 3200, floorY);
+    addPersistent(5290, 5400, floorY);
 
-    // Rogue Singularity Drone guarding the final corridor
-    const drone = new SentinelDrone(this, 2980, floorY - 80, 2920, 3080);
-    this.drones.push(drone);
+    // Rogue Singularity Drone guarding the final extraction corridor
+    const drone2 = new SentinelDrone(this, 5260, floorY - 80, 5200, 5320);
+    this.drones.push(drone2);
+  }
+
+  // ── Reality Swap Puzzle Activators ────────────────────────────────────────
+
+  private deactivateBarrier(index: number): void {
+    const b = this.puzzleBarriers[index];
+    if (!b || !b.active) return;
+    b.active = false;
+    AudioManager.playFailsafe();
+    this.tweens.add({
+      targets: b.sprite,
+      alpha: 0,
+      scaleY: 0,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => {
+        (b.sprite.body as Phaser.Physics.Arcade.Body).enable = false;
+      }
+    });
+  }
+
+  private activateLightBridge(): void {
+    if (!this.lightBridge) return;
+    this.lightBridge.setVisible(true).setActive(true);
+    (this.lightBridge.body as Phaser.Physics.Arcade.Body).enable = true;
+    this.tweens.add({
+      targets: this.lightBridge,
+      alpha: { from: 0, to: 0.85 },
+      duration: 600,
+      repeat: 0
+    });
+    AudioManager.playAssembleFailsafe();
   }
 
   // ── Finale Elements Setup ─────────────────────────────────────────────────
@@ -482,6 +982,37 @@ export class Level5Scene extends Phaser.Scene {
       this.physics.add.collider(this.player, p.sprite);
     });
 
+    // Player vs Light Bridge
+    if (this.lightBridge) {
+      this.physics.add.collider(this.player, this.lightBridge);
+    }
+
+    // Player vs Puzzle Barriers
+    this.puzzleBarriers.forEach(b => {
+      this.physics.add.collider(this.player, b.sprite);
+    });
+
+    // Player vs Conduit Crystals (Staff Charge Refill)
+    this.conduitCrystals.forEach(crystal => {
+      this.physics.add.overlap(this.player, crystal, () => {
+        if (!crystal.active) return;
+        crystal.setActive(false).setVisible(false);
+        (crystal.body as Phaser.Physics.Arcade.Body).enable = false;
+        AudioManager.playKeyCollect();
+        this.staffController.chargeManager.refillMax('conduit_crystal');
+        this.player.restoreStaffCharges(this.player.maxStaffCharges);
+        this.hud.updateCharges(this.player.staffCharges);
+        const emitter = this.add.particles(crystal.x, crystal.y, 'proto_tile', {
+          speed: { min: 40, max: 120 },
+          scale: { start: 0.4, end: 0 },
+          tint: [0x00f0ff, 0xffffff],
+          lifespan: 500,
+          quantity: 12
+        });
+        this.time.delayedCall(550, () => emitter.destroy());
+      });
+    });
+
     // Player vs Emergency Bulkhead Door
     if (this.escapeBulkheadSprite) {
       this.physics.add.collider(this.player, this.escapeBulkheadSprite);
@@ -507,10 +1038,10 @@ export class Level5Scene extends Phaser.Scene {
       }
     });
 
-    // Player vs Drones
+    // Player vs Drones (Vance in stasis is safe from detection/damage)
     this.drones.forEach(drone => {
       this.physics.add.overlap(this.player, drone, () => {
-        if (drone.isLethal && !this.isRespawning) {
+        if (drone.isLethal && !this.isRespawning && !this.realitySwap.isPossessing) {
           const lethal = this.player.takeDamage();
           if (lethal || this.player.integrity <= 0 || this.player.isDead) {
             this.handleDeath('VAPORIZED BY SINGULARITY DRONE');
@@ -558,9 +1089,9 @@ export class Level5Scene extends Phaser.Scene {
 
     this.component5Sprite.destroy();
 
-    // Checkpoint
-    this.checkpointX = LEVEL5_DATA.checkpoints[1].x;
-    this.checkpointY = LEVEL5_DATA.checkpoints[1].y;
+    // Checkpoint at Pedestal
+    this.checkpointX = LEVEL5_DATA.checkpoints[4].x;
+    this.checkpointY = LEVEL5_DATA.checkpoints[4].y;
 
     // Refresh HUD
     this.hud.setFailsafeFound(5, 5);
@@ -613,7 +1144,7 @@ export class Level5Scene extends Phaser.Scene {
 
   private startChamberCollapse(): void {
     this.isChamberCollapsing = true;
-    this.collapseProgress = 2000; // Starts advancing from altar
+    this.collapseProgress = 4600; // Starts advancing from the Altar threshold
     AudioManager.playAlarm();
 
     // Red alert flashing strobe
@@ -662,6 +1193,9 @@ export class Level5Scene extends Phaser.Scene {
     }
 
     if (this.physics.world.isPaused) return;
+    if (this.isLeavingScene) return;   // prevent double-trigger
+    this.isLeavingScene = true;
+
     this.physics.pause();
 
     this.hud.showBanner('SIMULATION ESCAPE SUCCESSFUL! CONSCIOUSNESS DE-REZZING...');
@@ -689,7 +1223,8 @@ export class Level5Scene extends Phaser.Scene {
           timeMs: Date.now() - this.levelStartTime
         });
       }
-    });
+    );
+    this.cameras.main.fadeOut(1000, 255, 255, 255);
   }
 
   // ── Death & Respawn ───────────────────────────────────────────────────────
@@ -697,6 +1232,9 @@ export class Level5Scene extends Phaser.Scene {
   private handleDeath(reason = 'DIMENSIONAL PARADOX'): void {
     if (this.isRespawning) return;
     this.isRespawning = true;
+
+    // Reset Reality Swap and release Echo possession
+    this.realitySwap.resetAll();
 
     this.player.die();
     this.hud.updateIntegrity(0);
@@ -715,9 +1253,13 @@ export class Level5Scene extends Phaser.Scene {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
           this.physics.resume();
+          this.realitySwap.resetAll();
           this.player.restoreIntegrity();
           this.player.respawnAt(this.checkpointX, this.checkpointY);
-          this.player.restoreStaffCharges(3);
+          if (this.staffController) {
+            this.staffController.chargeManager.setCharges(this.player.maxStaffCharges);
+          }
+          this.player.restoreStaffCharges(this.player.maxStaffCharges);
           this.hud.updateIntegrity(this.player.integrity);
           this.hud.updateCharges(this.player.staffCharges);
           this.isChamberCollapsing = false;
@@ -729,8 +1271,7 @@ export class Level5Scene extends Phaser.Scene {
           this.gameOverScreen?.destroy();
           this.gameOverScreen = null;
           this.isRespawning = false;
-          this.physics.resume();
-          this.scene.restart();
+          this.restartLevelFromBeginning();
         },
         onMainMenu: () => {
           this.gameOverScreen?.destroy();
@@ -774,26 +1315,34 @@ export class Level5Scene extends Phaser.Scene {
     this.cameras.main.setDeadzone(40, 20);
   }
 
-  // ── Pause Menu ────────────────────────────────────────────────────────────
+  // ── Pause Menu & Restart Helpers ──────────────────────────────────────────
 
   private togglePause(): void {
     this.isPaused ? this.resumeGame() : this.pauseGame();
   }
 
   private pauseGame(): void {
+    if (this.isPaused || this.isRespawning || this.isLeavingScene) return;
     this.isPaused = true;
     this.physics.pause();
     const cb: PauseMenuCallbacks = {
       onResume: () => this.resumeGame(),
+      onCheckpoint: () => this.restartAtCheckpoint(),
       onRestart: () => {
-        this.isPaused = false;
-        this.physics.resume();
-        this.scene.restart();
+        this.resumeGame();
+        this.restartLevelFromBeginning();
       },
       onMainMenu: () => {
+        if (this.isLeavingScene) return;
+        this.isLeavingScene = true;
+        this.pauseMenu?.destroy();
+        this.pauseMenu = null;
         this.isPaused = false;
         this.physics.resume();
-        this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+          this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
+        });
+        this.cameras.main.fadeOut(300, 0, 0, 0);
       }
     };
     this.pauseMenu = new PauseMenu(this, cb);
@@ -804,6 +1353,44 @@ export class Level5Scene extends Phaser.Scene {
     this.pauseMenu = null;
     this.isPaused = false;
     this.physics.resume();
+  }
+
+  private restartLevelFromBeginning(): void {
+    this.realitySwap.resetAll();
+    this.checkpointX = LEVEL5_DATA.spawn.x;
+    this.checkpointY = LEVEL5_DATA.spawn.y;
+    this.deathCount = 0;
+    this.hasCollectedComponent5 = false;
+    this.isFailsafeRepaired = false;
+    this.isChamberCollapsing = false;
+    this.collapseProgress = 0;
+    this.isPaused = false;
+    this.isRespawning = false;
+    this.isLeavingScene = false;
+    this.physics.resume();
+    this.scene.restart();
+  }
+
+  private restartAtCheckpoint(): void {
+    this.resumeGame();
+    this.realitySwap.resetAll();
+    this.player.restoreIntegrity();
+    this.player.respawnAt(this.checkpointX, this.checkpointY);
+    if (this.staffController) {
+      this.staffController.chargeManager.setCharges(this.player.maxStaffCharges);
+    }
+    this.player.restoreStaffCharges(this.player.maxStaffCharges);
+    this.hud.updateIntegrity(this.player.integrity);
+    this.hud.updateCharges(this.player.staffCharges);
+
+    // Reset collapse state if active
+    if (this.isChamberCollapsing) {
+      this.collapseWallGfx?.clear();
+      this.collapseProgress = Math.max(0, this.checkpointX - 500);
+    }
+
+    this.cameras.main.fadeIn(400, 0, 0, 0);
+    AudioManager.playCheckpoint();
   }
 
   // ── Scanlines Overlay ─────────────────────────────────────────────────────

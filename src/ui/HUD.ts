@@ -2,6 +2,9 @@ import Phaser from 'phaser';
 import { IHudChargeDisplay } from '../systems/staff/StaffController';
 import { AudioManager } from '../systems/AudioManager';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { GuideModal } from './GuideModal';
+
+export { GAME_FONTS };
 import { FullscreenManager } from '../systems/FullscreenManager';
 
 const GAME_FONTS = {
@@ -36,7 +39,6 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     this.accent = accentColor;
 
     const W = scene.cameras.main.width;
-    const H = scene.cameras.main.height;
 
     // ── Full-width translucent top bar ─────────────────────────────────
     const topBar = scene.add.graphics();
@@ -56,16 +58,19 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     // ── Top-Right: Failsafe counter + Home button ─────────────────────
     this.buildTopRight(scene, W, accentColor);
 
-    // ── Bottom-Left: Staff charges ────────────────────────────────────
-    this.buildChargeBar(scene, H, accentColor);
+    // ── Staff charges: Just below heart bar section ───────────────────
+    this.buildChargeBar(scene, accentColor);
 
     // ── Center banner ─────────────────────────────────────────────────
     this.bannerText = scene.add.text(W / 2, 80, '', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '11px',
+      fontSize: '13px',
+      fontStyle: 'bold',
       color: '#' + accentColor.toString(16).padStart(6, '0'),
-      backgroundColor: '#080410cc',
-      padding: { x: 10, y: 5 }
+      backgroundColor: '#080410ee',
+      stroke: '#000000',
+      strokeThickness: 3,
+      padding: { x: 12, y: 6 }
     }).setOrigin(0.5).setAlpha(0).setDepth(55);
     this.add(this.bannerText);
 
@@ -119,8 +124,11 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     // Name label
     this.add(scene.add.text(36, 66, 'VANCE', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '6px',
-      color: hex
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: hex,
+      stroke: '#000000',
+      strokeThickness: 2
     }).setOrigin(0.5));
 
     // Ensure heart_pixel texture is loaded if HUD is mounted directly
@@ -151,8 +159,11 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     // "HP" label
     this.add(scene.add.text(88, 48, 'HP', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '7px',
-      color: hex
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: hex,
+      stroke: '#000000',
+      strokeThickness: 2
     }));
   }
 
@@ -205,10 +216,11 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
 
     this.add(scene.add.text(cx, 26, title, {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '9px',
+      fontSize: '11px',
+      fontStyle: 'bold',
       color: hex,
       stroke: '#000000',
-      strokeThickness: 4
+      strokeThickness: 3
     }).setOrigin(0.5));
   }
 
@@ -217,6 +229,10 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
   private pausePlate?: Phaser.GameObjects.Arc;
   private pauseBtn?: Phaser.GameObjects.Image;
   private pauseZone?: Phaser.GameObjects.Zone;
+  private guidePlate?: Phaser.GameObjects.Arc;
+  private guideText?: Phaser.GameObjects.Text;
+  private guideZone?: Phaser.GameObjects.Zone;
+  private activeGuideModal: GuideModal | null = null;
 
   private buildTopRight(scene: Phaser.Scene, W: number, accentColor: number): void {
     // Dark oval failsafe counter (like reference score bubble)
@@ -233,12 +249,71 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
 
     this.componentCountText = scene.add.text(W - 114, 26, '0 / 5', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '11px',
+      fontSize: '13px',
+      fontStyle: 'bold',
       color: '#ffd166',
       stroke: '#000000',
       strokeThickness: 3
     }).setOrigin(0, 0.5);
     this.add(this.componentCountText);
+
+    // ── Direct Scene Guide Button ('?' Icon beside failsafe bar) ─────────────
+    const guideX = W - 166;
+    const guideY = 26;
+
+    this.guidePlate = scene.add.circle(guideX, guideY, 13, 0x0a0612, 0.95)
+      .setStrokeStyle(1.5, accentColor, 0.85)
+      .setScrollFactor(0)
+      .setDepth(240);
+
+    this.guideText = scene.add.text(guideX, guideY, '?', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#00f0ff',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(241);
+
+    this.guideZone = scene.add.zone(guideX, guideY, 30, 30)
+      .setScrollFactor(0)
+      .setDepth(245)
+      .setInteractive({ useHandCursor: true });
+
+    this.guideZone.on('pointerover', () => {
+      this.guidePlate?.setStrokeStyle(2, 0xffffff, 1);
+      this.guidePlate?.setFillStyle(0x192a45, 0.98);
+      this.guideText?.setColor('#ffffff');
+      if (this.guideText) {
+        scene.tweens.killTweensOf(this.guideText);
+        scene.tweens.add({
+          targets: this.guideText,
+          scale: 1.15,
+          duration: 90
+        });
+      }
+      AudioManager.playMenuHover();
+    });
+
+    this.guideZone.on('pointerout', () => {
+      this.guidePlate?.setStrokeStyle(1.5, accentColor, 0.85);
+      this.guidePlate?.setFillStyle(0x0a0612, 0.95);
+      this.guideText?.setColor('#00f0ff');
+      if (this.guideText) {
+        scene.tweens.killTweensOf(this.guideText);
+        scene.tweens.add({
+          targets: this.guideText,
+          scale: 1.0,
+          duration: 90
+        });
+      }
+    });
+
+    this.guideZone.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      pointer.event.stopPropagation();
+      AudioManager.playMenuSelect();
+      this.toggleGuide(scene);
+    });
 
     // ── Direct Scene Pause Button (bi_pause-circle-fill) ─────────────────────
     // Kept outside the Container so camera scrolling does not cause matrix drift
@@ -310,7 +385,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
       this.pauseBtn?.setDisplaySize(36, 36);
     });
 
-    // Keyboard shortcuts for pausing: ESC and P
+    // Keyboard shortcuts for pausing (ESC, P) and guide (H)
     if (scene.input.keyboard) {
       const escKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
       escKey.on('down', () => {
@@ -325,34 +400,57 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
         AudioManager.playMenuSelect();
         this.emit('pause_requested');
       });
+      const hKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H);
+      hKey.on('down', () => {
+        this.toggleGuide(scene);
+      });
     }
 
     scene.events.once('shutdown', () => {
       this.pausePlate?.destroy();
       this.pauseBtn?.destroy();
       this.pauseZone?.destroy();
+      this.guidePlate?.destroy();
+      this.guideText?.destroy();
+      this.guideZone?.destroy();
+      this.activeGuideModal?.destroy();
     });
   }
 
-  // ── Staff Charges ─────────────────────────────────────────────────────────
+  public toggleGuide(scene: Phaser.Scene): void {
+    if (this.activeGuideModal) {
+      const modal = this.activeGuideModal;
+      this.activeGuideModal = null;
+      modal.closeModal();
+    } else {
+      this.activeGuideModal = new GuideModal(scene, () => {
+        this.activeGuideModal = null;
+      });
+    }
+  }
 
-  private buildChargeBar(scene: Phaser.Scene, H: number, accentColor: number): void {
+  // ── Staff Charges (Just below heart bar section) ─────────────────────────
+
+  private buildChargeBar(scene: Phaser.Scene, accentColor: number): void {
     const hex = '#' + accentColor.toString(16).padStart(6, '0');
     const bg = scene.add.graphics();
-    bg.fillStyle(0x0a0612, 0.9);
-    bg.fillRoundedRect(10, H - 40, 136, 32, 9);
-    bg.lineStyle(1, accentColor, 0.65);
-    bg.strokeRoundedRect(10, H - 40, 136, 32, 9);
+    bg.fillStyle(0x0a0612, 0.92);
+    bg.fillRoundedRect(6, 72, 158, 24, 8);
+    bg.lineStyle(1.5, accentColor, 0.65);
+    bg.strokeRoundedRect(6, 72, 158, 24, 8);
     this.add(bg);
 
-    this.add(scene.add.text(20, H - 24, 'STAFF', {
+    this.add(scene.add.text(18, 84, 'STAFF', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '8px',
-      color: hex
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: hex,
+      stroke: '#000000',
+      strokeThickness: 2
     }).setOrigin(0, 0.5));
 
     for (let i = 0; i < 3; i++) {
-      const crystal = scene.add.rectangle(76 + i * 22, H - 24, 15, 15, accentColor);
+      const crystal = scene.add.rectangle(76 + i * 22, 84, 14, 14, accentColor);
       crystal.setStrokeStyle(1, 0xffffff, 0.6);
       this.chargeCrystals.push(crystal);
       this.add(crystal);
@@ -368,14 +466,14 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
   }
 
   public updateCharges(current: number, max?: number): void {
-    const H = this.scene.cameras.main.height;
+    const crystalY = 84;
     // Reconfigure crystals array if max differs
     if (max !== undefined && max !== this.chargeCrystals.length && max > 0) {
       this.chargeCrystals.forEach(c => c.destroy());
       this.chargeCrystals = [];
       const crystalSpacing = Math.min(22, 70 / Math.max(1, max));
       for (let i = 0; i < max; i++) {
-        const crystal = this.scene.add.rectangle(76 + i * crystalSpacing, H - 24, 15, 15, this.accent);
+        const crystal = this.scene.add.rectangle(76 + i * crystalSpacing, crystalY, 14, 14, this.accent);
         crystal.setStrokeStyle(1, 0xffffff, 0.6);
         this.chargeCrystals.push(crystal);
         this.add(crystal);
@@ -437,6 +535,10 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     this.pausePlate?.destroy();
     this.pauseBtn?.destroy();
     this.pauseZone?.destroy();
+    this.guidePlate?.destroy();
+    this.guideText?.destroy();
+    this.guideZone?.destroy();
+    this.activeGuideModal?.destroy();
     super.destroy(fromScene);
   }
 }

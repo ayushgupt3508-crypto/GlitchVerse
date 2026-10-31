@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { SettingsModal } from '../ui/SettingsModal';
 import { ExitModal } from '../ui/ExitModal';
+import { AudioManager } from '../systems/AudioManager';
 
 export class MainMenuScene extends Phaser.Scene {
   private activeModal: Phaser.GameObjects.Container | null = null;
@@ -14,6 +15,9 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    AudioManager.init();
+    AudioManager.startMatrixMusic();
+
     this.cameras.main.fadeIn(500);
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
@@ -77,14 +81,17 @@ export class MainMenuScene extends Phaser.Scene {
 
     // Subtitle
     this.add.text(titleX, titleY + 34, '// GLITCHVERSE SIMULATION //', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
-      color: '#70e000'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#70e000',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     // 3. Selection Pointer (Neon green triangle indicator from reference image)
     this.pointerIndicator = this.add.text(0, 0, '▶', {
-      fontFamily: 'Courier New, monospace',
+      fontFamily: GAME_FONTS.primary,
       fontSize: '14px',
       color: '#70e000'
     }).setOrigin(1, 0.5).setVisible(false);
@@ -135,9 +142,12 @@ export class MainMenuScene extends Phaser.Scene {
 
     // Version label
     this.add.text(width - 12, height - 8, 'GlitchVerse v0.1.0', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '7px',
-      color: '#8b9bb4'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#8b9bb4',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(1, 1);
 
     // Matrix Glitch Event
@@ -288,17 +298,19 @@ export class MainMenuScene extends Phaser.Scene {
 
     // Icon
     const iconText = this.add.text(-btnWidth / 2 + 16, 0, icon, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '12px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
       color: isDefaultActive ? '#70e000' : '#8b9bb4'
     }).setOrigin(0.5);
 
     // Label
     const labelText = this.add.text(-btnWidth / 2 + 34, 0, label, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
       fontStyle: 'bold',
-      color: isDefaultActive ? '#70e000' : '#e0fbfc'
+      color: isDefaultActive ? '#70e000' : '#e0fbfc',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0, 0.5);
 
     const hitArea = this.add.zone(0, 0, btnWidth, btnHeight).setInteractive({ useHandCursor: true });

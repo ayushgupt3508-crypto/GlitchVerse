@@ -68,6 +68,11 @@ export class TimeAbility {
   private setupInput(): void {
     if (!this.scene.input.keyboard) return;
 
+    // If the scene already binds and handles staff pulses (e.g. level4), do not bind duplicate listeners
+    if (typeof (this.scene as any).handleStaffPulse === 'function') {
+      return;
+    }
+
     this.scene.input.keyboard.addCapture([
       Phaser.Input.Keyboard.KeyCodes.T,
       Phaser.Input.Keyboard.KeyCodes.E,
@@ -85,23 +90,24 @@ export class TimeAbility {
 
   private createHudWidget(): void {
     const W = this.scene.cameras.main.width;
-    const H = this.scene.cameras.main.height;
     const x = W - 156;
-    const y = H - 38;
+    const y = 48;
 
     this.hudWidget = this.scene.add.container(x, y).setScrollFactor(0).setDepth(52);
 
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a141e, 0.92);
-    bg.fillRoundedRect(0, 0, 144, 26, 6);
+    bg.fillRoundedRect(0, 0, 146, 24, 7);
     bg.lineStyle(1.5, 0x00f0ff, 0.85);
-    bg.strokeRoundedRect(0, 0, 144, 26, 6);
+    bg.strokeRoundedRect(0, 0, 146, 24, 7);
 
-    this.hudText = this.scene.add.text(72, 13, '[T/E] CHRONO CONDUIT', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
+    this.hudText = this.scene.add.text(73, 12, '[T/E] CHRONO CONDUIT', {
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '9px',
       fontStyle: 'bold',
-      color: '#00f0ff'
+      color: '#00f0ff',
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5);
 
     this.hudWidget.add([bg, this.hudText]);
@@ -137,6 +143,7 @@ export class TimeAbility {
     // Scan for nearby time-affected objects
     let affectedCount = 0;
     for (const obj of this.timeObjects) {
+      if ((obj as any).type === 'ALTAR_SLOT') continue;
       const dist = Phaser.Math.Distance.Between(px, py, obj.x, obj.y);
       if (dist <= this.RADIUS) {
         const success = obj.applyTimeAction('TOGGLE');

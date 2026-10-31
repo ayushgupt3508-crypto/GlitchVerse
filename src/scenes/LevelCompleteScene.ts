@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config';
+import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 
 interface LevelCompleteData {
@@ -55,8 +55,9 @@ export class LevelCompleteScene extends Phaser.Scene {
 
     // SECTOR ESCAPED title (fades in)
     const title = this.add.text(W / 2, 30, sectorTitle, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '20px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '22px',
+      fontStyle: 'bold',
       color: '#' + headerColor.toString(16).padStart(6, '0'),
       stroke: '#001a33',
       strokeThickness: 4
@@ -66,9 +67,12 @@ export class LevelCompleteScene extends Phaser.Scene {
 
     // Sub-label
     this.add.text(W / 2, 52, sectorSubtitle, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
-      color: sector === 3 ? '#ffd166' : sector === 2 ? '#ff9e00' : '#48cae4'
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: sector === 3 ? '#ffd166' : sector === 2 ? '#ff9e00' : '#48cae4',
+      stroke: '#001a33',
+      strokeThickness: 2
     }).setOrigin(0.5).setAlpha(0.85);
 
     // â”€â”€ Stats panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -91,11 +95,21 @@ export class LevelCompleteScene extends Phaser.Scene {
     stats.forEach(([label, value, color], i) => {
       const y = panelY + i * 36;
       this.add.text(panelX, y, label, {
-        fontFamily: 'Courier New, monospace', fontSize: '9px', color: '#8b9bb4'
+        fontFamily: GAME_FONTS.primary,
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: '#8b9bb4',
+        stroke: '#040711',
+        strokeThickness: 2
       }).setAlpha(0);
 
       const valText = this.add.text(panelX + 230, y, value, {
-        fontFamily: 'Courier New, monospace', fontSize: '11px', color
+        fontFamily: GAME_FONTS.primary,
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color,
+        stroke: '#040711',
+        strokeThickness: 2
       }).setOrigin(1, 0).setAlpha(0);
 
       this.time.delayedCall(400 + i * 200, () => {
@@ -104,12 +118,13 @@ export class LevelCompleteScene extends Phaser.Scene {
       });
     });
 
-    // â”€â”€ Rank badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Rank badge
     const rank = this.calcRank();
     const badgeY = panelY + 170;
     const badge = this.add.text(W / 2, badgeY, `[ ${rank} ]`, {
-      fontFamily: 'Courier New, monospace',
+      fontFamily: GAME_FONTS.primary,
       fontSize: '28px',
+      fontStyle: 'bold',
       color: this.rankColor(),
       stroke: '#000000',
       strokeThickness: 3
@@ -179,9 +194,12 @@ export class LevelCompleteScene extends Phaser.Scene {
 
   private makeButton(x: number, y: number, label: string, color: string, onClick: () => void): void {
     const btn = this.add.text(x, y, label, {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '13px',
+      fontStyle: 'bold',
       color,
+      stroke: '#040711',
+      strokeThickness: 2
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     btn.on('pointerover', () => {
