@@ -1223,7 +1223,7 @@ export class Level5Scene extends Phaser.Scene {
           timeMs: Date.now() - this.levelStartTime
         });
       }
-    );
+  });
     this.cameras.main.fadeOut(1000, 255, 255, 255);
   }
 
