@@ -38,6 +38,11 @@ export class EndingScene extends Phaser.Scene {
     AudioManager.init();
     AudioManager.playVictory();
 
+    // Clear any inherited camera fade state (e.g. white-out from Level5 transition)
+    this.cameras.main.setBackgroundColor('#000000');
+    this.cameras.main.resetFX();
+    this.cameras.main.fadeIn(900, 0, 0, 0);
+
     const W = this.cameras.main.width;
     const H = this.cameras.main.height;
 
