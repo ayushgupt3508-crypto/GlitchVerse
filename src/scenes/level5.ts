@@ -115,6 +115,11 @@ export class Level5Scene extends Phaser.Scene {
   private dataStreamGfx?: Phaser.GameObjects.Graphics;
   private mobileHandle: MobileSetupHandle | null = null;
 
+  // Level-5-only mobile SHIFT button (reality toggle, no energy cost)
+  private mobileShiftBtn?: Phaser.GameObjects.Container;
+  private mobileShiftBtnBg?: Phaser.GameObjects.Arc;
+  private mobileShiftBtnLabel?: Phaser.GameObjects.Text;
+
   constructor() {
     super('Level5Scene');
   }
@@ -366,6 +371,7 @@ export class Level5Scene extends Phaser.Scene {
       this.drones.forEach(d => d.destroy());
       this.dataStreamGfx?.destroy();
       this.collapseWallGfx?.destroy();
+      this.mobileShiftBtn?.destroy();
     });
 
     this.isRespawning = false;
@@ -409,6 +415,106 @@ export class Level5Scene extends Phaser.Scene {
         };
       }
     });
+
+    // Level-5-only SHIFT button (mobile only — desktop uses Shift/Tab)
+    if (this.mobileHandle) {
+      this.buildMobileShiftButton();
+    }
+  }
+
+  /**
+   * Creates a Level-5-exclusive mobile button that toggles PHASE A/B reality
+   * without consuming any staff energy — exactly what Shift/Tab does on desktop.
+   * Positioned above the jump+ability cluster so it's easy to reach.
+   */
+  private buildMobileShiftButton(): void {
+    const R     = 26;          // slightly smaller than main buttons (30)
+    const alpha = 0.62;
+    const depth = 205;         // above MobileControls (depth 200)
+    const cam   = this.cameras.main;
+    const W     = cam.width;
+    const H     = cam.height;
+    const margin = 16;
+
+    // Mirror the MobileControls positioning formula
+    const jumpX    = W - margin - 30;
+    const jumpY    = H - margin - 30;
+    const abilityX = jumpX - 30 * 2 - 16;
+    // Centre of the two buttons horizontally, one row above them
+    const btnX = Math.round((abilityX + jumpX) / 2);
+    const btnY = jumpY - 30 * 2 - 18;
+
+    const container = this.add.container(btnX, btnY)
+      .setScrollFactor(0)
+      .setDepth(depth);
+
+    // Background fill — cyan for Reality A, magenta for B
+    const initColor = this.phasing.reality === 'A'
+      ? LEVEL5_DATA.palette.cyan
+      : LEVEL5_DATA.palette.magenta;
+
+    const bg = this.add.circle(0, 0, R, initColor, alpha);
+    container.add(bg);
+
+    // Border ring
+    const ring = this.add.graphics();
+    ring.lineStyle(2, 0xffffff, 0.7);
+    ring.strokeCircle(0, 0, R);
+    container.add(ring);
+
+    // Icon: swap arrows ⇄
+    const icon = this.add.text(0, -4, '⇄', {
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+    container.add(icon);
+
+    // Label below icon
+    const lbl = this.add.text(0, R + 7, 'SHIFT', {
+      fontFamily: '"Pixelify Sans", monospace',
+      fontSize: '7px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+    container.add(lbl);
+
+    // Generous hit zone
+    const zone = this.add.zone(0, 0, R * 2.8, R * 2.8)
+      .setInteractive()
+      .setScrollFactor(0);
+    container.add(zone);
+
+    // Press handler — toggle reality, zero energy consumed
+    zone.on('pointerdown', () => {
+      if (this.isPaused || this.isRespawning || this.realitySwap.isPossessing) return;
+      this.phasing.toggleReality();
+      // Tactile press feedback
+      container.setScale(0.88);
+      this.time.delayedCall(100, () => container.setScale(1));
+    });
+
+    // Reposition on resize
+    this.scale.on('resize', () => {
+      const nW  = this.cameras.main.width;
+      const nH  = this.cameras.main.height;
+      const nJX = nW - margin - 30;
+      const nJY = nH - margin - 30;
+      const nAX = nJX - 30 * 2 - 16;
+      container.setPosition(
+        Math.round((nAX + nJX) / 2),
+        nJY - 30 * 2 - 18
+      );
+    });
+
+    this.mobileShiftBtn      = container;
+    this.mobileShiftBtnBg    = bg;
+    this.mobileShiftBtnLabel = lbl;
   }
 
   update(time: number, delta: number): void {
@@ -461,6 +567,15 @@ export class Level5Scene extends Phaser.Scene {
 
     // Update Phasing Ability
     this.phasing.update(time, delta);
+
+    // Sync SHIFT button color to current reality (mobile only)
+    if (this.mobileShiftBtnBg && this.mobileShiftBtnLabel) {
+      const isA    = this.phasing.reality === 'A';
+      const color  = isA ? LEVEL5_DATA.palette.cyan : LEVEL5_DATA.palette.magenta;
+      const hexStr = '#' + color.toString(16).padStart(6, '0');
+      this.mobileShiftBtnBg.setFillStyle(color, 0.62);
+      this.mobileShiftBtnLabel.setColor(hexStr);
+    }
 
     // Update Camouflage Ability
     this.camouflage.update(time, delta);
