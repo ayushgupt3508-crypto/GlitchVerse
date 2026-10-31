@@ -1,5 +1,6 @@
-import Phaser from 'phaser';
+﻿import Phaser from 'phaser';
 import type { StaffController } from '../systems/staff/StaffController';
+import { CharacterColorManager } from '../utils/CharacterColor';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   // Movement parameters
@@ -67,6 +68,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Setup input keys (A/D or Arrows to move, Space/W/Up to jump, E/J to interact)
     this.ensureKeys();
+
+    // Apply character custom color if set
+    this.applyCustomColor();
   }
 
   public update(time: number, _delta: number): void {
@@ -340,5 +344,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
     this.emit('player_respawn');
     this.emit('player_damaged', this.integrity); // refresh HUD integrity
+  }
+
+  public applyCustomColor(): void {
+    const col = CharacterColorManager.getCharacterColor();
+    const num = CharacterColorManager.hexToNumber(col);
+    if (num !== null) {
+      this.setTint(num);
+    } else {
+      this.clearTint();
+    }
+  }
+
+  public override clearTint(): this {
+    const col = CharacterColorManager.getCharacterColor();
+    const num = CharacterColorManager.hexToNumber(col);
+    if (num !== null) {
+      return super.setTint(num);
+    }
+    return super.clearTint();
   }
 }

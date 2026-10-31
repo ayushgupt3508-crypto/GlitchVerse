@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+﻿import Phaser from 'phaser';
 import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { SettingsModal } from '../ui/SettingsModal';
 import { ExitModal } from '../ui/ExitModal';
@@ -12,6 +12,14 @@ export class MainMenuScene extends Phaser.Scene {
 
   constructor() {
     super(GAME_CONFIG.sceneKeys.MainMenu);
+  }
+
+  init(data?: { openSettings?: boolean }): void {
+    if (data?.openSettings) {
+      this.time.delayedCall(100, () => {
+        this.openSettings();
+      });
+    }
   }
 
   create(): void {

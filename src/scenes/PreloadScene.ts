@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+﻿import Phaser from 'phaser';
 import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { TextureGenerator } from '../utils/TextureGenerator';
 
@@ -84,14 +84,18 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('profile_icon', 'assets/icon_profile.png');
     this.load.image('game_over_screen', 'assets/game_over_screen.png');
     this.load.image('dead_scientist', 'assets/dead_scientist.png');
-    // Story intro slides
-    this.load.image('story_1', 'assets/story_1.png');
-    this.load.image('story_2', 'assets/story_2.png');
-    this.load.image('story_3', 'assets/story_3.png');
+    // Story intro video
+    this.load.video(
+      'story_intro_video',
+      'assets/Story_Video.mp4',
+      true
+    );
     // Game ending (only shown after all 5 levels)
     this.load.image('game_ending', 'assets/game_ending.png');
     // HUD pixel heart icon
     this.load.image('heart_pixel', 'assets/heart_pixel.png');
+    // Level 4 Forest Golem sprite
+    this.load.image('forest_golem', 'assets/forest_golem.png');
     // Main Menu Title Logo
     this.load.image('graphverse_logo', 'assets/GraphVerse.png');
     this.load.image('GraphVerse', 'assets/GraphVerse.png');
@@ -108,6 +112,7 @@ export class PreloadScene extends Phaser.Scene {
 
   create(): void {
     // Generate circular cropped texture for the profile icon
+    TextureGenerator.generatePlayerTextures(this);
     TextureGenerator.generateCircularProfileTexture(this);
 
     // Quick delay or user tap to advance to MainMenu

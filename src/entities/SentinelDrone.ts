@@ -19,9 +19,16 @@ export class SentinelDrone extends Phaser.Physics.Arcade.Sprite {
   private readonly patrolLeft: number;
   private readonly patrolRight: number;
   private readonly patrolSpeed = 48;
-  private readonly alertSpeed  = 100;
+  private readonly alertSpeed = 100;
   private readonly detectRange = 110;
-  private readonly loseRange   = 160;
+  private readonly loseRange = 160;
+
+  private readonly homeX: number;
+  private readonly homeY: number;
+
+  // Maximum distance the player can travel from the drone's spawn
+  // before the drone abandons the chase.
+  private readonly maxChaseDistance = 220;
 
   private movingRight = true;
   private stunRemaining = 0;
@@ -41,8 +48,11 @@ export class SentinelDrone extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.patrolLeft  = patrolLeft;
+    this.patrolLeft = patrolLeft;
     this.patrolRight = patrolRight;
+
+    this.homeX = x;
+    this.homeY = y;
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
@@ -68,6 +78,16 @@ export class SentinelDrone extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body;
     const dist = Phaser.Math.Distance.Between(this.x, this.y, playerX, playerY);
 
+    // Distance between player and drone's original spawn position
+    const playerHomeDistance = Phaser.Math.Distance.Between(
+      this.homeX,
+      this.homeY,
+      playerX,
+      playerY
+    );
+
+    const playerOutsideLeash = playerHomeDistance > this.maxChaseDistance;
+
     // --- Stunned state ---
     if (this.droneState === 'stunned') {
       this.stunRemaining -= delta;
@@ -78,9 +98,20 @@ export class SentinelDrone extends Phaser.Physics.Arcade.Sprite {
     }
 
     // --- State transitions ---
-    if (dist < this.detectRange && this.droneState === 'patrol') {
+    // Enter alert only if player is inside detection and chase boundaries
+    if (
+      dist < this.detectRange &&
+      !playerOutsideLeash &&
+      this.droneState === 'patrol'
+    ) {
       this.enterAlert();
-    } else if (dist > this.loseRange && this.droneState === 'alert') {
+    }
+
+    // Abandon chase if player escapes the leash or gets too far away
+    else if (
+      this.droneState === 'alert' &&
+      (dist > this.loseRange || playerOutsideLeash)
+    ) {
       this.enterPatrol();
     }
 

@@ -1,270 +1,355 @@
-// src/scenes/StoryScene.ts
-// Cinematic story intro — 3 slides shown when the player presses PLAY.
-// Each slide: full-screen image + typewriter text overlay.
-// Player can skip the entire sequence at any time.
+﻿import Phaser from 'phaser';
+import { GAME_CONFIG, GAME_FONTS } from '../config';
 
-import Phaser from 'phaser';
-import { GAME_CONFIG } from '../config';
 import { AudioManager } from '../systems/AudioManager';
-import { FullscreenManager } from '../systems/FullscreenManager';
-
-const SLIDES = [
-  {
-    imageKey: 'story_1',
-    title: 'The Experiment',
-    lines: [
-      'YEAR 2048',
-      '',
-      'Driven by a dream to bend reality itself,',
-      'a brilliant scientist begins building a 4D virtual world,',
-      'where time, space, and imagination collide.',
-    ],
-  },
-  {
-    imageKey: 'story_2',
-    title: 'The Accident',
-    lines: [
-      'One experiment. One fatal glitch.',
-      '',
-      'The simulation spirals out of control,',
-      'trapping its creator inside a world',
-      'never meant to exist.',
-      '',
-      'Reality is now beyond his reach.',
-    ],
-  },
-  {
-    imageKey: 'story_3',
-    title: 'The Journey',
-    lines: [
-      'He had prepared for everything. Almost.',
-      '',
-      'His failsafe — the only way home — lies shattered.',
-      'With Merlin’s Staff in hand, he must journey',
-      'across fractured ages, recover the scattered components,',
-      'and rebuild his last chance at reality.',
-    ],
-  },
-];
-
-// ms per character for the typewriter effect
-const CHAR_DELAY = 28;
-// ms to hold after typewriter finishes before auto-advancing
-const AUTO_ADVANCE_DELAY = 3200;
 
 export class StoryScene extends Phaser.Scene {
-  private slideIndex = 0;
-  private typewriterTimer: Phaser.Time.TimerEvent | null = null;
-  private autoAdvanceTimer: Phaser.Time.TimerEvent | null = null;
-  private isAdvancing = false;
+  private introVideo!: Phaser.GameObjects.Video;
+  private isLeaving = false;
+  private isChoiceActive = false;
+  private choiceContainer?: Phaser.GameObjects.Container;
+  
+  private skipHitArea?: Phaser.GameObjects.Zone;
 
   constructor() {
     super('StoryScene');
   }
 
   create(): void {
-    AudioManager.init();
-    AudioManager.startStoryMusic();
+    const width = this.scale.width;
+    const height = this.scale.height;
 
-    this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => {
-      if (AudioManager.getCurrentTrack() === 'story') {
-        AudioManager.stopMusic();
+    this.isLeaving = false;
+    this.isChoiceActive = false;
+
+    // Dark background while the video initializes
+    this.cameras.main.setBackgroundColor('#050510');
+
+    // Create the intro video
+    this.introVideo = this.add.video(
+      width / 2,
+      height / 2,
+      'story_intro_video'
+    );
+
+    this.introVideo.setOrigin(0.5);
+    this.introVideo.setDepth(0);
+    this.introVideo.setScrollFactor(0);
+
+    // Wait until Phaser knows the video's actual dimensions
+    this.introVideo.on(
+      Phaser.GameObjects.Events.VIDEO_CREATED,
+      (_video: Phaser.GameObjects.Video, videoWidth: number, videoHeight: number) => {
+        const scale = Math.max(
+          width / videoWidth,
+          height / videoHeight
+        );
+        this.introVideo.setScale(scale);
+        this.introVideo.setPosition(width / 2, height / 2);
+      }
+    );
+
+    // Play the video once
+    this.introVideo.play(false);
+
+    // When the video finishes, display the tutorial choice screen
+    this.introVideo.once('complete', () => {
+      this.showTutorialChoice();
+    });
+
+    // Skip button background
+    const buttonWidth = 120;
+    const buttonHeight = 34;
+    const buttonX = width - 78;
+    const buttonY = 28;
+
+    const buttonBackground = this.add.rectangle(
+      buttonX,
+      buttonY,
+      buttonWidth,
+      buttonHeight,
+      0x080c18,
+      0.85
+    );
+
+    buttonBackground
+      .setStrokeStyle(1, 0x00e5ff, 0.9)
+      .setDepth(10);
+
+    // Skip button text
+    const skipText = this.add.text(
+      buttonX,
+      buttonY,
+      'SKIP INTRO  >>',
+      {
+        fontFamily: GAME_FONTS.mono || 'Courier New, monospace',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: '#00e5ff'
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(11);
+
+    // Interactive skip button
+    this.skipHitArea = this.add.zone(
+      buttonX,
+      buttonY,
+      buttonWidth,
+      buttonHeight
+    )
+      .setInteractive({ useHandCursor: true })
+      .setDepth(12);
+
+    this.skipHitArea.on('pointerover', () => {
+      buttonBackground.setFillStyle(0x102638, 0.95);
+      buttonBackground.setStrokeStyle(1, 0xffffff, 1);
+      skipText.setColor('#ffffff');
+      AudioManager.playMenuHover();
+    });
+
+    this.skipHitArea.on('pointerout', () => {
+      buttonBackground.setFillStyle(0x080c18, 0.85);
+      buttonBackground.setStrokeStyle(1, 0x00e5ff, 0.9);
+      skipText.setColor('#00e5ff');
+    });
+
+    this.skipHitArea.on('pointerdown', () => {
+      this.showTutorialChoice();
+    });
+
+    // Keyboard skip on ESC: skips video and presents the tutorial choice
+    this.input.keyboard?.on('keydown-ESC', () => {
+      if (!this.isChoiceActive && !this.isLeaving) {
+        this.showTutorialChoice();
       }
     });
 
-    this.slideIndex = 0;
-    this.isAdvancing = false;
-    this.showSlide(0);
+    // Fade into the video
+    this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    // Cleanup if the scene is stopped or changed externally
+    this.events.once('shutdown', () => {
+      if (this.introVideo) {
+        this.introVideo.stop();
+        this.introVideo.destroy();
+      }
+
+    });
   }
 
-  // ── Slide renderer ───────────────────────────────────────────────────────────
+  /**
+   * Displays the Tutorial Choice Screen when video ends or is skipped.
+   */
+  private showTutorialChoice(): void {
+    if (this.isChoiceActive || this.isLeaving) return;
+    this.isChoiceActive = true;
 
-  private showSlide(index: number): void {
-    this.isAdvancing = false;
-    this.typewriterTimer?.remove();
-    this.autoAdvanceTimer?.remove();
-    this.typewriterTimer = null;
-    this.autoAdvanceTimer = null;
-    this.children.removeAll(true);
+    // Stop and pause video cleanly
+    if (this.introVideo) {
+      try {
+        this.introVideo.stop();
+      } catch (e) {
+        // ignore
+      }
+    }
 
-    const W = this.cameras.main.width;
-    const H = this.cameras.main.height;
-    const slide = SLIDES[index];
+    // Disable top skip button
+    if (this.skipHitArea) {
+      this.skipHitArea.disableInteractive();
+    }
 
-    // ── Full-screen background image
-    const bg = this.add.image(W / 2, H / 2, slide.imageKey);
-    bg.setScale(Math.max(W / bg.width, H / bg.height));
+    const width = this.scale.width;
+    const height = this.scale.height;
 
-    // ── Gradient vignette so bottom text is always readable
-    const vignette = this.add.graphics();
-    vignette.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.0, 0.0, 0.78, 0.78);
-    vignette.fillRect(0, 0, W, H);
+    this.choiceContainer = this.add.container(0, 0).setDepth(200);
 
-    // ── Scanlines
-    const scan = this.add.graphics().setAlpha(0.06);
-    scan.lineStyle(1, 0x000000, 1);
-    for (let y = 0; y < H; y += 3) scan.lineBetween(0, y, W, y);
+    // Dark backdrop overlay
+    const backdrop = this.add.rectangle(width / 2, height / 2, width, height, 0x040814, 0.92)
+      .setInteractive();
+    this.choiceContainer.add(backdrop);
 
-    // ── Chapter pill (top-left)
-    const pill = this.add.graphics();
-    pill.fillStyle(0x0a101d, 0.75);
-    pill.fillRoundedRect(20, 16, 62, 22, 5);
-    pill.lineStyle(1.5, 0x00f0ff, 0.8);
-    pill.strokeRoundedRect(20, 16, 62, 22, 5);
-    this.add.text(51, 27, '// 0' + (index + 1), {
-      fontFamily: '"Pixelify Sans", monospace',
+    // Dialog Box
+    const boxW = 380;
+    const boxH = 190;
+    const boxX = (width - boxW) / 2;
+    const boxY = (height - boxH) / 2;
+
+    const boxGfx = this.add.graphics();
+    boxGfx.fillStyle(0x0a1220, 0.98);
+    boxGfx.fillRect(boxX, boxY, boxW, boxH);
+    boxGfx.lineStyle(2, 0x00f0ff, 0.9);
+    boxGfx.strokeRect(boxX, boxY, boxW, boxH);
+
+    // Cyber corner brackets
+    boxGfx.lineStyle(2, 0x39ff14, 1);
+    const cw = 6;
+    boxGfx.strokeRect(boxX - 1, boxY - 1, cw, cw);
+    boxGfx.strokeRect(boxX + boxW - cw + 1, boxY - 1, cw, cw);
+    boxGfx.strokeRect(boxX - 1, boxY + boxH - cw + 1, cw, cw);
+    boxGfx.strokeRect(boxX + boxW - cw + 1, boxY + boxH - cw + 1, cw, cw);
+
+    // Header bar
+    boxGfx.fillStyle(0x132238, 1);
+    boxGfx.fillRect(boxX, boxY, boxW, 28);
+    boxGfx.lineStyle(1, 0x00f0ff, 0.4);
+    boxGfx.lineBetween(boxX, boxY + 28, boxX + boxW, boxY + 28);
+    this.choiceContainer.add(boxGfx);
+
+    // Title
+    const titleText = this.add.text(width / 2, boxY + 14, 'SIMULATION INITIALIZED', {
+      fontFamily: GAME_FONTS.primary,
       fontSize: '12px',
       fontStyle: 'bold',
       color: '#00f0ff',
-      stroke: '#000000',
+      stroke: '#040711',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+    this.choiceContainer.add(titleText);
+
+    // Prompt message
+    const msgText = this.add.text(width / 2, boxY + 54, 'TIMELINE COMPROMISED // WOULD YOU LIKE TO VIEW\nTHE QUANTUM SUIT & ABILITY PROTOCOLS?', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      align: 'center',
+      lineSpacing: 4
+    }).setOrigin(0.5);
+    this.choiceContainer.add(msgText);
+
+    const subText = this.add.text(width / 2, boxY + 95, 'Recommended for first-time operatives. Covers movement,\nstaff mechanics, reality shifts, and sector objectives.', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '8px',
+      color: '#8b9bb4',
+      align: 'center',
+      lineSpacing: 2
+    }).setOrigin(0.5);
+    this.choiceContainer.add(subText);
+
+    // Buttons
+    const btnY = boxY + 144;
+
+    // VIEW TUTORIAL Button
+    const viewBtn = this.createChoiceButton(width / 2 - 82, btnY, 134, 28, 'VIEW TUTORIAL', () => {
+      this.openTutorialFromStory();
+    }, 0x0c281e, 0x39ff14);
+    this.choiceContainer.add(viewBtn);
+
+    // SKIP TUTORIAL Button
+    const skipBtn = this.createChoiceButton(width / 2 + 82, btnY, 134, 28, 'SKIP TUTORIAL', () => {
+      this.startGame();
+    }, 0x142033, 0x00f0ff);
+    this.choiceContainer.add(skipBtn);
+
+    // Animate Choice dialog appearance
+    this.choiceContainer.setAlpha(0);
+    this.tweens.add({
+      targets: this.choiceContainer,
+      alpha: 1,
+      duration: 180,
+      ease: 'Power2'
+    });
+  }
+
+  private createChoiceButton(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    onClick: () => void,
+    customFill?: number,
+    customStroke?: number
+  ): Phaser.GameObjects.Container {
+    const btn = this.add.container(x, y);
+    const bg = this.add.graphics();
+
+    const normalFill = customFill ?? 0x142033;
+    const normalStroke = customStroke ?? 0x00f0ff;
+
+    const draw = (color: number, stroke: number) => {
+      bg.clear();
+      bg.fillStyle(color, 1);
+      bg.fillRect(-w / 2, -h / 2, w, h);
+      bg.lineStyle(1.5, stroke, 1);
+      bg.strokeRect(-w / 2, -h / 2, w, h);
+    };
+    draw(normalFill, normalStroke);
+
+    const txt = this.add.text(0, 0, label, {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#e0fbfc',
+      stroke: '#040711',
       strokeThickness: 2
     }).setOrigin(0.5);
 
-    // ── Title (bottom-left, fades in)
-    const titleY = H - 152;
-    const titleObj = this.add.text(24, titleY, slide.title.toUpperCase(), {
-      fontFamily: '"Pixelify Sans", monospace',
-      fontSize: '17px',
-      fontStyle: 'bold',
-      color: '#ffffff',
-      stroke: '#050a14',
-      strokeThickness: 4
-    }).setAlpha(0);
-    this.tweens.add({ targets: titleObj, alpha: 1, duration: 500 });
+    const hit = this.add.zone(0, 0, w, h)
+      .setInteractive({ useHandCursor: true });
 
-    // Accent underline below title
-    const accent = this.add.graphics().setAlpha(0);
-    accent.lineStyle(2, 0x00f0ff, 0.9);
-    accent.lineBetween(24, titleY + 23, 24 + slide.title.length * 11, titleY + 23);
-    this.tweens.add({ targets: accent, alpha: 1, duration: 500, delay: 200 });
-
-    // ── Typewriter body text
-    const bodyText = this.add.text(24, titleY + 32, '', {
-      fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
-      fontSize: '13px',
-      color: '#e2f0fc',
-      stroke: '#050a14',
-      strokeThickness: 3,
-      lineSpacing: 8,
-      wordWrap: { width: W - 48 },
+    hit.on('pointerover', () => {
+      draw(normalFill + 0x0a141e, normalStroke);
+      txt.setColor('#ffffff');
+      btn.setScale(1.02);
+      AudioManager.playMenuHover();
     });
 
-    const fullBody = slide.lines.join('\n');
-    let charIndex = 0;
-    const typeChar = () => {
-      if (charIndex < fullBody.length) {
-        bodyText.setText(fullBody.substring(0, charIndex + 1));
-        charIndex++;
-        this.typewriterTimer = this.time.delayedCall(CHAR_DELAY, typeChar);
-      } else {
-        // Auto-advance after reading pause
-        this.autoAdvanceTimer = this.time.delayedCall(AUTO_ADVANCE_DELAY, () => this.advanceSlide());
-      }
-    };
-    this.typewriterTimer = this.time.delayedCall(400, typeChar);
-
-    // ── Progress dots (bottom-centre)
-    const dotsY = H - 16;
-    const dotSpacing = 14;
-    const dotsStartX = W / 2 - ((SLIDES.length - 1) * dotSpacing) / 2;
-    SLIDES.forEach((_, i) => {
-      const dot = this.add.graphics();
-      if (i === index) {
-        dot.fillStyle(0x00f0ff, 1);
-        dot.fillCircle(dotsStartX + i * dotSpacing, dotsY, 3);
-      } else {
-        dot.fillStyle(0x4a6080, 0.7);
-        dot.fillCircle(dotsStartX + i * dotSpacing, dotsY, 2.5);
-      }
+    hit.on('pointerout', () => {
+      draw(normalFill, normalStroke);
+      txt.setColor('#e0fbfc');
+      btn.setScale(1.0);
     });
 
-    // ── NEXT / BEGIN button (bottom-right, pulsing)
-    const isLast = index === SLIDES.length - 1;
-    const nextBtn = this.add.text(W - 20, H - 20, isLast ? 'BEGIN  ►' : 'NEXT  ►', {
-      fontFamily: '"Pixelify Sans", monospace',
-      fontSize: '13px',
-      fontStyle: 'bold',
-      color: '#70e000',
-      stroke: '#050a14',
-      strokeThickness: 3
-    }).setOrigin(1, 1).setInteractive({ useHandCursor: true });
-    this.tweens.add({ targets: nextBtn, alpha: 0.5, yoyo: true, repeat: -1, duration: 700 });
-    nextBtn.on('pointerup', () => this.advanceSlide());
-    nextBtn.on('pointerover', () => nextBtn.setColor('#ffffff'));
-    nextBtn.on('pointerout', () => nextBtn.setColor('#70e000'));
+    hit.on('pointerdown', () => {
+      btn.setScale(0.96);
+    });
 
-    // ── SKIP button (top-right)
-    const skipBtn = this.add.text(W - 20, 20, 'SKIP  »', {
-      fontFamily: '"Pixelify Sans", monospace',
-      fontSize: '12px',
-      fontStyle: 'bold',
-      color: '#8b9bb4',
-      stroke: '#050a14',
-      strokeThickness: 2
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
-    skipBtn.on('pointerup', () => this.skipAll());
-    skipBtn.on('pointerover', () => skipBtn.setColor('#ffffff'));
-    skipBtn.on('pointerout', () => skipBtn.setColor('#8b9bb4'));
+    hit.on('pointerup', () => {
+      btn.setScale(1);
+      AudioManager.playMenuSelect();
+      onClick();
+    });
 
-    // ── Keyboard shortcuts (re-registered each slide)
-    this.input.keyboard?.removeAllKeys();
-    this.input.keyboard
-      ?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
-      .once('down', () => this.advanceSlide());
-    this.input.keyboard
-      ?.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
-      .once('down', () => this.advanceSlide());
-    this.input.keyboard
-      ?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
-      .on('down', () => {
-        if (FullscreenManager.shouldBlockEsc()) return;
-        this.skipAll();
-      });
-
-    // Camera fade-in from black
-    this.cameras.main.fadeIn(350, 0, 0, 0);
+    btn.add([bg, txt, hit]);
+    return btn;
   }
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
+  private openTutorialFromStory(): void {
+    if (this.isLeaving) return;
+    this.isLeaving = true;
 
-  /** Advance to next slide, or launch the game on the last one. */
-  private advanceSlide(): void {
-    if (this.isAdvancing) return;
-    this.isAdvancing = true;
-    this.typewriterTimer?.remove();
-    this.autoAdvanceTimer?.remove();
-    this.cameras.main.fadeOut(280, 0, 0, 0,
-      (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-        if (progress === 1) {
-          const next = this.slideIndex + 1;
-          if (next < SLIDES.length) {
-            this.slideIndex = next;
-            this.showSlide(next);
-          } else {
-            this.startGame();
-          }
-        }
-      },
-    );
-  }
+    if (this.introVideo) {
+      try { this.introVideo.stop(); } catch (e) { /* ignore */ }
+    }
 
-  /** Skip the entire story sequence and go straight to the game. */
-  private skipAll(): void {
-    if (this.isAdvancing) return;
-    this.isAdvancing = true;
-    this.typewriterTimer?.remove();
-    this.autoAdvanceTimer?.remove();
-    this.cameras.main.fadeOut(250, 0, 0, 0,
-      (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
-        if (progress === 1) this.startGame();
-      },
-    );
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start(GAME_CONFIG.sceneKeys.Tutorial, { source: 'story' });
+    });
   }
 
   private startGame(): void {
-    if (AudioManager.getCurrentTrack() === 'story') {
-      AudioManager.stopMusic();
+    if (this.isLeaving) return;
+    this.isLeaving = true;
+
+    // Stop the video
+    if (this.introVideo) {
+      try {
+        this.introVideo.stop();
+      } catch (e) {
+        // ignore
+      }
     }
-    this.scene.start(GAME_CONFIG.sceneKeys.Game);
+
+
+
+    // Fade out before entering gameplay
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start(GAME_CONFIG.sceneKeys.Game);
+    });
   }
 }

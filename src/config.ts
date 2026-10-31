@@ -1,4 +1,4 @@
-export const GAME_CONFIG = {
+﻿export const GAME_CONFIG = {
   width: 640,
   height: 360,
   gravity: 800,
@@ -7,6 +7,7 @@ export const GAME_CONFIG = {
     Boot: 'BootScene',
     Preload: 'PreloadScene',
     MainMenu: 'MainMenu',
+    Tutorial: 'TutorialScene',
     Game: 'GameScene',
     Level3: 'Level3Scene',
     Level4: 'Level4Scene',

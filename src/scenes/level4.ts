@@ -1,3 +1,4 @@
+﻿import { TextureGenerator } from '../utils/TextureGenerator';
 import Phaser from 'phaser';
 import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { Player } from '../entities/Player';
@@ -207,6 +208,7 @@ export class Level4Scene extends Phaser.Scene {
     this.buildForestBackground();
 
     // 2. Build Terrain & Static Platforms
+    TextureGenerator.generatePlayerTextures(this);
     this.buildTerrain();
 
     // 3. Spawn Player

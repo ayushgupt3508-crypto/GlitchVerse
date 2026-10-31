@@ -488,9 +488,8 @@ export class ActiveForestGolem implements ITimeStateObject, IStaffInteractable {
     this.patrolSpeed = patrolSpeed;
     this.alertSpeed = alertSpeed;
 
-    this.sprite = scene.add.sprite(x, y, 'proto_drone')
-      .setDisplaySize(30, 30)
-      .setTint(0x40916c)
+    this.sprite = scene.add.sprite(x, y, 'forest_golem')
+      .setDisplaySize(40, 40)
       .setDepth(12);
 
     scene.physics.add.existing(this.sprite, false);
@@ -540,7 +539,7 @@ export class ActiveForestGolem implements ITimeStateObject, IStaffInteractable {
       this.isTimeFrozen = false;
       this.isAlert = false;
       this.body.setVelocityX(this.patrolSpeed * this.direction);
-      this.sprite.setTint(0x40916c);
+      this.sprite.clearTint();
       this.stasisBubble.clear();
       this.alertIcon.setAlpha(0);
       return true;
@@ -549,7 +548,7 @@ export class ActiveForestGolem implements ITimeStateObject, IStaffInteractable {
   }
 
   public getBounds(): Phaser.Geom.Rectangle {
-    return new Phaser.Geom.Rectangle(this.sprite.x - 15, this.sprite.y - 15, 30, 30);
+    return new Phaser.Geom.Rectangle(this.sprite.x - 20, this.sprite.y - 20, 40, 40);
   }
 
   public update(time: number, delta: number): void {
@@ -589,7 +588,7 @@ export class ActiveForestGolem implements ITimeStateObject, IStaffInteractable {
     } else if (this.isAlert && Math.abs(dx) > 230) {
       this.isAlert = false;
       this.currentState = 'PATROLLING';
-      this.sprite.setTint(0x40916c);
+      this.sprite.clearTint();
       this.alertIcon.setAlpha(0);
     }
 

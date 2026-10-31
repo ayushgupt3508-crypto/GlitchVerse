@@ -1,12 +1,13 @@
-import Phaser from 'phaser';
+﻿import Phaser from 'phaser';
 import { GAME_CONFIG } from './config';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MainMenuScene } from './scenes/MainMenuScene';
 import { StoryScene } from './scenes/StoryScene';
-import { GameScene } from './scenes/GameScene';
+import { TutorialScene } from './scenes/TutorialScene';
+import { GameScene } from './scenes/level1';
 import { LevelCompleteScene } from './scenes/LevelCompleteScene';
-import { Sector2Scene } from './scenes/Sector2Scene';
+import { Sector2Scene } from './scenes/level2';
 import { Level3Scene } from './scenes/level3';
 import { Level4Scene } from './scenes/level4';
 import { Level5Scene } from './scenes/level5';
@@ -60,6 +61,7 @@ const config: Phaser.Types.Core.GameConfig = {
     MainMenuScene,
     MainMenuAliasScene,
     StoryScene,
+    TutorialScene,
     GameScene,
     LevelCompleteScene,
     Sector2Scene,
