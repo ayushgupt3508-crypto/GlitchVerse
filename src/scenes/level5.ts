@@ -545,12 +545,17 @@ export class Level5Scene extends Phaser.Scene {
     this.realitySwap.update(time, delta, this.cursors, { a: this.keyA, d: this.keyD, w: this.keyW, space: this.keySpace });
 
     // Update Player & Controls
+    // IMPORTANT: mobileHandle.update() must run every frame (including during possession)
+    // because updateSentinelControls() reads player.mobileInput for sentinel movement/jump.
+    // Skipping it during possession means the sentinel gets zero mobile input → can't move on mobile.
+    this.mobileHandle?.update();
+
     if (this.realitySwap.isPossessing) {
-      // Vance is frozen in stasis: zero velocity and disable body movement
+      // Vance is frozen in stasis: zero velocity and disable body movement.
+      // mobileInput flags are still updated above so the SENTINEL can use them.
       const pBody = this.player.body as Phaser.Physics.Arcade.Body;
       pBody.setVelocity(0, 0);
     } else {
-      this.mobileHandle?.update();
       this.player.update(time, delta);
     }
 
@@ -568,13 +573,21 @@ export class Level5Scene extends Phaser.Scene {
     // Update Phasing Ability
     this.phasing.update(time, delta);
 
-    // Sync SHIFT button color to current reality (mobile only)
-    if (this.mobileShiftBtnBg && this.mobileShiftBtnLabel) {
-      const isA    = this.phasing.reality === 'A';
-      const color  = isA ? LEVEL5_DATA.palette.cyan : LEVEL5_DATA.palette.magenta;
-      const hexStr = '#' + color.toString(16).padStart(6, '0');
-      this.mobileShiftBtnBg.setFillStyle(color, 0.62);
-      this.mobileShiftBtnLabel.setColor(hexStr);
+    // Sync SHIFT button to current state (mobile only)
+    if (this.mobileShiftBtnBg && this.mobileShiftBtnLabel && this.mobileShiftBtn) {
+      if (this.realitySwap.isPossessing) {
+        // Dim: can't shift reality while controlling the sentinel
+        this.mobileShiftBtnBg.setFillStyle(0x333333, 0.3);
+        this.mobileShiftBtnLabel.setColor('#555555');
+        this.mobileShiftBtn.setAlpha(0.45);
+      } else {
+        const isA    = this.phasing.reality === 'A';
+        const color  = isA ? LEVEL5_DATA.palette.cyan : LEVEL5_DATA.palette.magenta;
+        const hexStr = '#' + color.toString(16).padStart(6, '0');
+        this.mobileShiftBtnBg.setFillStyle(color, 0.62);
+        this.mobileShiftBtnLabel.setColor(hexStr);
+        this.mobileShiftBtn.setAlpha(1);
+      }
     }
 
     // Update Camouflage Ability
