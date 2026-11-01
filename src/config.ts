@@ -7,11 +7,16 @@
     Boot: 'BootScene',
     Preload: 'PreloadScene',
     MainMenu: 'MainMenu',
+    LevelSelect: 'LevelSelectScene',
+
     Tutorial: 'TutorialScene',
+
     Game: 'GameScene',
+    Level2: 'Sector2Scene',
     Level3: 'Level3Scene',
     Level4: 'Level4Scene',
     Level5: 'Level5Scene',
+
     GameEnding: 'GameEnding',
     FinalScore: 'FinalScore',
     Credits: 'Credits',

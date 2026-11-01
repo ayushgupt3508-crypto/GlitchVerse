@@ -17,6 +17,7 @@ import { CreditsScene } from './scenes/CreditsScene';
 import { EndingScene } from './scenes/EndingScene';
 import { OrientationManager } from './utils/OrientationManager';
 import { FullscreenManager } from './systems/FullscreenManager';
+import { LevelSelectScene } from './scenes/LevelSelectScene';
 
 class MainMenuAliasScene extends Phaser.Scene {
   constructor() {
@@ -59,6 +60,7 @@ const config: Phaser.Types.Core.GameConfig = {
     BootScene,
     PreloadScene,
     MainMenuScene,
+    LevelSelectScene,
     MainMenuAliasScene,
     StoryScene,
     TutorialScene,

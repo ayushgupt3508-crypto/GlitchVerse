@@ -364,10 +364,13 @@ export class MainMenuScene extends Phaser.Scene {
 
   private handlePlay(): void {
     if (this.activeModal) return;
+
     const cam = this.cameras.main;
+
     cam.fadeOut(500);
+
     cam.once('camerafadeoutcomplete', () => {
-      this.scene.start('StoryScene');
+      this.scene.start(GAME_CONFIG.sceneKeys.LevelSelect);
     });
   }
 
