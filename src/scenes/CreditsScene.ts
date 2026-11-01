@@ -65,8 +65,8 @@ export class CreditsScene extends Phaser.Scene {
     ];
 
     const creditsText = this.add.text(W / 2, H + 20, creditsLines.join('\n'), {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '11px',
+      fontFamily: 'Oxanium, monospace',
+      fontSize: '15px',
       color: '#e0aaff',
       align: 'center',
       lineSpacing: 5
@@ -74,8 +74,8 @@ export class CreditsScene extends Phaser.Scene {
 
     // Skip hint
     this.add.text(W / 2 + 225, H - 14, '[ESC / CLICK TO RETURN TO MENU]', {
-      fontFamily: 'Courier New, monospace',
-      fontSize: '8px',
+      fontFamily: 'Oxanium, monospace',
+      fontSize: '11px',
       color: '#8b9bb4'
     }).setOrigin(0.5);
 

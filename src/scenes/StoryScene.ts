@@ -170,7 +170,7 @@ export class StoryScene extends Phaser.Scene {
     this.choiceContainer.add(backdrop);
 
     // Dialog Box
-    const boxW = 380;
+    const boxW = 450;
     const boxH = 190;
     const boxX = (width - boxW) / 2;
     const boxY = (height - boxH) / 2;
@@ -199,7 +199,7 @@ export class StoryScene extends Phaser.Scene {
     // Title
     const titleText = this.add.text(width / 2, boxY + 14, 'SIMULATION INITIALIZED', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '12px',
+      fontSize: '15px',
       fontStyle: 'bold',
       color: '#00f0ff',
       stroke: '#040711',
@@ -210,7 +210,7 @@ export class StoryScene extends Phaser.Scene {
     // Prompt message
     const msgText = this.add.text(width / 2, boxY + 54, 'TIMELINE COMPROMISED // WOULD YOU LIKE TO VIEW\nTHE QUANTUM SUIT & ABILITY PROTOCOLS?', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '10px',
+      fontSize: '14px',
       fontStyle: 'bold',
       color: '#ffffff',
       align: 'center',
@@ -220,7 +220,7 @@ export class StoryScene extends Phaser.Scene {
 
     const subText = this.add.text(width / 2, boxY + 95, 'Recommended for first-time operatives. Covers movement,\nstaff mechanics, reality shifts, and sector objectives.', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '8px',
+      fontSize: '12px',
       color: '#8b9bb4',
       align: 'center',
       lineSpacing: 2

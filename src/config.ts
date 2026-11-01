@@ -20,7 +20,7 @@
 } as const;
 
 export const GAME_FONTS = {
-  primary: '"Pixelify Sans", "Share Tech Mono", monospace',
-  heading: '"Pixelify Sans", "Press Start 2P", monospace',
-  mono: '"Pixelify Sans", "Courier New", monospace'
+  primary: '"Oxanium", sans-serif',
+  heading: '"Oxanium", sans-serif',
+  mono: '"Share Tech Mono", monospace'
 };

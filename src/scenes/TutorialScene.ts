@@ -591,8 +591,8 @@ export class TutorialScene extends Phaser.Scene {
   private buildOverlayPanel(): void {
     const W = this.scale.width;
     const panelW = 460;
-    const panelH = 76;
-    const panelX = W / 2;
+    const panelH = 85;
+    const panelX = W / 2 - 80;
     const panelY = 46;
 
     this.overlayPanel = this.add.container(panelX, panelY).setScrollFactor(0).setDepth(2000);
@@ -668,8 +668,8 @@ export class TutorialScene extends Phaser.Scene {
 
     // Hint text & status
     this.hintText = this.add.text(-panelW / 2 + 14, panelH / 2 - 12, '', {
-      fontFamily: GAME_FONTS.primary,
-      fontSize: '8px',
+      fontFamily: GAME_FONTS.mono,
+      fontSize: '9px',
       color: '#8b9bb4'
     }).setOrigin(0, 0.5);
     this.overlayPanel.add(this.hintText);

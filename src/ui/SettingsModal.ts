@@ -148,9 +148,9 @@ export class SettingsModal extends Phaser.GameObjects.Container {
     const customStartY = dividerY + 12;
 
     // Section Title
-    const sectionTitle = scene.add.text(width / 2, customStartY, 'CHARACTER CUSTOMIZATION', {
+    const sectionTitle = scene.add.text(width / 2, customStartY + 8, 'CHARACTER CUSTOMIZATION', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '11px',
+      fontSize: '16px',
       fontStyle: 'bold',
       color: '#39ff14',
       stroke: '#040711',
@@ -282,27 +282,27 @@ export class SettingsModal extends Phaser.GameObjects.Container {
     const btnRowY = startY + 58;
 
     // Custom Color Button
-    const customBtn = this.createButton(scene, paletteStartX + 52, btnRowY, 94, 20, 'CUSTOM COLOR', () => {
+    const customBtn = this.createButton(scene, paletteStartX + 52, btnRowY + 5, 94, 20, 'CUSTOM COLOR', () => {
       this.openNativeColorPicker();
     });
     this.add(customBtn);
 
     // Apply Button
-    const applyBtn = this.createButton(scene, paletteStartX + 144, btnRowY, 68, 20, 'APPLY', () => {
+    const applyBtn = this.createButton(scene, paletteStartX + 144, btnRowY + 5, 68, 20, 'APPLY', () => {
       this.applyColor();
     }, 0x0c281e, 0x39ff14);
     this.add(applyBtn);
 
     // Reset to Default Button
-    const resetBtn = this.createButton(scene, paletteStartX + 230, btnRowY, 82, 20, 'RESET DEFAULT', () => {
+    const resetBtn = this.createButton(scene, paletteStartX + 230, btnRowY + 5, 82, 20, 'RESET DEFAULT', () => {
       this.resetToDefault();
     }, 0x24141d, 0xff5577);
     this.add(resetBtn);
 
     // Helper hint text
-    const hint = scene.add.text(paletteStartX + 2, startY + 76, '* Select a swatch or pick a custom colour, then click APPLY.', {
+    const hint = scene.add.text(paletteStartX + 2, startY + 80, '* Select a swatch or pick a custom colour, then click APPLY.', {
       fontFamily: GAME_FONTS.primary,
-      fontSize: '8px',
+      fontSize: '11px',
       color: '#8b9bb4'
     }).setScrollFactor(0);
     this.add(hint);
