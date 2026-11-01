@@ -2131,7 +2131,7 @@ export class Level3Scene extends Phaser.Scene {
 
     this.objectiveBg = this.add.graphics();
     this.objectiveText = this.add.text(0, 0, '', {
-      fontFamily: '"Pixelify Sans", monospace',
+      fontFamily: '"Oxanium", monospace',
       fontSize: '10px',
       fontStyle: 'bold',
       color: '#ffd166',
@@ -2183,7 +2183,7 @@ export class Level3Scene extends Phaser.Scene {
     const container = this.add.container(x, y).setDepth(22);
 
     const txt = this.add.text(0, 0, `${icon} ${text}`, {
-      fontFamily: '"Pixelify Sans", monospace',
+      fontFamily: '"Oxanium", monospace',
       fontSize: '9px',
       fontStyle: 'bold',
       color: '#' + color.toString(16).padStart(6, '0'),

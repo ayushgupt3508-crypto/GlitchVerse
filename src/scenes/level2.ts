@@ -65,7 +65,7 @@ export class Sector2Scene extends Phaser.Scene {
   private discoveredZones = new Set<number>();
 
   // Level dimensions — floor at y=330 (lava surface)
-  private readonly levelWidth  = 3760;
+  private readonly levelWidth = 3760;
   private readonly levelHeight = 420;
   private readonly floorY = 330; // lava surface y
 
@@ -641,20 +641,32 @@ export class Sector2Scene extends Phaser.Scene {
     // Ember drone #2 patrolling the ledge area
     drones.push(this.spawnEmberDrone(1610, 186, 1450, 1660));
 
-    // ── Extension Entry: Safe Practice Area & Tutorial Vent (x=1824-2080) ──
-    for (let x = 1824; x <= 2080; x += 32) {
-      this.platforms.create(x, 270, 'tile_metal').refreshBody();
-    }
     // Lava under the chasm before entry platform (1760-1824)
     for (let x = 1760; x <= 1824; x += 32) {
       (this.lavaTiles.create(x, this.floorY + 4, 'tile_lava') as Phaser.Physics.Arcade.Sprite).refreshBody();
     }
     // Tutorial vent & safe practice ledge
-    this.spawnThermalVent(1940, 270, 'updraft', 48, 140);
-    this.platforms.create(1960, 200, 'tile_metal').refreshBody();
-    this.platforms.create(1992, 200, 'tile_metal').refreshBody();
-    this.platforms.create(2024, 200, 'tile_metal').refreshBody();
-    this.add.text(1860, 235, '[E/J] IGNITE THERMAL VENT  ·  RIDE THE UPDRAFT', {
+    // ── Extension Entry: Safe Practice Area & Tutorial Vent ──
+
+    // Ground before the elevated section
+    for (let x = 1824; x <= 1920; x += 32) {
+      this.platforms.create(x, 270, 'tile_metal').refreshBody();
+    }
+
+    // Ground after the elevated section
+    for (let x = 2080; x <= 2080; x += 32) {
+      this.platforms.create(x, 270, 'tile_metal').refreshBody();
+    }
+
+    // Tutorial vent
+    this.spawnThermalVent(1930, 270, 'updraft', 48, 140);
+
+    // Elevated platform, raised by 40px
+    this.platforms.create(1960, 160, 'tile_metal').refreshBody();
+    this.platforms.create(1992, 160, 'tile_metal').refreshBody();
+    this.platforms.create(2024, 160, 'tile_metal').refreshBody();
+
+    this.add.text(1860, 235, '[E/J] IGNITE THERMAL VENT · RIDE THE UPDRAFT', {
       fontFamily: GAME_FONTS.primary,
       fontSize: '10px',
       fontStyle: 'bold',
@@ -1248,7 +1260,7 @@ export class Sector2Scene extends Phaser.Scene {
   private handleLevelComplete(): void {
     if (this.isLeavingScene || this.physics.world.isPaused) return;
     this.isLeavingScene = true;
-     SaveSystem.markLevelCompleted(2);
+    SaveSystem.markLevelCompleted(2);
     this.physics.pause();
     this.hud.showBanner('SECTOR 2 CONQUERED! FAILSAFE ARRAY NEAR COMPLETE!');
     this.cameras.main.fadeOut(700, 180, 40, 0);

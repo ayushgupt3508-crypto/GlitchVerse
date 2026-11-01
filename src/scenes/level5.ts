@@ -470,7 +470,7 @@ export class Level5Scene extends Phaser.Scene {
 
     // Icon: swap arrows ⇄
     const icon = this.add.text(0, -4, '⇄', {
-      fontFamily: '"Pixelify Sans", monospace',
+      fontFamily: '"Oxanium", monospace',
       fontSize: '16px',
       fontStyle: 'bold',
       color: '#ffffff',
@@ -481,7 +481,7 @@ export class Level5Scene extends Phaser.Scene {
 
     // Label below icon
     const lbl = this.add.text(0, R + 7, 'SHIFT', {
-      fontFamily: '"Pixelify Sans", monospace',
+      fontFamily: '"Oxanium", monospace',
       fontSize: '7px',
       fontStyle: 'bold',
       color: '#ffffff',

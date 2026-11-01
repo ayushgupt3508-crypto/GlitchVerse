@@ -428,7 +428,7 @@ export class CamouflageAbility {
 
     // Status text
     this.hudStatusText = this.scene.add.text(73, 8, '[C] ILLUSION: READY', {
-      fontFamily: '"Pixelify Sans", monospace',
+      fontFamily: '"oxanium", monospace',
       fontSize: '9px',
       fontStyle: 'bold',
       color: '#ffd166',

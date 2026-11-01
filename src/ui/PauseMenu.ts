@@ -52,7 +52,7 @@ export class PauseMenu extends Phaser.GameObjects.Container {
     this.add(panel);
 
     const header = scene.add.text(width / 2, py + 15, 'SIMULATION PAUSED', {
-      fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
+      fontFamily: '"Oxanium", "Share Tech Mono", monospace',
       fontSize: '14px',
       color: '#00f0ff',
       fontStyle: 'bold',
@@ -102,7 +102,7 @@ export class PauseMenu extends Phaser.GameObjects.Container {
       draw(0x142033, 0x243b59);
 
       const txt = scene.add.text(bx, by, btn.label, {
-        fontFamily: '"Pixelify Sans", "Share Tech Mono", monospace',
+        fontFamily: '"Oxanium", "Share Tech Mono", monospace',
         fontSize: '13px',
         color: '#e0fbfc',
         fontStyle: 'bold',

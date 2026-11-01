@@ -589,6 +589,20 @@ export class GameScene extends Phaser.Scene {
     this.mobileHandle?.update();
     this.checkZoneDiscovery();
     this.updateMovingPlatforms();
+
+    // Apply ice friction
+    this.player.isOnSlipperySurface = this.isOnIce;
+
+    const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+
+    if (this.isOnIce) {
+      playerBody.setDragX(80);
+    } else {
+      playerBody.setDragX(1000);
+    }
+
+    this.isOnIce = false;
+
     this.player.update(time, delta);
 
     // Update sentinel drones
@@ -625,14 +639,6 @@ export class GameScene extends Phaser.Scene {
         }
       }
     });
-
-    // Apply / reset ice friction
-    if (this.isOnIce) {
-      (this.player.body as Phaser.Physics.Arcade.Body).setDragX(80);
-    } else {
-      (this.player.body as Phaser.Physics.Arcade.Body).setDragX(1000);
-    }
-    this.isOnIce = false;
 
     // Pit / fall death
     if (this.player.y > this.levelHeight + 40 && !this.player.isDead && !this.isLeavingScene) {

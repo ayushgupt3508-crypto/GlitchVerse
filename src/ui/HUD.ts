@@ -9,7 +9,7 @@ import { FullscreenManager } from '../systems/FullscreenManager';
 
 const GAME_FONTS = {
   primary: 'Pixel Operator',
-  heading: 'Press Start 2P'
+  heading: 'oxanium'
 };
 
 /**
@@ -122,8 +122,8 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     this.add(portraitImg);
 
     // Name label
-    this.add(scene.add.text(36, 66, 'VANCE', {
-      fontFamily: GAME_FONTS.primary,
+    this.add(scene.add.text(80, 20, 'VANCE', {
+      fontFamily: GAME_FONTS.heading,
       fontSize: '9px',
       fontStyle: 'bold',
       color: hex,
@@ -148,7 +148,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     // Hearts row using heart_pixel image
     for (let i = 0; i < 3; i++) {
       const tex = scene.textures.exists('heart_pixel') ? 'heart_pixel' : 'proto_tile';
-      const heart = scene.add.image(88 + i * 26, 30, tex)
+      const heart = scene.add.image(95 + i * 26, 50, tex)
         .setDisplaySize(20, 20)
         .setOrigin(0.5);
       this.setHeartVisual(heart, true);
@@ -157,7 +157,7 @@ export class HUD extends Phaser.GameObjects.Container implements IHudChargeDispl
     }
 
     // "HP" label
-    this.add(scene.add.text(88, 48, 'HP', {
+    this.add(scene.add.text(65, 44, 'HP', {
       fontFamily: GAME_FONTS.primary,
       fontSize: '10px',
       fontStyle: 'bold',

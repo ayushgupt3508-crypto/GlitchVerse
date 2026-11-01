@@ -102,7 +102,7 @@ export class TimeAbility {
     bg.strokeRoundedRect(0, 0, 146, 24, 7);
 
     this.hudText = this.scene.add.text(73, 12, '[T/E] CHRONO CONDUIT', {
-      fontFamily: '"Pixelify Sans", monospace',
+      fontFamily: '"Oxanium", monospace',
       fontSize: '9px',
       fontStyle: 'bold',
       color: '#00f0ff',

@@ -40,6 +40,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public isInteracting = false;
   public isDead = false;
   private wasInAir = false;
+  public isOnSlipperySurface = false;
 
   /**
    * Optional mobile input flags — set by MobileControls on touch devices.
@@ -137,10 +138,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityX(this.moveSpeed);
       this.setFlipX(false);
       this.setOffset(4, 6);
-    } else {
-      // Snappy deceleration
+    } else if (!this.isOnSlipperySurface) {
+      // Normal ground: stop immediately
       this.setVelocityX(0);
     }
+    // On slippery surfaces, preserve horizontal velocity.
+    // Physics drag will gradually slow the player down.
 
     // Jump Execution
     const canJump = onGround || time < this.coyoteTimer;
