@@ -10,6 +10,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
+import { WaterAbility } from '../abilities/WaterAbility';
 
 /**
  * LEVEL 1 DATA SPECIFICATION — FROZEN AGE
@@ -90,6 +91,7 @@ export class GameScene extends Phaser.Scene {
   private hazards!: Phaser.Physics.Arcade.StaticGroup;
   private failsafeItems: Phaser.Physics.Arcade.Sprite[] = [];
   private exitPortal?: Phaser.GameObjects.Sprite;
+  private waterAbility!: WaterAbility;
 
   // Moving platforms (Phase 5) — static bodies refreshed each tween tick
   private movingPlatformSprites: Phaser.Physics.Arcade.Sprite[] = [];
@@ -286,6 +288,11 @@ export class GameScene extends Phaser.Scene {
     this.failsafeItems.forEach(item => {
       this.physics.add.overlap(this.player, item, () => this.collectFailsafeComponent(item));
     });
+
+    this.waterAbility = new WaterAbility(
+      this,
+      () => this.checkWaterStateConversion()
+    );
 
     // Hazards
     this.physics.add.overlap(this.player, this.hazards, () => this.handleHazardCollision());
@@ -567,8 +574,11 @@ export class GameScene extends Phaser.Scene {
     this.mobileHandle = setupMobileForScene({
       scene: this,
       player: this.player,
-      onAbilityPressed: () => this.player.useStaff(),
-      getAbilityState: () => ({
+      onAbilityPressed: () => {
+        if (this.player.staffCharges <= 0 || this.player.isDead) return;
+
+        this.player.useStaff();
+      }, getAbilityState: () => ({
         label: 'FREEZE',
         available: this.player.staffCharges > 0 && !this.player.isDead,
         tint: 0x48cae4,
@@ -1055,7 +1065,7 @@ export class GameScene extends Phaser.Scene {
 
   // ── Water State Conversion ─────────────────────────────────────────────
 
-  private checkWaterStateConversion(): void {
+  private checkWaterStateConversion(): boolean {
     // Zone 1: Main Water Chasm (existing logic preserved 100%)
     if (this.player.x >= 400 && this.player.x <= 750) {
       if (!this.isWaterFrozen) {
@@ -1073,7 +1083,7 @@ export class GameScene extends Phaser.Scene {
         this.icePlatforms.clear(true, true);
         this.cameras.main.flash(150, 0, 119, 182);
       }
-      return;
+      return true;
     }
 
     // Zone 2: Frozen Lake — Slab 1
@@ -1093,7 +1103,7 @@ export class GameScene extends Phaser.Scene {
         this.slab1IceTiles.forEach(tile => tile.destroy());
         this.slab1IceTiles = [];
       }
-      return;
+      return true;
     }
 
     // Zone 2: Decoy Valve
@@ -1108,7 +1118,7 @@ export class GameScene extends Phaser.Scene {
         this.decoyIceTile?.destroy();
         this.decoyIceTile = undefined;
       }
-      return;
+      return true;
     }
 
     // Zone 2: Slab 2 (Decoy / Trap Slab)
@@ -1127,7 +1137,7 @@ export class GameScene extends Phaser.Scene {
         this.slab2IceTiles.forEach(tile => tile.destroy());
         this.slab2IceTiles = [];
       }
-      return;
+      return true
     }
 
     // Zone 2: Slab 3
@@ -1146,7 +1156,7 @@ export class GameScene extends Phaser.Scene {
         this.slab3IceTiles.forEach(tile => tile.destroy());
         this.slab3IceTiles = [];
       }
-      return;
+      return true;
     }
 
     // Zone 3: Suspended Water Geyser (Drop Ice Block onto Pressure Plate)
@@ -1175,13 +1185,13 @@ export class GameScene extends Phaser.Scene {
           this.physics.add.overlap(block, this.pressurePlateSprite, () => this.triggerPressurePlate());
         }
       }
-      return;
+      return true;
     }
 
     // Zone 3: Melt Ice Barrier 2
     if (this.player.x >= z3.iceBarrier2.triggerRange[0] && this.player.x <= z3.iceBarrier2.triggerRange[1]) {
       this.meltBarrier2();
-      return;
+      return true;
     }
 
     // Zone 4: Slippery Runway Unfreezing / Freezing (on or near the runway)
@@ -1231,14 +1241,16 @@ export class GameScene extends Phaser.Scene {
           this.runwayIceTiles.push(ice);
         }
       }
-      return;
+      return true;
     }
 
     // Zone 4: Timed Door
     if (this.player.x >= z4.timedDoor.triggerRange[0] && this.player.x <= z4.timedDoor.triggerRange[1]) {
       this.meltTimedDoor();
-      return;
+      return true;
     }
+
+    return false;
   }
 
   // ── Zone 2: Frozen Lake Builder ────────────────────────────────────────

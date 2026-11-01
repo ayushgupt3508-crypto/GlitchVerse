@@ -3,8 +3,7 @@ import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { Player } from '../entities/Player';
 import { SentinelDrone } from '../entities/SentinelDrone';
 import { FireJet } from '../entities/FireJet';
-import { ThermalVent, ThermalVentType, THERMAL_VENT_CONFIG } from '../entities/ThermalVent';
-import { HUD } from '../ui/HUD';
+import { ThermalVent, ThermalVentType } from '../entities/ThermalVent';
 import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
@@ -12,6 +11,8 @@ import { AudioManager } from '../systems/AudioManager';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
+import { ThermalVentAbility } from '../abilities/ThermalVentAbility';
+import { HUD } from '../ui/HUD';
 
 /**
  * Sector2Scene — Heat Age (Bug-fixed version)
@@ -28,6 +29,7 @@ export class Sector2Scene extends Phaser.Scene {
   private lavaTiles!: Phaser.Physics.Arcade.StaticGroup;
   private fireHazards!: Phaser.Physics.Arcade.StaticGroup;  // ← separate from any other group
   private emberTiles: Phaser.Physics.Arcade.Sprite[] = [];  // crumbling
+  private thermalVentAbility!: ThermalVentAbility;
 
   // Entities
   private player!: Player;
@@ -226,9 +228,31 @@ export class Sector2Scene extends Phaser.Scene {
 
     // HUD — orange/red accent for Heat Age
     this.hud = new HUD(this, 'SECTOR 2  ·  HEAT AGE', 0xff6b00);
+
+    this.thermalVentAbility = new ThermalVentAbility(
+      this,
+      this.player,
+      this.vents,
+
+      // Successful vent ignition
+      (vent) => {
+        AudioManager.playStoneRumble();
+        this.cameras.main.flash(120, 255, 120, 0);
+
+        this.hud.showBanner(
+          `THERMAL VENT IGNITED (${vent.type.toUpperCase()})`
+        );
+      },
+
+      // No dormant vent nearby
+      () => {
+        this.tryStunNearbyJets();
+        this.tryStunNearbyDrones();
+      }
+    );
+
     this.hud.updateCharges(this.player.staffCharges);
     this.hud.updateIntegrity(this.player.integrity);
-
     this.setupObjectiveHUD();
     this.setObjective('NAVIGATE LAVA CHASM & RECOVER FAILSAFE 03');
     this.setupWorldIndicators();
@@ -248,8 +272,8 @@ export class Sector2Scene extends Phaser.Scene {
     this.player.on('staff_used', (chargesLeft: number) => {
       this.hud.updateCharges(chargesLeft);
       AudioManager.playStaffUse();
-      // Handle thermal vent control (ignites nearest dormant vent, or falls back to stun)
-      this.handleStaffUse();
+
+      this.thermalVentAbility.activate();
     });
     this.player.on('staff_empty', () => {
       this.hud.showBanner('STAFF DEPLETED — FIND A HEAT CONDUIT!');
@@ -1069,31 +1093,7 @@ export class Sector2Scene extends Phaser.Scene {
   // If no vent is in range, falls back to jet/drone stun.
   // Running or cooling vents cannot be re-ignited, so the press falls through to stun.
 
-  private handleStaffUse(): void {
-    let nearestVent: ThermalVent | null = null;
-    let minDist: number = THERMAL_VENT_CONFIG.ignitionRange;
 
-    for (const vent of this.vents) {
-      if (vent.isDormant) {
-        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, vent.x, vent.y);
-        if (dist <= minDist) {
-          minDist = dist;
-          nearestVent = vent;
-        }
-      }
-    }
-
-    if (nearestVent) {
-      nearestVent.ignite();
-      AudioManager.playStoneRumble();
-      this.cameras.main.flash(120, 255, 120, 0);
-      this.hud.showBanner(`THERMAL VENT IGNITED (${nearestVent.type.toUpperCase()})`);
-    } else {
-      // Fallback to jet and drone suppression
-      this.tryStunNearbyJets();
-      this.tryStunNearbyDrones();
-    }
-  }
 
 
   private tryStunNearbyJets(): void {
@@ -1126,11 +1126,26 @@ export class Sector2Scene extends Phaser.Scene {
   }
 
   // ── Pause ──────────────────────────────────────────────────────────────
-
   private togglePause(): void {
     // Ignore pause while dead, respawning, or leaving the scene
     if (this.player.isDead || this.isRespawning || this.isLeavingScene) return;
     this.isPaused ? this.resumeGame() : this.pauseGame();
+  }
+
+  private restartAtCheckpoint(): void {
+    this.resumeGame();
+
+    this.player.restoreIntegrity();
+    this.player.respawnAt(this.checkpointX, this.checkpointY);
+    this.player.restoreStaffCharges(this.player.maxStaffCharges);
+
+    this.hud.updateIntegrity(this.player.integrity);
+    this.hud.updateCharges(this.player.staffCharges);
+
+    this.cameras.main.fadeIn(400, 0, 0, 0);
+
+    AudioManager.playCheckpoint();
+    this.hud.showBanner('RETURNED TO CHECKPOINT');
   }
 
   private pauseGame(): void {
@@ -1139,6 +1154,7 @@ export class Sector2Scene extends Phaser.Scene {
     const cb: PauseMenuCallbacks = {
       onResume: () => this.resumeGame(),
       onRestart: () => { this.isPaused = false; this.physics.resume(); this.scene.restart(); },
+      onCheckpoint: () => this.restartAtCheckpoint(),
       onMainMenu: () => { this.isPaused = false; this.physics.resume(); this.scene.start(GAME_CONFIG.sceneKeys.MainMenu); }
     };
     this.pauseMenu = new PauseMenu(this, cb);
