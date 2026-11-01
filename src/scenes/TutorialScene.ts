@@ -10,6 +10,7 @@ import { ThermalVent } from '../entities/ThermalVent';
 import { TimeMovingPlatform } from '../systems/time/ITimeStateObject';
 import { Guard } from '../entities/Guard';
 import { AudioManager } from '../systems/AudioManager';
+import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 
 export type TutorialEntrySource = 'settings' | 'story';
 
@@ -34,6 +35,8 @@ export class TutorialScene extends Phaser.Scene {
   private waterPlatforms!: Phaser.Physics.Arcade.StaticGroup;
   private waterHazard!: Phaser.GameObjects.Rectangle;
   private portalSprite!: Phaser.GameObjects.Sprite;
+
+  private mobileHandle: MobileSetupHandle | null = null;
 
   // Abilities & Staff
   private staffController!: StaffController;
@@ -247,6 +250,56 @@ export class TutorialScene extends Phaser.Scene {
 
     // 8. Keyboard input (abilities + ESC skip)
     this.setupInput();
+
+    // Mobile Controls
+    this.mobileHandle = setupMobileForScene({
+      scene: this,
+      player: this.player,
+
+      // Use the same ability handlers as desktop keyboard controls
+      onAbilityPressed: () => {
+        if (this.isLeaving || this.isResetting) return;
+
+        switch (this.currentSectionIndex) {
+          case 1:
+          case 2:
+            this.useStaffAction();
+            break;
+
+          case 3:
+            this.useCamouflage();
+            break;
+
+          case 4:
+            this.useTimeFreeze();
+            break;
+
+          case 5:
+            this.usePhase();
+            break;
+        }
+      },
+
+      // Update the mobile ability button for each tutorial section
+      getAbilityState: () => {
+        const states = {
+          1: { label: 'FREEZE', tint: 0x00f0ff },
+          2: { label: 'IGNITE', tint: 0xff6600 },
+          3: { label: 'CLOAK', tint: 0xc77dff },
+          4: { label: 'TIME', tint: 0x39ff14 },
+          5: { label: 'PHASE', tint: 0x00ffff }
+        };
+
+        const state = states[this.currentSectionIndex as keyof typeof states];
+
+        return {
+          label: state.label,
+          available: !this.player.isDead && !this.isLeaving && !this.isResetting,
+          tint: state.tint,
+          cooldownProgress: 0
+        };
+      }
+    });
 
     // Audio SFX on jump & land
     this.player.on('player_jump', () => AudioManager.playJump());
@@ -757,6 +810,7 @@ export class TutorialScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.isLeaving) return;
 
+    this.mobileHandle?.update();
     this.player.update(time, delta);
     this.phasingAbility.update(time, delta);
     this.camouflageAbility.update(time, delta);
