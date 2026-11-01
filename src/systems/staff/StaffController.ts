@@ -304,8 +304,12 @@ export class StaffController extends Phaser.Events.EventEmitter {
       this.chargeManager.consumeCharge(cost, { ability, targetId: target?.id });
 
       // Apply cooldown
-      const cdTime = this.config.cooldownsMs?.[ability] ?? 300;
-      this.cooldownTimers.set(ability, cdTime);
+      const cdTime = this.config.cooldownsMs?.[ability] ?? 0;
+      if (cdTime > 0) {
+        this.cooldownTimers.set(ability, cdTime);
+      } else {
+        this.cooldownTimers.delete(ability);
+      } this.cooldownTimers.set(ability, cdTime);
 
       // Play SFX
       AudioManager.playStaffUse();

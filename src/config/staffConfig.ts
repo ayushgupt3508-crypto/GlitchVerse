@@ -2,7 +2,7 @@
  * Standard ability identifiers supported across sectors.
  * Can be extended with custom strings.
  */
-export type StandardAbilityType = 'STUN' | 'CAMOUFLAGE' | 'EMP' | 'PHASE' | 'TIME';
+export type StandardAbilityType = 'STUN' | 'CAMOUFLAGE' | 'PHASE' | 'TIME';
 export type AbilityIdentifier = StandardAbilityType | string;
 
 export interface StaffConfig {
@@ -32,15 +32,13 @@ export const DEFAULT_STAFF_CONFIG: StaffConfig = {
   initialCharges: 3,
   costs: {
     STUN: 1,
-    CAMOUFLAGE: 2,
-    EMP: 1,
+    CAMOUFLAGE: 1,
     PHASE: 1,
     TIME: 1
   },
   cooldownsMs: {
     STUN: 300,
-    CAMOUFLAGE: 2000,
-    EMP: 300,
+    CAMOUFLAGE: 0,
     PHASE: 400,
     TIME: 350
   },

@@ -11,6 +11,8 @@ import { AudioManager } from '../systems/AudioManager';
 import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
+import { StaffController } from '../systems/staff/StaffController';
+
 /**
  * Level3Scene (level3.ts) — Medieval Palace
  *
@@ -51,13 +53,13 @@ export const JUMP_GAP = PLAYER_PHYSICS.moveSpeed * (2 * Math.abs(PLAYER_PHYSICS.
 
 // Design safety thresholds (strictly <= 85% of theoretical reach for reliable platforming)
 export const MAX_SAFE_RISE = 0.85 * JUMP_H;   // 65.078 px
-export const MAX_SAFE_GAP  = 0.85 * JUMP_GAP; // 119.0 px
+export const MAX_SAFE_GAP = 0.85 * JUMP_GAP; // 119.0 px
 export const MIN_CEILING_CLEARANCE = 36;      // px (player body 30px, sprite 36px)
 
 // ── Solid Cover Obstacles (Walls & Pillars blocking guard line of sight) ───────
 export const LEVEL3_COVER_OBSTACLES: ObstacleRect[] = [
-  { x: 608,  y: 264, width: 32, height: 76 },  // Z1 Gatehouse Arch Pillar 1
-  { x: 800,  y: 264, width: 32, height: 76 },  // Z1 Gatehouse Arch Pillar 2
+  { x: 608, y: 264, width: 32, height: 76 },  // Z1 Gatehouse Arch Pillar 1
+  { x: 800, y: 264, width: 32, height: 76 },  // Z1 Gatehouse Arch Pillar 2
   { x: 1376, y: 240, width: 32, height: 100 }, // Z2 Armory Dividing Wall
   { x: 3328, y: 268, width: 32, height: 72 },  // Z4 Throne Hall Pillar 1
   { x: 3648, y: 268, width: 32, height: 72 },  // Z4 Throne Hall Pillar 2
@@ -174,11 +176,11 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
       bounds: { xMin: 0, xMax: 1024 },
       tuning: ZONE_TUNING[1],
       platforms: [
-        { id: 'z1_ground1',    x: 0,   y: 340, w: 320, h: 100, type: 'ground' },
-        { id: 'z1_drawbridge', x: 320, y: 340, w: 96,  h: 32,  type: 'drawbridge', tileKey: 'tile_wood_drawbridge' },
-        { id: 'z1_ground2',    x: 416, y: 340, w: 608, h: 100, type: 'ground' },
-        { id: 'z1_step1',      x: 576, y: 288, w: 64,  h: 52,  type: 'step' },
-        { id: 'z1_arch',       x: 640, y: 240, w: 160, h: 24,  type: 'arch' }
+        { id: 'z1_ground1', x: 0, y: 340, w: 320, h: 100, type: 'ground' },
+        { id: 'z1_drawbridge', x: 320, y: 340, w: 96, h: 32, type: 'drawbridge', tileKey: 'tile_wood_drawbridge' },
+        { id: 'z1_ground2', x: 416, y: 340, w: 608, h: 100, type: 'ground' },
+        { id: 'z1_step1', x: 576, y: 288, w: 64, h: 52, type: 'step' },
+        { id: 'z1_arch', x: 640, y: 240, w: 160, h: 24, type: 'arch' }
       ],
       guards: [
         {
@@ -215,11 +217,11 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
       bounds: { xMin: 1024, xMax: 2048 },
       tuning: ZONE_TUNING[2],
       platforms: [
-        { id: 'z2_ground',  x: 1024, y: 340, w: 1024, h: 100, type: 'ground' },
+        { id: 'z2_ground', x: 1024, y: 340, w: 1024, h: 100, type: 'ground' },
         // Elevated floating platforms for balcony access — keeps ground patrol 100% flat & clear
-        { id: 'z2_step1',   x: 1312, y: 284, w: 72,   h: 16,  type: 'platform' },
-        { id: 'z2_step2',   x: 1416, y: 232, w: 72,   h: 16,  type: 'platform' },
-        { id: 'z2_balcony', x: 1520, y: 184, w: 320,  h: 20,  type: 'platform' }
+        { id: 'z2_step1', x: 1312, y: 284, w: 72, h: 16, type: 'platform' },
+        { id: 'z2_step2', x: 1416, y: 232, w: 72, h: 16, type: 'platform' },
+        { id: 'z2_balcony', x: 1520, y: 184, w: 320, h: 20, type: 'platform' }
       ],
       guards: [
         {
@@ -257,7 +259,7 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
       ],
       hazards: [],
       pickups: [
-        { type: 'conduit',    id: 'conduit_1',   x: 1120, y: 308 },
+        { type: 'conduit', id: 'conduit_1', x: 1120, y: 308 },
         { type: 'chamberKey', id: 'chamber_key', x: 1760, y: 148 }
       ],
       checkpoints: [
@@ -273,18 +275,18 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
       bounds: { xMin: 2048, xMax: 3136 },
       tuning: ZONE_TUNING[3],
       platforms: [
-        { id: 'z3_ground1',    x: 2048, y: 340, w: 288, h: 100, type: 'ground' },
-        { id: 'z3_step_up1',   x: 2176, y: 292, w: 64,  h: 16,  type: 'platform' },
-        { id: 'z3_step_up2',   x: 2240, y: 244, w: 64,  h: 16,  type: 'platform' },
+        { id: 'z3_ground1', x: 2048, y: 340, w: 288, h: 100, type: 'ground' },
+        { id: 'z3_step_up1', x: 2176, y: 292, w: 64, h: 16, type: 'platform' },
+        { id: 'z3_step_up2', x: 2240, y: 244, w: 64, h: 16, type: 'platform' },
         // Overhead battlement walkway raised to y: 196 (120px headroom underneath)
-        { id: 'z3_battlement', x: 2336, y: 196, w: 416, h: 24,  type: 'battlement' },
-        { id: 'z3_step_down1', x: 2784, y: 244, w: 64,  h: 16,  type: 'platform' },
-        { id: 'z3_step_down2', x: 2848, y: 292, w: 64,  h: 16,  type: 'platform' },
-        { id: 'z3_ground2',    x: 2912, y: 340, w: 224, h: 100, type: 'ground' },
-        { id: 'crumble_1',     x: 2400, y: 340, w: 48,  h: 20,  type: 'crumble' },
-        { id: 'crumble_2',     x: 2496, y: 340, w: 48,  h: 20,  type: 'crumble' },
-        { id: 'crumble_3',     x: 2592, y: 340, w: 48,  h: 20,  type: 'crumble' },
-        { id: 'z3_lower_mid',  x: 2656, y: 340, w: 256, h: 100, type: 'ground' }
+        { id: 'z3_battlement', x: 2336, y: 196, w: 416, h: 24, type: 'battlement' },
+        { id: 'z3_step_down1', x: 2784, y: 244, w: 64, h: 16, type: 'platform' },
+        { id: 'z3_step_down2', x: 2848, y: 292, w: 64, h: 16, type: 'platform' },
+        { id: 'z3_ground2', x: 2912, y: 340, w: 224, h: 100, type: 'ground' },
+        { id: 'crumble_1', x: 2400, y: 340, w: 48, h: 20, type: 'crumble' },
+        { id: 'crumble_2', x: 2496, y: 340, w: 48, h: 20, type: 'crumble' },
+        { id: 'crumble_3', x: 2592, y: 340, w: 48, h: 20, type: 'crumble' },
+        { id: 'z3_lower_mid', x: 2656, y: 340, w: 256, h: 100, type: 'ground' }
       ],
       guards: [
         {
@@ -324,13 +326,13 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
       bounds: { xMin: 3136, xMax: 4288 },
       tuning: ZONE_TUNING[4],
       platforms: [
-        { id: 'z4_ground',          x: 3136, y: 340, w: 1152, h: 100, type: 'ground' },
+        { id: 'z4_ground', x: 3136, y: 340, w: 1152, h: 100, type: 'ground' },
         // Steps flanking Captain Valen's arch — making overhead 100% jumpable!
-        { id: 'z4_arch_step_left',  x: 3216, y: 296, w: 64,   h: 16,  type: 'platform' },
-        { id: 'z4_arch',            x: 3296, y: 260, w: 384,  h: 20,  type: 'arch' },
-        { id: 'z4_arch_step_right', x: 3696, y: 296, w: 64,   h: 16,  type: 'platform' },
-        { id: 'z4_step1',           x: 3904, y: 280, w: 64,   h: 60,  type: 'step' },
-        { id: 'z4_bait',            x: 3968, y: 220, w: 320,  h: 24,  type: 'platform' }
+        { id: 'z4_arch_step_left', x: 3216, y: 296, w: 64, h: 16, type: 'platform' },
+        { id: 'z4_arch', x: 3296, y: 260, w: 384, h: 20, type: 'arch' },
+        { id: 'z4_arch_step_right', x: 3696, y: 296, w: 64, h: 16, type: 'platform' },
+        { id: 'z4_step1', x: 3904, y: 280, w: 64, h: 60, type: 'step' },
+        { id: 'z4_bait', x: 3968, y: 220, w: 320, h: 24, type: 'platform' }
       ],
       guards: [
         {
@@ -387,8 +389,8 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
         { type: 'chandelier', id: 'chandelier_2', originX: 3776, originY: 140 }
       ],
       pickups: [
-        { type: 'chest',   id: 'bait_chest', x: 4224, y: 196 },
-        { type: 'conduit', id: 'conduit_3',  x: 4160, y: 188 }
+        { type: 'chest', id: 'bait_chest', x: 4224, y: 196 },
+        { type: 'conduit', id: 'conduit_3', x: 4160, y: 188 }
       ],
       checkpoints: [
         { id: 'cp_gallery', x: 3936, y: 302, label: 'GRAND GALLERY VESTIBULE' }
@@ -403,17 +405,17 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
       bounds: { xMin: 4288, xMax: 5500 },
       tuning: ZONE_TUNING[5],
       platforms: [
-        { id: 'z5_ground1',    x: 4288, y: 340, w: 160, h: 100, type: 'ground' },
-        { id: 'z5_crumble',    x: 4480, y: 340, w: 48,  h: 20,  type: 'crumble' },
-        { id: 'z5_ground2',    x: 4544, y: 340, w: 544, h: 100, type: 'ground' },
+        { id: 'z5_ground1', x: 4288, y: 340, w: 160, h: 100, type: 'ground' },
+        { id: 'z5_crumble', x: 4480, y: 340, w: 48, h: 20, type: 'crumble' },
+        { id: 'z5_ground2', x: 4544, y: 340, w: 544, h: 100, type: 'ground' },
         // Arch trimmed to end at x: 4904 — well before chamber door
-        { id: 'z5_arch',       x: 4704, y: 264, w: 200, h: 24,  type: 'arch' },
+        { id: 'z5_arch', x: 4704, y: 264, w: 200, h: 24, type: 'arch' },
         // Impassable vertical solid wall sealing ceiling y: 0 down to door top y: 276
-        { id: 'z5_vault_wall', x: 5088, y: 0,   w: 32,  h: 276, type: 'wall' },
-        { id: 'z5_vault',      x: 5120, y: 340, w: 192, h: 100, type: 'ground' },
-        { id: 'z5_spire1',     x: 5312, y: 280, w: 64,  h: 60,  type: 'step' },
-        { id: 'z5_spire2',     x: 5376, y: 220, w: 64,  h: 120, type: 'step' },
-        { id: 'z5_summit',     x: 5440, y: 160, w: 60,  h: 180, type: 'step' }
+        { id: 'z5_vault_wall', x: 5088, y: 0, w: 32, h: 276, type: 'wall' },
+        { id: 'z5_vault', x: 5120, y: 340, w: 192, h: 100, type: 'ground' },
+        { id: 'z5_spire1', x: 5312, y: 280, w: 64, h: 60, type: 'step' },
+        { id: 'z5_spire2', x: 5376, y: 220, w: 64, h: 120, type: 'step' },
+        { id: 'z5_summit', x: 5440, y: 160, w: 60, h: 180, type: 'step' }
       ],
       guards: [
         {
@@ -434,10 +436,10 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
         }
       ],
       hazards: [
-        { type: 'water',     x: 4448, y: 410, w: 96, h: 30 },
-        { type: 'blade',     id: 'blade_2', x: 4620, anchorY: 140, minY: 180, maxY: 330, dur: 1250 },
-        { type: 'timedGate', id: 'gate_1',  x: 4700, y: 308, dur: 2400 },
-        { type: 'timedGate', id: 'gate_2',  x: 4940, y: 308, dur: 2400 }
+        { type: 'water', x: 4448, y: 410, w: 96, h: 30 },
+        { type: 'blade', id: 'blade_2', x: 4620, anchorY: 140, minY: 180, maxY: 330, dur: 1250 },
+        { type: 'timedGate', id: 'gate_1', x: 4700, y: 308, dur: 2400 },
+        { type: 'timedGate', id: 'gate_2', x: 4940, y: 308, dur: 2400 }
       ],
       pickups: [
         { type: 'component3', id: 'component_3', x: 5224, y: 290 }
@@ -447,7 +449,7 @@ export const LEVEL3_LAYOUT_DATA: Level3FullLayout = {
       ],
       gates: [
         { id: 'chamber_door', type: 'chamberDoor', x: 5088, y: 308, w: 32, h: 64 },
-        { id: 'exit_portal',  type: 'exitPortal',  x: 5472, y: 120, w: 64, h: 80 }
+        { id: 'exit_portal', type: 'exitPortal', x: 5472, y: 120, w: 64, h: 80 }
       ]
     }
   ],
@@ -595,18 +597,18 @@ export const LEVEL3_DATA = {
   },
   spawn: { x: 80, y: 308 },
   checkpoints: [
-    { id: 'cp_spawn',       x: 80,   y: 308, label: 'COURTYARD DRAWBRIDGE' },
-    { id: 'cp_armory',      x: 1760, y: 152, label: 'ROYAL ARMORY BALCONY' },
+    { id: 'cp_spawn', x: 80, y: 308, label: 'COURTYARD DRAWBRIDGE' },
+    { id: 'cp_armory', x: 1760, y: 152, label: 'ROYAL ARMORY BALCONY' },
     { id: 'cp_battlements', x: 3000, y: 302, label: 'OUTER BATTLEMENTS KEEP' },
-    { id: 'cp_gallery',     x: 3936, y: 302, label: 'GRAND GALLERY VESTIBULE' },
-    { id: 'cp_vault',       x: 5224, y: 302, label: 'ROYAL VAULT CHAMBER' }
+    { id: 'cp_gallery', x: 3936, y: 302, label: 'GRAND GALLERY VESTIBULE' },
+    { id: 'cp_vault', x: 5224, y: 302, label: 'ROYAL VAULT CHAMBER' }
   ],
   puzzle: {
     chamberDoor: { x: 5088, y: 276, width: 32, height: 64 },
-    chamberKey:  { x: 1760, y: 148 },
-    component3:  { x: 5224, y: 290 },
-    exitPortal:  { x: 5472, y: 120 },
-    baitChest:   { x: 4224, y: 196 }
+    chamberKey: { x: 1760, y: 148 },
+    component3: { x: 5224, y: 290 },
+    exitPortal: { x: 5472, y: 120 },
+    baitChest: { x: 4224, y: 196 }
   },
   guards: LEVEL3_LAYOUT_DATA.zones.flatMap(z => z.guards)
 };
@@ -668,6 +670,7 @@ export class Level3Scene extends Phaser.Scene {
   private player!: Player;
   private camouflage!: CamouflageAbility;
   private guards: Guard[] = [];
+  private staffController!: StaffController;
 
   // Physics Groups
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
@@ -785,11 +788,27 @@ export class Level3Scene extends Phaser.Scene {
     // Build palace architecture directly from LEVEL3_LAYOUT_DATA
     this.buildPalaceArchitecture();
 
-    // Spawn player at current checkpoint
+    // Spawn player
     this.player = new Player(this, this.checkpointX, this.checkpointY);
 
-    // Initialize Camouflage Ability (Temporal Illusion)
-    this.camouflage = new CamouflageAbility(this, this.player);
+    // Initialize Staff Controller
+    this.staffController = new StaffController(this, {
+      initialAbilities: ['CAMOUFLAGE'],
+      defaultSelected: 'CAMOUFLAGE',
+      interactionRange: 165
+    });
+
+    this.player.setStaffController(this.staffController);
+
+    // Initialize Camouflage Ability
+    this.camouflage = new CamouflageAbility(this, this.player, {
+      consumesCharges: false
+    });
+
+    // Register Camouflage with StaffController
+    this.staffController.registerAbilityHandler('CAMOUFLAGE', () => {
+      return this.camouflage.activate();
+    });
 
     // Spawn Palace Guards reading from layout table
     this.spawnGuards();
@@ -859,7 +878,7 @@ export class Level3Scene extends Phaser.Scene {
 
     // Welcome banner & tutorial hint
     this.time.delayedCall(600, () => {
-      this.hud.showBanner('VAULT INFILTRATION: PRESS [C] OR [Q] FOR TEMPORAL ILLUSION');
+      this.hud.showBanner('VAULT INFILTRATION: PRESS [E] OR [J] FOR TEMPORAL ILLUSION');
     });
 
     // Shutdown cleanup listener
@@ -913,7 +932,8 @@ export class Level3Scene extends Phaser.Scene {
       return;
     }
 
-    // Update Camouflage Ability
+    // Update Staff Controller and Camouflage
+    this.staffController.update(delta, this.player.x, this.player.y);
     this.camouflage.update(time, delta);
 
     // Update Guards with stealth information
@@ -1091,9 +1111,9 @@ export class Level3Scene extends Phaser.Scene {
 
     // Wall Torch Sconces throughout all 5 zones
     const torchPositions = [
-      { x: 120,  y: floorY - 50 },
-      { x: 480,  y: floorY - 50 },
-      { x: 740,  y: floorY - 50 },
+      { x: 120, y: floorY - 50 },
+      { x: 480, y: floorY - 50 },
+      { x: 740, y: floorY - 50 },
       { x: 1040, y: floorY - 50 },
       { x: 1360, y: floorY - 80 },
       { x: 1640, y: floorY - 80 },

@@ -17,10 +17,19 @@ import { ITimeStateObject } from '../systems/time/ITimeStateObject';
  *     - Shimmering temporal clock runes & spark particles.
  *  • Input: [T], [E], or [R] key, or StaffController activation.
  */
+
+export interface TimeAbilityOptions {
+  consumesCharges?: boolean;
+  keyboardEnabled?: boolean;
+}
+
 export class TimeAbility {
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
   private timeObjects: ITimeStateObject[] = [];
+
+  private readonly consumesCharges: boolean;
+  private readonly keyboardEnabled: boolean;
 
   // Configuration
   public readonly RADIUS = 165;
@@ -40,15 +49,26 @@ export class TimeAbility {
   private hudWidget?: Phaser.GameObjects.Container;
   private hudText?: Phaser.GameObjects.Text;
 
-  constructor(scene: Phaser.Scene, player: Player, timeObjects: ITimeStateObject[] = []) {
+  constructor(
+    scene: Phaser.Scene,
+    player: Player,
+    timeObjects: ITimeStateObject[] = [],
+    options?: TimeAbilityOptions
+  ) {
     this.scene = scene;
     this.player = player;
     this.timeObjects = timeObjects;
 
+    this.consumesCharges = options?.consumesCharges ?? true;
+    this.keyboardEnabled = options?.keyboardEnabled ?? true;
+
     this.waveGfx = scene.add.graphics().setDepth(20);
     this.radiusGfx = scene.add.graphics().setDepth(19);
 
-    this.setupInput();
+    if (this.keyboardEnabled) {
+      this.setupInput();
+    }
+
     this.createHudWidget();
   }
 
@@ -120,7 +140,7 @@ export class TimeAbility {
     if (this.cooldownTimer > 0) return false;
 
     // Verify staff charges
-    if (this.player.staffCharges < 1) {
+    if (this.consumesCharges && this.player.staffCharges < 1) {
       AudioManager.playInsufficientCharge();
       this.scene.cameras.main.shake(120, 0.006);
       this.flashHudWarning();
@@ -129,14 +149,14 @@ export class TimeAbility {
 
     this.cooldownTimer = this.COOLDOWN_MS;
 
-    // Deduct charge
-    if (this.player.staffController) {
-      this.player.staffController.chargeManager.consumeCharge(1);
-    } else {
-      this.player.staffCharges = Math.max(0, this.player.staffCharges - 1);
-      this.player.emit('staff_used', this.player.staffCharges);
+    if (this.consumesCharges) {
+      if (this.player.staffController) {
+        this.player.staffController.chargeManager.consumeCharge(1);
+      } else {
+        this.player.staffCharges = Math.max(0, this.player.staffCharges - 1);
+        this.player.emit('staff_used', this.player.staffCharges);
+      }
     }
-
     const px = this.player.x;
     const py = this.player.y;
 

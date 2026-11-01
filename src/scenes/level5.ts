@@ -3,7 +3,6 @@ import { GAME_CONFIG } from '../config';
 import { Player } from '../entities/Player';
 import { SentinelDrone } from '../entities/SentinelDrone';
 import { PhasingAbility, RealityState, PhaseableObject } from '../abilities/PhasingAbility';
-import { CamouflageAbility } from '../abilities/CamouflageAbility';
 import { StaffController } from '../systems/staff/StaffController';
 import { HUD } from '../ui/HUD';
 import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
@@ -45,17 +44,17 @@ export const LEVEL5_DATA = {
   },
   spawn: { x: 80, y: 300 },
   checkpoints: [
-    { id: 'cp_origin',           x: 80,   y: 300, label: 'CYBER-PROJECTION SPHERE' },
-    { id: 'cp_chain',            x: 1640, y: 220, label: 'LAB FRAGMENT OBSERVATORY' },
-    { id: 'cp_rift_junction',    x: 3200, y: 300, label: 'RIFT JUNCTION' },
-    { id: 'cp_altar_threshold',  x: 4640, y: 300, label: 'ALTAR THRESHOLD' },
-    { id: 'cp_pedestal',         x: 4940, y: 300, label: 'FAILSAFE MATRIX PEDESTAL' }
+    { id: 'cp_origin', x: 80, y: 300, label: 'CYBER-PROJECTION SPHERE' },
+    { id: 'cp_chain', x: 1640, y: 220, label: 'LAB FRAGMENT OBSERVATORY' },
+    { id: 'cp_rift_junction', x: 3200, y: 300, label: 'RIFT JUNCTION' },
+    { id: 'cp_altar_threshold', x: 4640, y: 300, label: 'ALTAR THRESHOLD' },
+    { id: 'cp_pedestal', x: 4940, y: 300, label: 'FAILSAFE MATRIX PEDESTAL' }
   ],
   puzzle: {
-    component5:       { x: 4800, y: 290 },
+    component5: { x: 4800, y: 290 },
     failsafePedestal: { x: 4940, y: 300 },
-    escapeBulkhead:   { x: 5120, y: 280 },
-    exitPortal:       { x: 5350, y: 220 }
+    escapeBulkhead: { x: 5120, y: 280 },
+    exitPortal: { x: 5350, y: 220 }
   }
 } as const;
 
@@ -64,7 +63,6 @@ export class Level5Scene extends Phaser.Scene {
   private player!: Player;
   private staffController!: StaffController;
   private phasing!: PhasingAbility;
-  private camouflage!: CamouflageAbility;
   public realitySwap!: RealitySwapSystem;
   private drones: SentinelDrone[] = [];
 
@@ -113,6 +111,8 @@ export class Level5Scene extends Phaser.Scene {
   private isPaused = false;
   private isRespawning = false;
   private isLeavingScene = false;
+  private keyShift?: Phaser.Input.Keyboard.Key;
+  private keyTab?: Phaser.Input.Keyboard.Key;
 
   // Visuals
   private dataStreamGfx?: Phaser.GameObjects.Graphics;
@@ -160,28 +160,32 @@ export class Level5Scene extends Phaser.Scene {
     // Spawn player at checkpoint
     this.player = new Player(this, this.checkpointX, this.checkpointY);
 
-    // Initialize StaffController with PHASE and CAMOUFLAGE
+    // Initialize StaffController
     this.staffController = new StaffController(this, {
-      initialAbilities: ['PHASE', 'CAMOUFLAGE'],
+      initialAbilities: ['PHASE'],
       defaultSelected: 'PHASE',
       interactionRange: 95
     });
+
     this.player.setStaffController(this.staffController);
 
     // Initialize Phasing Ability
     this.phasing = new PhasingAbility(this, this.player);
 
-    // Initialize Camouflage Ability (positioned at hudY: 76, directly beneath Phasing shift bar)
-    this.camouflage = new CamouflageAbility(this, this.player, { hudY: 76 });
-
     // Setup Keyboard cursors & keys for Sentinel and Player
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
-      this.keyA     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-      this.keyD     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-      this.keyW     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-      this.keyE     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-      this.keyJ     = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J);
+      this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+      this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+      this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+      this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+      this.keyJ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J);
+      this.keyShift = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+      this.keyTab = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
+      this.input.keyboard.addCapture([
+        Phaser.Input.Keyboard.KeyCodes.SHIFT,
+        Phaser.Input.Keyboard.KeyCodes.TAB
+      ]);
       this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     }
 
@@ -318,7 +322,6 @@ export class Level5Scene extends Phaser.Scene {
     // knows the ability executed and calls chargeManager.consumeCharge(). Returning void/
     // undefined (falsy) causes the charge-consumption block to be skipped silently.
     this.staffController.registerAbilityHandler('PHASE', () => { this.phasing.toggleReality(); return true; });
-    this.staffController.registerAbilityHandler('CAMOUFLAGE', () => { this.camouflage.activate(); return true; });
 
     // Setup Finale Elements (Component 5, Failsafe Pedestal, Bulkhead, Exit)
     this.setupFinaleElements();
@@ -373,7 +376,6 @@ export class Level5Scene extends Phaser.Scene {
       this.realitySwap.destroy();
       this.staffController.destroy();
       this.phasing.destroy();
-      this.camouflage.destroy();
       this.drones.forEach(d => d.destroy());
       this.dataStreamGfx?.destroy();
       this.collapseWallGfx?.destroy();
@@ -434,17 +436,17 @@ export class Level5Scene extends Phaser.Scene {
    * Positioned above the jump+ability cluster so it's easy to reach.
    */
   private buildMobileShiftButton(): void {
-    const R     = 26;          // slightly smaller than main buttons (30)
+    const R = 26;          // slightly smaller than main buttons (30)
     const alpha = 0.62;
     const depth = 205;         // above MobileControls (depth 200)
-    const cam   = this.cameras.main;
-    const W     = cam.width;
-    const H     = cam.height;
+    const cam = this.cameras.main;
+    const W = cam.width;
+    const H = cam.height;
     const margin = 16;
 
     // Mirror the MobileControls positioning formula
-    const jumpX    = W - margin - 30;
-    const jumpY    = H - margin - 30;
+    const jumpX = W - margin - 30;
+    const jumpY = H - margin - 30;
     const abilityX = jumpX - 30 * 2 - 16;
     // Centre of the two buttons horizontally, one row above them
     const btnX = Math.round((abilityX + jumpX) / 2);
@@ -507,8 +509,8 @@ export class Level5Scene extends Phaser.Scene {
 
     // Reposition on resize
     this.scale.on('resize', () => {
-      const nW  = this.cameras.main.width;
-      const nH  = this.cameras.main.height;
+      const nW = this.cameras.main.width;
+      const nH = this.cameras.main.height;
       const nJX = nW - margin - 30;
       const nJY = nH - margin - 30;
       const nAX = nJX - 30 * 2 - 16;
@@ -518,8 +520,8 @@ export class Level5Scene extends Phaser.Scene {
       );
     });
 
-    this.mobileShiftBtn      = container;
-    this.mobileShiftBtnBg    = bg;
+    this.mobileShiftBtn = container;
+    this.mobileShiftBtnBg = bg;
     this.mobileShiftBtnLabel = lbl;
   }
 
@@ -533,10 +535,23 @@ export class Level5Scene extends Phaser.Scene {
     }
     if (this.isRespawning) return;
 
+    // Reality switching: SHIFT or TAB, completely free
+    const shiftPressed =
+      (this.keyShift && Phaser.Input.Keyboard.JustDown(this.keyShift)) ||
+      (this.keyTab && Phaser.Input.Keyboard.JustDown(this.keyTab));
+
+    if (shiftPressed && !this.realitySwap.isPossessing) {
+      this.phasing.toggleReality();
+    }
     // Handle Ability Input / Reality Swap
+    // E / J: Echo Sentinel possession and swapping
     const activateJustPressed =
-      (this.keyE ? Phaser.Input.Keyboard.JustDown(this.keyE) : false) ||
-      (this.keyJ ? Phaser.Input.Keyboard.JustDown(this.keyJ) : false);
+      (this.keyE && Phaser.Input.Keyboard.JustDown(this.keyE)) ||
+      (this.keyJ && Phaser.Input.Keyboard.JustDown(this.keyJ));
+
+    if (activateJustPressed) {
+      this.realitySwap.handleAbilityInput();
+    }
 
     if (activateJustPressed) {
       if (this.realitySwap.handleAbilityInput()) {
@@ -587,17 +602,14 @@ export class Level5Scene extends Phaser.Scene {
         this.mobileShiftBtnLabel.setColor('#555555');
         this.mobileShiftBtn.setAlpha(0.45);
       } else {
-        const isA    = this.phasing.reality === 'A';
-        const color  = isA ? LEVEL5_DATA.palette.cyan : LEVEL5_DATA.palette.magenta;
+        const isA = this.phasing.reality === 'A';
+        const color = isA ? LEVEL5_DATA.palette.cyan : LEVEL5_DATA.palette.magenta;
         const hexStr = '#' + color.toString(16).padStart(6, '0');
         this.mobileShiftBtnBg.setFillStyle(color, 0.62);
         this.mobileShiftBtnLabel.setColor(hexStr);
         this.mobileShiftBtn.setAlpha(1);
       }
     }
-
-    // Update Camouflage Ability
-    this.camouflage.update(time, delta);
 
     // Update Drones
     this.drones.forEach(drone => {
@@ -779,12 +791,12 @@ export class Level5Scene extends Phaser.Scene {
     // ── Zone 2: THE MID-JUMP ALTERNATING CHAIN PUZZLE (x: 800 to 1640) ────
     // Void abyss below! No floor!
     // Player must switch mid-jump between alternating A and B platforms!
-    addPhasePlatform(960,  floorY,       2, 'A');
-    addPhasePlatform(1090, floorY - 35,  2, 'B');
-    addPhasePlatform(1220, floorY - 70,  2, 'A');
+    addPhasePlatform(960, floorY, 2, 'A');
+    addPhasePlatform(1090, floorY - 35, 2, 'B');
+    addPhasePlatform(1220, floorY - 70, 2, 'A');
     addPhasePlatform(1350, floorY - 105, 2, 'B');
-    addPhasePlatform(1480, floorY - 65,  2, 'A');
-    addPhasePlatform(1600, floorY - 30,  2, 'B');
+    addPhasePlatform(1480, floorY - 65, 2, 'A');
+    addPhasePlatform(1600, floorY - 30, 2, 'B');
 
     // ── Zone 3: Lab Fragment Observatory Checkpoint (x: 1640 to 1900) ──────
     addPersistent(1640, 1900, floorY);
@@ -1223,7 +1235,7 @@ export class Level5Scene extends Phaser.Scene {
           timeMs: Date.now() - this.levelStartTime
         });
       }
-  });
+    });
     this.cameras.main.fadeOut(1000, 255, 255, 255);
   }
 

@@ -13,6 +13,7 @@ import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { ThermalVentAbility } from '../abilities/ThermalVentAbility';
 import { HUD } from '../ui/HUD';
+import { StaffController } from '../systems/staff/StaffController';
 
 /**
  * Sector2Scene — Heat Age (Bug-fixed version)

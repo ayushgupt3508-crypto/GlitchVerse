@@ -41,13 +41,6 @@ export class PhasingAbility {
   private readonly scanlineGfx: Phaser.GameObjects.Graphics;
   private scanlineProgress = 1;
 
-  // Keys
-  private keyShift?: Phaser.Input.Keyboard.Key;
-  private keyTab?: Phaser.Input.Keyboard.Key;
-  private keyX?: Phaser.Input.Keyboard.Key;
-  private keyC?: Phaser.Input.Keyboard.Key;
-  private keyQ?: Phaser.Input.Keyboard.Key;
-
   // HUD Widget
   private hudWidget?: Phaser.GameObjects.Container;
   private hudStatusText?: Phaser.GameObjects.Text;
@@ -57,27 +50,9 @@ export class PhasingAbility {
     this.scene = scene;
     this.player = player;
 
-    this.scanlineGfx = scene.add.graphics().setDepth(99).setScrollFactor(0);
-
-    if (scene.input.keyboard) {
-      // Prevent browser from tabbing away or handling default shift navigation
-      scene.input.keyboard.addCapture([
-        Phaser.Input.Keyboard.KeyCodes.SHIFT,
-        Phaser.Input.Keyboard.KeyCodes.TAB,
-        Phaser.Input.Keyboard.KeyCodes.X
-      ]);
-
-      this.keyShift = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
-      this.keyTab = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
-      this.keyX = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
-      this.keyC = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
-      this.keyQ = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
-
-      // Direct event triggers ensure instant response with zero polling lag
-      this.keyShift.on('down', () => this.toggleReality());
-      this.keyTab.on('down', () => this.toggleReality());
-      this.keyX.on('down', () => this.toggleReality());
-    }
+    this.scanlineGfx = scene.add.graphics()
+      .setDepth(99)
+      .setScrollFactor(0);
 
     this.createHudWidget();
   }
@@ -91,17 +66,9 @@ export class PhasingAbility {
     obj.onRealityChanged(this.currentReality);
   }
 
+
   public update(_time: number, delta: number): void {
     if (this.player.isDead) return;
-
-    // Check auxiliary toggle inputs (C or Q)
-    const auxPressed =
-      (this.keyC ? Phaser.Input.Keyboard.JustDown(this.keyC) : false) ||
-      (this.keyQ ? Phaser.Input.Keyboard.JustDown(this.keyQ) : false);
-
-    if (auxPressed) {
-      this.toggleReality();
-    }
 
     // Render scanline sweep
     if (this.scanlineProgress < 1) {
@@ -265,7 +232,7 @@ export class PhasingAbility {
     this.hudStateIndicator = this.scene.add.graphics();
     this.hudWidget.add(this.hudStateIndicator);
 
-    this.hudStatusText = this.scene.add.text(73, 12, '[SHIFT/TAB] REALITY: A', {
+    this.hudStatusText = this.scene.add.text(73, 12, '[SHIFT/X] REALITY: A', {
       fontFamily: '"Oxanium", monospace',
       fontSize: '9px',
       fontStyle: 'bold',
@@ -285,14 +252,14 @@ export class PhasingAbility {
     const isA = this.currentReality === 'A';
 
     if (isA) {
-      this.hudStatusText.setText('[SHIFT/TAB] REALITY: A [CYAN]');
+      this.hudStatusText.setText('[SHIFT/X] REALITY: A [CYAN]');
       this.hudStatusText.setColor('#00f0ff');
       this.hudStateIndicator.fillStyle(0x00f0ff, 1);
       this.hudStateIndicator.fillCircle(14, 14, 5);
       this.hudStateIndicator.fillStyle(0xffffff, 0.9);
       this.hudStateIndicator.fillCircle(14, 14, 2);
     } else {
-      this.hudStatusText.setText('[SHIFT/TAB] REALITY: B [MAGENTA]');
+      this.hudStatusText.setText('[SHIFT/X] REALITY: B [MAGENTA]');
       this.hudStatusText.setColor('#ff007f');
       this.hudStateIndicator.fillStyle(0xff007f, 1);
       this.hudStateIndicator.fillCircle(14, 14, 5);

@@ -52,10 +52,10 @@ export const LEVEL4_DATA = {
   },
   spawn: { x: 80, y: 320 },
   checkpoints: [
-    { id: 'cp_canopy',      x: 80,   y: 320, label: 'FOREST PERIMETER' },
-    { id: 'cp_ravine',      x: 1320, y: 235, label: 'THE GREAT RAVINE' },
-    { id: 'cp_station',     x: 2600, y: 320, label: 'RESEARCH STATION' },
-    { id: 'cp_overlook',    x: 3550, y: 320, label: 'CANOPY OVERLOOK' },
+    { id: 'cp_canopy', x: 80, y: 320, label: 'FOREST PERIMETER' },
+    { id: 'cp_ravine', x: 1320, y: 235, label: 'THE GREAT RAVINE' },
+    { id: 'cp_station', x: 2600, y: 320, label: 'RESEARCH STATION' },
+    { id: 'cp_overlook', x: 3550, y: 320, label: 'CANOPY OVERLOOK' },
     { id: 'cp_elder_grove', x: 4800, y: 320, label: 'ELDER GROVE THRESHOLD' }
   ],
   puzzle: {
@@ -226,8 +226,15 @@ export class Level4Scene extends Phaser.Scene {
     this.buildTimeMechanisms();
 
     // 6. Initialize Time Ability
-    this.timeAbility = new TimeAbility(this, this.player, this.timeObjects);
-    this.staffController.registerAbilityHandler('TIME', () => this.handleStaffPulse());
+    this.timeAbility = new TimeAbility(
+      this,
+      this.player,
+      this.timeObjects,
+      {
+        consumesCharges: false,
+        keyboardEnabled: false
+      }
+    ); this.staffController.registerAbilityHandler('TIME', () => this.handleStaffPulse());
 
     // 7. Build Hazards (Thorns, Falling Branches, Swinging Logs, Active Golems)
     this.buildHazards();
@@ -265,12 +272,7 @@ export class Level4Scene extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 10, 28, 20);
 
     // 12. Connect Pause & Keyboard
-    this.hud.onPauseClicked(() => this.togglePause());
-    if (this.input.keyboard) {
-      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.T).on('down', () => this.handleStaffPulse());
-      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E).on('down', () => this.handleStaffPulse());
-      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R).on('down', () => this.handleStaffPulse());
-    }
+    // StaffController exclusively handles ability keyboard input.
 
     this.time.delayedCall(1200, () => {
       this.hud.showBanner('SECTOR 4: ANCIENT FOREST — USE [T/E] TO PULSE SAPLINGS & RESTORE BRIDGES');
@@ -281,7 +283,10 @@ export class Level4Scene extends Phaser.Scene {
       scene: this,
       player: this.player,
       onAbilityPressed: () => {
-        this.handleStaffPulse();
+        this.staffController.activate(
+          this.player.x,
+          this.player.y
+        );
       },
       getAbilityState: () => {
         return {
@@ -353,7 +358,7 @@ export class Level4Scene extends Phaser.Scene {
     // Ancient clockwork gears in the tree trunks (temporal machinery)
     const gearGfx = this.add.graphics().setDepth(3);
     const gears = [
-      { x: 520,  y: 220, r: 38 },
+      { x: 520, y: 220, r: 38 },
       { x: 1980, y: 190, r: 45 },
       { x: 2380, y: 210, r: 32 },
       { x: 3720, y: 200, r: 40 },
@@ -455,40 +460,40 @@ export class Level4Scene extends Phaser.Scene {
     // Ancient Stone Ruin Platforms & Stepped High Ledges (all jump rises 35-50px)
     const ruins = [
       // Zone 1 steps up to Moving Platform 1 (y: 240)
-      { x: 260,  y: 325, w: 80,  h: 18 },
-      { x: 380,  y: 280, w: 85,  h: 18 },
-      { x: 520,  y: 240, w: 90,  h: 18 },
-      { x: 1020, y: 270, w: 90,  h: 18 },
-      { x: 1180, y: 325, w: 80,  h: 18 },
-      { x: 1320, y: 280, w: 90,  h: 22 }, // Ravine West Anchor
-      { x: 1800, y: 280, w: 90,  h: 22 }, // Ravine East Anchor
-      { x: 1930, y: 325, w: 80,  h: 18 },
+      { x: 260, y: 325, w: 80, h: 18 },
+      { x: 380, y: 280, w: 85, h: 18 },
+      { x: 520, y: 240, w: 90, h: 18 },
+      { x: 1020, y: 270, w: 90, h: 18 },
+      { x: 1180, y: 325, w: 80, h: 18 },
+      { x: 1320, y: 280, w: 90, h: 22 }, // Ravine West Anchor
+      { x: 1800, y: 280, w: 90, h: 22 }, // Ravine East Anchor
+      { x: 1930, y: 325, w: 80, h: 18 },
       // Zone 3: Ascent to Ancient Machinery & Research Station
-      { x: 2100, y: 325, w: 80,  h: 18 },
-      { x: 2220, y: 280, w: 80,  h: 18 },
-      { x: 2600, y: 280, w: 90,  h: 18 }, // Observation Balcony
+      { x: 2100, y: 325, w: 80, h: 18 },
+      { x: 2220, y: 280, w: 80, h: 18 },
+      { x: 2600, y: 280, w: 90, h: 18 }, // Observation Balcony
       { x: 2760, y: 320, w: 140, h: 22 },
       // Zone 4: Canopy Climb & Root Bridges
-      { x: 2880, y: 325, w: 80,  h: 18 },
-      { x: 3040, y: 240, w: 75,  h: 18 },
-      { x: 3260, y: 220, w: 80,  h: 18 },
-      { x: 3380, y: 160, w: 90,  h: 20 }, // High Canopy Branch with Seed Pod 1!
-      { x: 3480, y: 260, w: 75,  h: 18 },
-      { x: 3550, y: 320, w: 90,  h: 20 }, // Canopy Overlook Checkpoint 4
+      { x: 2880, y: 325, w: 80, h: 18 },
+      { x: 3040, y: 240, w: 75, h: 18 },
+      { x: 3260, y: 220, w: 80, h: 18 },
+      { x: 3380, y: 160, w: 90, h: 20 }, // High Canopy Branch with Seed Pod 1!
+      { x: 3480, y: 260, w: 75, h: 18 },
+      { x: 3550, y: 320, w: 90, h: 20 }, // Canopy Overlook Checkpoint 4
       // Zone 5: Rotting Ruins & Crypt
-      { x: 3710, y: 310, w: 60,  h: 18 },
-      { x: 3820, y: 310, w: 60,  h: 18 },
-      { x: 4040, y: 320, w: 80,  h: 18 },
-      { x: 4120, y: 270, w: 80,  h: 18 },
-      { x: 4180, y: 230, w: 90,  h: 20 }, // Crypt Altar with Seed Pod 2!
+      { x: 3710, y: 310, w: 60, h: 18 },
+      { x: 3820, y: 310, w: 60, h: 18 },
+      { x: 4040, y: 320, w: 80, h: 18 },
+      { x: 4120, y: 270, w: 80, h: 18 },
+      { x: 4180, y: 230, w: 90, h: 20 }, // Crypt Altar with Seed Pod 2!
       // Zone 6: Spore Marsh
-      { x: 4280, y: 330, w: 75,  h: 18 },
-      { x: 4440, y: 310, w: 75,  h: 18 }, // Floating Marsh Log
-      { x: 4660, y: 240, w: 90,  h: 20 }, // Marsh Dais with Seed Pod 3!
+      { x: 4280, y: 330, w: 75, h: 18 },
+      { x: 4440, y: 310, w: 75, h: 18 }, // Floating Marsh Log
+      { x: 4660, y: 240, w: 90, h: 20 }, // Marsh Dais with Seed Pod 3!
       // Zone 7: Elder Grove Finale
-      { x: 4800, y: 320, w: 90,  h: 20 }, // Threshold Dais Checkpoint 5
+      { x: 4800, y: 320, w: 90, h: 20 }, // Threshold Dais Checkpoint 5
       { x: 5040, y: 350, w: 220, h: 22 }, // Grove Altar Stone Base
-      { x: 5180, y: 290, w: 80,  h: 22 }, // Ancient Vault Pedestal
+      { x: 5180, y: 290, w: 80, h: 22 }, // Ancient Vault Pedestal
       { x: 5320, y: 325, w: 100, h: 22 }  // Extraction Platform
     ];
 
@@ -623,7 +628,7 @@ export class Level4Scene extends Phaser.Scene {
 
     // 2. Active Forest Golems (Wider detection, faster turnaround, alert propagation)
     const golemConfigs = [
-      { id: 'golem_0', x: 680,  y: 355, minX: 580,  maxX: 790,  pSpeed: 70, aSpeed: 130 },
+      { id: 'golem_0', x: 680, y: 355, minX: 580, maxX: 790, pSpeed: 70, aSpeed: 130 },
       { id: 'golem_1', x: 2100, y: 355, minX: 1980, maxX: 2220, pSpeed: 75, aSpeed: 135 },
       { id: 'golem_2', x: 2600, y: 355, minX: 2490, maxX: 2700, pSpeed: 80, aSpeed: 140 },
       { id: 'golem_3', x: 3860, y: 355, minX: 3770, maxX: 3960, pSpeed: 85, aSpeed: 145 },
@@ -925,45 +930,43 @@ export class Level4Scene extends Phaser.Scene {
   // ── Gameplay Interactions ─────────────────────────────────────────────────
 
   private handleStaffPulse(): boolean {
-    if (this.isRespawning || this.isLevelComplete || this.isLeavingScene) return false;
-
-    // Cooldown debounce to prevent multiple triggers per keystroke
-    if (this.staffPulseCooldown > 0) return false;
-
-    const currentCharges = this.staffController
-      ? this.staffController.chargeManager.getCharges()
-      : this.player.staffCharges;
-
-    if (currentCharges < 1) {
-      AudioManager.playInsufficientCharge();
-      this.cameras.main.shake(120, 0.006);
-      this.hud.showBanner('STAFF ENERGY DEPLETED — FIND A TIME CRYSTAL!');
+    if (this.isRespawning || this.isLevelComplete || this.isLeavingScene) {
       return false;
     }
+
+    if (this.staffPulseCooldown > 0) return false;
 
     const px = this.player.x;
     const py = this.player.y;
 
-    // 1. Scan for nearest Growth Clock object in range
-    // Prioritize unbloomed altar slots (stage < 3) when at the altar
+    // Find nearest Growth Clock object.
     let nearestAging: GrowthClockObject | null = null;
     let minD = 165;
+
     for (const obj of this.growthObjects) {
-      const d = Phaser.Math.Distance.Between(px, py, obj.baseX, obj.y);
+      const d = Phaser.Math.Distance.Between(
+        px, py, obj.baseX, obj.y
+      );
+
       if (d <= obj.interactionRadius && d < minD) {
         if (obj.type === 'ALTAR_SLOT' && obj.currentStageIndex >= 3) {
-          continue; // Prioritize slots that still need blooming
+          continue;
         }
+
         minD = d;
         nearestAging = obj;
       }
     }
 
-    // Fallback if all nearby altar slots are already bloomed
+    // Fallback: allow targeting already-bloomed altar slots.
     if (!nearestAging) {
       minD = 165;
+
       for (const obj of this.growthObjects) {
-        const d = Phaser.Math.Distance.Between(px, py, obj.baseX, obj.y);
+        const d = Phaser.Math.Distance.Between(
+          px, py, obj.baseX, obj.y
+        );
+
         if (d <= obj.interactionRadius && d < minD) {
           minD = d;
           nearestAging = obj;
@@ -971,58 +974,66 @@ export class Level4Scene extends Phaser.Scene {
       }
     }
 
+    // Handle Growth Clock interaction.
     if (nearestAging) {
       if (nearestAging.type === 'ALTAR_SLOT') {
-        if (this.isElderTreeAwakened) {
-          return false;
-        }
+        if (this.isElderTreeAwakened) return false;
+
         if (this.seedPodsCollected < 3) {
-          this.hud.showBanner('COLLECT ALL 3 SEEDS BEFORE PLANTING AT THE ALTAR!');
+          this.hud.showBanner(
+            'COLLECT ALL 3 SEEDS BEFORE PLANTING AT THE ALTAR!'
+          );
           return false;
         }
-        // Auto-plant seeds if not yet planted and player pulses altar slot with 3 seeds
+
         if (!this.isAltarGrowing) {
           this.isAltarGrowing = true;
-          this.altarTimer = LEVEL4_DIFFICULTY_CONFIG.elderAltarGrowthWindowMs;
+          this.altarTimer =
+            LEVEL4_DIFFICULTY_CONFIG.elderAltarGrowthWindowMs;
+
           this.elderAltarSlots.forEach(s => s.resetToStage(1));
+
           AudioManager.playKeyCollect();
           this.cameras.main.flash(200, 82, 183, 136);
-          this.hud.showBanner('3 SEEDS PLANTED! PULSE ALL 3 SLOTS TO FULL BLOOM (25s)!');
-          this.setObjective('PULSE ALL 3 ALTAR SLOTS TO FULL BLOOM! [25s]');
+
+          this.hud.showBanner(
+            '3 SEEDS PLANTED! PULSE ALL 3 SLOTS TO FULL BLOOM (25s)!'
+          );
+
+          this.setObjective(
+            'PULSE ALL 3 ALTAR SLOTS TO FULL BLOOM! [25s]'
+          );
         }
+
         if (nearestAging.currentStageIndex >= 3) {
-          this.hud.showBanner('THIS ALTAR SEED IS ALREADY IN FULL BLOOM!');
+          this.hud.showBanner(
+            'THIS ALTAR SEED IS ALREADY IN FULL BLOOM!'
+          );
           return false;
         }
       }
 
       this.staffPulseCooldown = 250;
 
-      // Deduct charge cleanly via ChargeManager
-      if (this.staffController) {
-        this.staffController.chargeManager.consumeCharge(1);
-      } else {
-        this.player.staffCharges = Math.max(0, this.player.staffCharges - 1);
-      }
-      this.player.staffCharges = this.staffController
-        ? this.staffController.chargeManager.getCharges()
-        : this.player.staffCharges;
-      this.hud.updateCharges(this.player.staffCharges, this.player.maxStaffCharges);
-      this.player.emit('staff_used', this.player.staffCharges);
-
-      // Pulse ONLY the single targeted seed
       nearestAging.pulseGrowth();
-      this.spawnStaffShockwave(px, py, nearestAging.baseX, nearestAging.y);
+
+      this.spawnStaffShockwave(
+        px,
+        py,
+        nearestAging.baseX,
+        nearestAging.y
+      );
+
       return true;
     }
 
-    // 2. Fallback to standard time ability objects (broken bridges, moving platforms, golems)
-    this.staffPulseCooldown = 250;
+    // No Growth Clock target: use standard TimeAbility.
     const activated = this.timeAbility.activate();
-    this.player.staffCharges = this.staffController
-      ? this.staffController.chargeManager.getCharges()
-      : this.player.staffCharges;
-    this.hud.updateCharges(this.player.staffCharges, this.player.maxStaffCharges);
+
+    if (activated) {
+      this.staffPulseCooldown = 250;
+    }
+
     return activated;
   }
 
