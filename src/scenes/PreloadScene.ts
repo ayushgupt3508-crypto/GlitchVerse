@@ -96,6 +96,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('heart_pixel', 'assets/heart_pixel.png');
     // Level 4 Forest Golem sprite
     this.load.image('forest_golem', 'assets/forest_golem.png');
+    // Level 5 Futuristic City Sentinal Clone Sprite
+    this.load.image('sentinel_clone', 'assets/echo_sentinel_v2.png');
     // Main Menu Title Logo
     this.load.image('graphverse_logo', 'assets/GraphVerse.png');
     this.load.image('GraphVerse', 'assets/GraphVerse.png');

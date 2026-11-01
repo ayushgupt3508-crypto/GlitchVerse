@@ -111,7 +111,7 @@ export class TimeAbility {
   private createHudWidget(): void {
     const W = this.scene.cameras.main.width;
     const x = W - 156;
-    const y = 48;
+    const y = 100;
 
     this.hudWidget = this.scene.add.container(x, y).setScrollFactor(0).setDepth(52);
 

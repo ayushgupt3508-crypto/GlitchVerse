@@ -211,19 +211,19 @@ export class PhasingAbility {
   private createHudWidget(): void {
     const W = this.scene.cameras.main.width;
 
-    const widgetX = W - 156;
-    const widgetY = 48;
+    const widgetX = W - 180;
+    const widgetY = 130;
 
     this.hudWidget = this.scene.add.container(widgetX, widgetY).setScrollFactor(0).setDepth(52);
 
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a0c16, 0.92);
-    bg.fillRoundedRect(0, 0, 146, 24, 7);
+    bg.fillRoundedRect(0, 0, 170, 24, 7);
     bg.lineStyle(1.5, 0x00f0ff, 0.9);
-    bg.strokeRoundedRect(0, 0, 146, 24, 7);
+    bg.strokeRoundedRect(0, 0, 170, 24, 7);
     this.hudWidget.add(bg);
 
-    const hitZone = this.scene.add.zone(0, 0, 146, 24)
+    const hitZone = this.scene.add.zone(0, 0, 170, 24)
       .setOrigin(0)
       .setInteractive({ useHandCursor: true });
     hitZone.on('pointerdown', () => this.toggleReality());
@@ -232,7 +232,7 @@ export class PhasingAbility {
     this.hudStateIndicator = this.scene.add.graphics();
     this.hudWidget.add(this.hudStateIndicator);
 
-    this.hudStatusText = this.scene.add.text(73, 12, '[SHIFT/X] REALITY: A', {
+    this.hudStatusText = this.scene.add.text(93, 12, '[SHIFT/X] REALITY: A', {
       fontFamily: '"Oxanium", monospace',
       fontSize: '9px',
       fontStyle: 'bold',

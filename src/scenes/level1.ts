@@ -10,7 +10,6 @@ import { AudioManager } from '../systems/AudioManager';
 import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
-import { WaterAbility } from '../abilities/WaterAbility';
 
 /**
  * LEVEL 1 DATA SPECIFICATION — FROZEN AGE
@@ -91,7 +90,6 @@ export class GameScene extends Phaser.Scene {
   private hazards!: Phaser.Physics.Arcade.StaticGroup;
   private failsafeItems: Phaser.Physics.Arcade.Sprite[] = [];
   private exitPortal?: Phaser.GameObjects.Sprite;
-  private waterAbility!: WaterAbility;
 
   // Moving platforms (Phase 5) — static bodies refreshed each tween tick
   private movingPlatformSprites: Phaser.Physics.Arcade.Sprite[] = [];
@@ -288,11 +286,6 @@ export class GameScene extends Phaser.Scene {
     this.failsafeItems.forEach(item => {
       this.physics.add.overlap(this.player, item, () => this.collectFailsafeComponent(item));
     });
-
-    this.waterAbility = new WaterAbility(
-      this,
-      () => this.checkWaterStateConversion()
-    );
 
     // Hazards
     this.physics.add.overlap(this.player, this.hazards, () => this.handleHazardCollision());

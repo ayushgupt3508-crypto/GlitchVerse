@@ -117,20 +117,24 @@ export class RealitySwapSystem {
     this.objectiveTetherGfx = this.scene.add.graphics().setDepth(14);
 
     // 2. Echo Sentinel Sprite (Arcade Physics entity)
-    //    Uses 'player' texture which is 32×32. Do NOT setScale or setDisplaySize —
-    //    that would silently scale the physics body bounds too.
-    this.sentinel = this.scene.physics.add.sprite(-1000, -1000, 'player');
-    this.sentinel.setTint(0x00f0ff);
-    this.sentinel.setAlpha(0.85);
+    // Echo Sentinel Sprite
+    this.sentinel = this.scene.physics.add.sprite(
+      -1000,
+      -1000,
+      'sentinel_clone'
+    );
+
+    this.sentinel.setDisplaySize(16, 36);
+    this.sentinel.setAlpha(0.95);
     this.sentinel.setDepth(20);
     this.sentinel.setVisible(false);
     this.sentinel.setActive(false);
 
     const sBody = this.sentinel.body as Phaser.Physics.Arcade.Body;
-    // DO NOT call setGravityY — value 0 means "extra gravity on top of world",
-    // NOT "no gravity". Leave it at the Phaser default (0 extra) so world gravity applies.
-    sBody.setSize(14, 28);      // tight hitbox matching sprite art
-    sBody.setOffset(9, 4);      // centred horizontally, a few px from top
+
+    sBody.setSize(32, 80);
+    sBody.setOffset(5, 12);
+
     sBody.setMaxVelocity(this.config.sentinelMoveSpeed, 700);
     sBody.enable = false;
   }
@@ -651,7 +655,7 @@ export class RealitySwapSystem {
 
     // ── Movement ──────────────────────────────────────────────────────────
     const mInput = (this.player as any).mobileInput;
-    const isLeft  = Boolean(cursors?.left?.isDown  || keys?.a?.isDown || mInput?.moveLeft);
+    const isLeft = Boolean(cursors?.left?.isDown || keys?.a?.isDown || mInput?.moveLeft);
     const isRight = Boolean(cursors?.right?.isDown || keys?.d?.isDown || mInput?.moveRight);
 
     if (isLeft && !isRight) {
@@ -707,12 +711,12 @@ export class RealitySwapSystem {
     }
 
     // ── Execute Jump ──────────────────────────────────────────────────────
-    const canJump   = (onGround || this.sentinelCoyoteTimer > 0) && !this.sentinelIsJumping;
+    const canJump = (onGround || this.sentinelCoyoteTimer > 0) && !this.sentinelIsJumping;
     const wantsJump = this.sentinelJumpBufferTimer > 0;
 
     if (canJump && wantsJump) {
       sBody.setVelocityY(this.config.sentinelJumpVelocity);
-      this.sentinelIsJumping   = true;
+      this.sentinelIsJumping = true;
       this.sentinelCoyoteTimer = 0;
       this.sentinelJumpBufferTimer = 0;
       AudioManager.playJump();

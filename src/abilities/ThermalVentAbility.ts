@@ -3,7 +3,6 @@ import { Player } from '../entities/Player';
 import { ThermalVent, THERMAL_VENT_CONFIG } from '../entities/ThermalVent';
 
 export class ThermalVentAbility {
-    private scene: Phaser.Scene;
     private player: Player;
     private vents: ThermalVent[];
 
@@ -11,13 +10,11 @@ export class ThermalVentAbility {
     private onFallback: () => void;
 
     constructor(
-        scene: Phaser.Scene,
         player: Player,
         vents: ThermalVent[],
         onVentIgnited: (vent: ThermalVent) => void,
         onFallback: () => void
     ) {
-        this.scene = scene;
         this.player = player;
         this.vents = vents;
         this.onVentIgnited = onVentIgnited;

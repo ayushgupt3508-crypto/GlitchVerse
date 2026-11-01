@@ -12,8 +12,7 @@ import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { ThermalVentAbility } from '../abilities/ThermalVentAbility';
-import { HUD } from '../ui/HUD';
-import { StaffController } from '../systems/staff/StaffController';
+import { HUD } from '../ui/HUD'
 
 /**
  * Sector2Scene — Heat Age (Bug-fixed version)
@@ -231,11 +230,9 @@ export class Sector2Scene extends Phaser.Scene {
     this.hud = new HUD(this, 'SECTOR 2  ·  HEAT AGE', 0xff6b00);
 
     this.thermalVentAbility = new ThermalVentAbility(
-      this,
       this.player,
       this.vents,
 
-      // Successful vent ignition
       (vent) => {
         AudioManager.playStoneRumble();
         this.cameras.main.flash(120, 255, 120, 0);
@@ -245,13 +242,11 @@ export class Sector2Scene extends Phaser.Scene {
         );
       },
 
-      // No dormant vent nearby
       () => {
         this.tryStunNearbyJets();
         this.tryStunNearbyDrones();
       }
     );
-
     this.hud.updateCharges(this.player.staffCharges);
     this.hud.updateIntegrity(this.player.integrity);
     this.setupObjectiveHUD();
@@ -1127,26 +1122,11 @@ export class Sector2Scene extends Phaser.Scene {
   }
 
   // ── Pause ──────────────────────────────────────────────────────────────
+
   private togglePause(): void {
     // Ignore pause while dead, respawning, or leaving the scene
     if (this.player.isDead || this.isRespawning || this.isLeavingScene) return;
     this.isPaused ? this.resumeGame() : this.pauseGame();
-  }
-
-  private restartAtCheckpoint(): void {
-    this.resumeGame();
-
-    this.player.restoreIntegrity();
-    this.player.respawnAt(this.checkpointX, this.checkpointY);
-    this.player.restoreStaffCharges(this.player.maxStaffCharges);
-
-    this.hud.updateIntegrity(this.player.integrity);
-    this.hud.updateCharges(this.player.staffCharges);
-
-    this.cameras.main.fadeIn(400, 0, 0, 0);
-
-    AudioManager.playCheckpoint();
-    this.hud.showBanner('RETURNED TO CHECKPOINT');
   }
 
   private pauseGame(): void {
@@ -1155,7 +1135,6 @@ export class Sector2Scene extends Phaser.Scene {
     const cb: PauseMenuCallbacks = {
       onResume: () => this.resumeGame(),
       onRestart: () => { this.isPaused = false; this.physics.resume(); this.scene.restart(); },
-      onCheckpoint: () => this.restartAtCheckpoint(),
       onMainMenu: () => { this.isPaused = false; this.physics.resume(); this.scene.start(GAME_CONFIG.sceneKeys.MainMenu); }
     };
     this.pauseMenu = new PauseMenu(this, cb);
