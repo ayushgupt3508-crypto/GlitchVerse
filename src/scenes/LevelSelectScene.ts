@@ -1,9 +1,12 @@
+
 import Phaser from 'phaser';
 import { GAME_FONTS } from '../config';
 import { AudioManager } from '../systems/AudioManager';
 
 export class LevelSelectScene extends Phaser.Scene {
     private isLeaving = false;
+    private backgroundGlitch!: Phaser.GameObjects.Graphics;
+    private panels: Phaser.GameObjects.Container[] = [];
 
     constructor() {
         super('LevelSelectScene');
@@ -11,48 +14,83 @@ export class LevelSelectScene extends Phaser.Scene {
 
     create(): void {
         this.isLeaving = false;
+        this.panels = [];
 
         const width = this.scale.width;
         const height = this.scale.height;
 
-        this.cameras.main.setBackgroundColor('#070b14');
-        this.cameras.main.fadeIn(350);
+        this.cameras.main.setBackgroundColor('#050914');
+        this.cameras.main.fadeIn(400);
 
         // Background grid
-        const grid = this.add.graphics();
-        grid.lineStyle(1, 0x162236, 0.35);
+        const grid = this.add.graphics().setDepth(-10);
+        grid.lineStyle(1, 0x183047, 0.32);
 
-        for (let x = 0; x < width; x += 32) {
+        for (let x = 0; x < width; x += 24) {
             grid.lineBetween(x, 0, x, height);
         }
 
-        for (let y = 0; y < height; y += 32) {
+        for (let y = 0; y < height; y += 24) {
             grid.lineBetween(0, y, width, y);
         }
 
-        // Heading
-        this.add.text(width / 2, 23, 'CHRONO-EXPEDITION // SELECT DESTINATION', {
+        // Background glow accents
+        const glow = this.add.graphics().setDepth(-9);
+        glow.fillStyle(0x00f0ff, 0.035);
+        glow.fillCircle(90, 160, 130);
+        glow.fillStyle(0x39ff14, 0.025);
+        glow.fillCircle(550, 230, 150);
+
+        // Floating particles
+        for (let i = 0; i < 35; i++) {
+            const particle = this.add.circle(
+                Phaser.Math.Between(0, width),
+                Phaser.Math.Between(0, height),
+                Phaser.Math.Between(1, 2),
+                0x00f0ff,
+                Phaser.Math.FloatBetween(0.15, 0.5)
+            ).setDepth(-5);
+
+            this.tweens.add({
+                targets: particle,
+                y: particle.y - Phaser.Math.Between(15, 45),
+                alpha: 0.05,
+                duration: Phaser.Math.Between(1800, 3500),
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.inOut',
+                delay: Phaser.Math.Between(0, 2000)
+            });
+        }
+
+        // Header
+        this.add.text(width / 2, 20, 'CHRONO-EXPEDITION', {
             fontFamily: GAME_FONTS.heading,
-            fontSize: '19px',
+            fontSize: '21px',
             fontStyle: 'bold',
             color: '#00f0ff',
-            stroke: '#040711',
-            strokeThickness: 3
+            stroke: '#00121c',
+            strokeThickness: 4
         }).setOrigin(0.5);
 
-        this.add.text(width / 2, 46,
-            'SIX FRACTURED PATHS  //  ONE REALITY TO RESTORE', {
-                fontFamily: GAME_FONTS.mono,
-                fontSize: '8px',
-                color: '#39ff14',
-                letterSpacing: 1
-            }).setOrigin(0.5);
+        this.add.text(width / 2, 42,
+            '// SELECT YOUR DESTINATION //', {
+            fontFamily: GAME_FONTS.mono,
+            fontSize: '9px',
+            color: '#70e000',
+            letterSpacing: 2
+        }).setOrigin(0.5);
 
-        // Panel configuration
+        // Header divider
+        const divider = this.add.graphics();
+        divider.lineStyle(1, 0x00f0ff, 0.35);
+        divider.lineBetween(45, 55, width - 45, 55);
+
+        // Panel data
         const panels = [
             {
                 number: '00',
-                title: 'STORY / PROLOGUE',
+                title: 'PROLOGUE',
                 subtitle: 'THE BEGINNING',
                 description: 'Discover the origin of the simulation.',
                 icon: '◆',
@@ -63,7 +101,7 @@ export class LevelSelectScene extends Phaser.Scene {
                 number: '01',
                 title: 'ICE AGE',
                 subtitle: '20,000 BCE',
-                description: 'Glaciers, frozen lakes and deadly ice.',
+                description: 'Frozen lakes and deadly glaciers.',
                 icon: '❄',
                 color: 0x55ccff,
                 destination: 'GameScene'
@@ -72,7 +110,7 @@ export class LevelSelectScene extends Phaser.Scene {
                 number: '02',
                 title: 'STONE AGE',
                 subtitle: '10,000 BCE',
-                description: 'Volcanic vents and prehistoric terrain.',
+                description: 'Volcanic vents and ancient terrain.',
                 icon: '▲',
                 color: 0xffa533,
                 destination: 'Sector2Scene'
@@ -81,7 +119,7 @@ export class LevelSelectScene extends Phaser.Scene {
                 number: '03',
                 title: 'MEDIEVAL WORLD',
                 subtitle: '1240 CE',
-                description: 'Ancient fortresses and hidden dangers.',
+                description: 'Fortresses and hidden dangers.',
                 icon: '♜',
                 color: 0xb56cff,
                 destination: 'Level3Scene'
@@ -106,41 +144,64 @@ export class LevelSelectScene extends Phaser.Scene {
             }
         ];
 
-        // Three columns and two rows
+        // 3 x 2 panel arrangement
         const cardWidth = 190;
         const cardHeight = 112;
         const gapX = 12;
         const gapY = 12;
 
-        const startX = (width - (cardWidth * 3 + gapX * 2)) / 2 + cardWidth / 2;
-        const startY = 118;
+        const startX = (width - (cardWidth * 3 + gapX * 2)) / 2
+            + cardWidth / 2;
+        const startY = 119;
 
         panels.forEach((panel, index) => {
             const col = index % 3;
             const row = Math.floor(index / 3);
 
-            const x = startX + col * (cardWidth + gapX);
-            const y = startY + row * (cardHeight + gapY);
-
             this.createPanel(
-                x,
-                y,
+                startX + col * (cardWidth + gapX),
+                startY + row * (cardHeight + gapY),
                 cardWidth,
                 cardHeight,
                 panel
             );
         });
 
-        // Main menu button
+        // Footer
         this.createBackButton(75, height - 19);
 
-        // Bottom status
-        this.add.text(width - 8, height - 12,
+        this.add.text(width - 10, height - 12,
             'GLITCHVERSE // CHRONO SYSTEM ONLINE', {
-                fontFamily: GAME_FONTS.mono,
-                fontSize: '7px',
-                color: '#52647c'
-            }).setOrigin(1, 0.5);
+            fontFamily: GAME_FONTS.mono,
+            fontSize: '11px',
+            color: '#64748b'
+        }).setOrigin(1, 0.5);
+
+        // Background glitch effect
+        this.backgroundGlitch = this.add.graphics()
+            .setScrollFactor(0)
+            .setDepth(100);
+
+        this.time.addEvent({
+            delay: 2800,
+            loop: true,
+            callback: () => this.triggerGlitch()
+        });
+
+        // Entrance animation
+        this.panels.forEach((panel, index) => {
+            panel.setAlpha(0);
+            panel.y += 12;
+
+            this.tweens.add({
+                targets: panel,
+                alpha: 1,
+                y: panel.y - 12,
+                duration: 350,
+                delay: index * 65,
+                ease: 'Back.Out'
+            });
+        });
     }
 
     private createPanel(
@@ -158,57 +219,68 @@ export class LevelSelectScene extends Phaser.Scene {
             destination: string;
         }
     ): void {
-
         const color = panel.color;
         const colorHex = '#' + color.toString(16).padStart(6, '0');
 
         const container = this.add.container(x, y);
+        this.panels.push(container);
 
-        // Panel background
         const bg = this.add.graphics();
 
         const drawPanel = (active: boolean) => {
             bg.clear();
 
-            bg.fillStyle(0x0b1220, active ? 1 : 0.94);
+            // Outer glow
+            if (active) {
+                bg.fillStyle(color, 0.12);
+                bg.fillRoundedRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 7);
+            }
+
+            // Main body
+            bg.fillStyle(active ? 0x101d2c : 0x0a1220, 0.98);
             bg.fillRoundedRect(-w / 2, -h / 2, w, h, 5);
 
-            bg.lineStyle(
-                active ? 2 : 1,
-                color,
-                active ? 1 : 0.55
-            );
-
+            // Main border
+            bg.lineStyle(active ? 2.5 : 1.2, color, active ? 1 : 0.7);
             bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 5);
 
-            // Header
-            bg.fillStyle(color, active ? 0.23 : 0.12);
-            bg.fillRoundedRect(-w / 2, -h / 2, w, 25, {
-                tl: 5,
-                tr: 5,
-                bl: 0,
-                br: 0
-            });
-
-            bg.lineStyle(1, color, 0.35);
-            bg.lineBetween(
+            // Header strip
+            bg.fillStyle(color, active ? 0.3 : 0.14);
+            bg.fillRoundedRect(
                 -w / 2,
-                -h / 2 + 25,
-                w / 2,
-                -h / 2 + 25
+                -h / 2,
+                w,
+                26,
+                { tl: 5, tr: 5, bl: 0, br: 0 }
             );
 
+            bg.lineStyle(1, color, 0.45);
+            bg.lineBetween(
+                -w / 2,
+                -h / 2 + 26,
+                w / 2,
+                -h / 2 + 26
+            );
+
+            // Corner accents
+            const c = 9;
+            bg.lineStyle(2, color, active ? 1 : 0.65);
+            bg.lineBetween(-w / 2, -h / 2 + c, -w / 2, -h / 2);
+            bg.lineBetween(-w / 2, -h / 2, -w / 2 + c, -h / 2);
+
+            bg.lineBetween(w / 2 - c, -h / 2, w / 2, -h / 2);
+            bg.lineBetween(w / 2, -h / 2, w / 2, -h / 2 + c);
+
             // Bottom accent
-            bg.fillStyle(color, active ? 1 : 0.5);
-            bg.fillRect(-w / 2 + 8, h / 2 - 4, w - 16, 2);
+            bg.fillStyle(color, active ? 1 : 0.55);
+            bg.fillRect(-w / 2 + 9, h / 2 - 4, w - 18, 2);
         };
 
         drawPanel(false);
 
-        // World number
         const number = this.add.text(
-            -w / 2 + 9,
-            -h / 2 + 6,
+            -w / 2 + 10,
+            -h / 2 + 7,
             `WORLD ${panel.number}`,
             {
                 fontFamily: GAME_FONTS.mono,
@@ -217,10 +289,9 @@ export class LevelSelectScene extends Phaser.Scene {
             }
         );
 
-        // Title
         const title = this.add.text(
             0,
-            -h / 2 + 16,
+            -h / 2 + 17,
             panel.title,
             {
                 fontFamily: GAME_FONTS.heading,
@@ -230,7 +301,6 @@ export class LevelSelectScene extends Phaser.Scene {
             }
         ).setOrigin(0.5);
 
-        // Icon
         const icon = this.add.text(
             0,
             -12,
@@ -242,36 +312,33 @@ export class LevelSelectScene extends Phaser.Scene {
             }
         ).setOrigin(0.5);
 
-        // Era
         const era = this.add.text(
             0,
             12,
             panel.subtitle,
             {
                 fontFamily: GAME_FONTS.mono,
-                fontSize: '8px',
+                fontSize: '12px',
                 color: colorHex
             }
         ).setOrigin(0.5);
 
-        // Description
         const description = this.add.text(
             0,
             31,
             panel.description,
             {
                 fontFamily: GAME_FONTS.primary,
-                fontSize: '7px',
+                fontSize: '11px',
                 color: '#a9b7ca',
                 align: 'center',
                 wordWrap: { width: w - 16 }
             }
         ).setOrigin(0.5);
 
-        // Selection label
         const enterText = this.add.text(
             w / 2 - 10,
-            h / 2 - 16,
+            h / 2 - 10,
             'ENTER >',
             {
                 fontFamily: GAME_FONTS.mono,
@@ -298,6 +365,7 @@ export class LevelSelectScene extends Phaser.Scene {
         });
 
         hitArea.on('pointerdown', () => {
+            if (this.isLeaving) return;
             container.setScale(0.98);
         });
 
@@ -306,7 +374,6 @@ export class LevelSelectScene extends Phaser.Scene {
 
             container.setScale(1);
             AudioManager.playMenuSelect();
-
             this.enterDestination(panel.destination);
         });
 
@@ -367,6 +434,49 @@ export class LevelSelectScene extends Phaser.Scene {
         });
 
         this.add.container(x, y, [bg, text, hit]);
+    }
+
+    private triggerGlitch(): void {
+        if (this.isLeaving) return;
+
+        const width = this.scale.width;
+        const height = this.scale.height;
+
+        this.backgroundGlitch.clear();
+
+        const strips = Phaser.Math.Between(2, 5);
+
+        for (let i = 0; i < strips; i++) {
+            const y = Phaser.Math.Between(55, height - 35);
+            const x = Phaser.Math.Between(0, width - 30);
+            const stripWidth = Phaser.Math.Between(20, 150);
+
+            this.backgroundGlitch.fillStyle(
+                Phaser.Utils.Array.GetRandom([
+                    0x00ff41,
+                    0x00f0ff,
+                    0x39ff14
+                ]),
+                0.35
+            );
+
+            this.backgroundGlitch.fillRect(
+                x,
+                y,
+                stripWidth,
+                Phaser.Math.Between(1, 3)
+            );
+        }
+
+        this.tweens.add({
+            targets: this.backgroundGlitch,
+            alpha: 0,
+            duration: 110,
+            onComplete: () => {
+                this.backgroundGlitch.clear();
+                this.backgroundGlitch.setAlpha(1);
+            }
+        });
     }
 
     private enterDestination(sceneKey: string): void {
