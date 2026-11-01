@@ -8,7 +8,7 @@ export class StoryScene extends Phaser.Scene {
   private isLeaving = false;
   private isChoiceActive = false;
   private choiceContainer?: Phaser.GameObjects.Container;
-  
+
   private skipHitArea?: Phaser.GameObjects.Zone;
 
   constructor() {
@@ -50,8 +50,10 @@ export class StoryScene extends Phaser.Scene {
     );
 
     // Play the video once
+    this.introVideo.setMute(false);
+    this.introVideo.setVolume(1);
     this.introVideo.play(false);
-
+    
     // When the video finishes, display the tutorial choice screen
     this.introVideo.once('complete', () => {
       this.showTutorialChoice();
