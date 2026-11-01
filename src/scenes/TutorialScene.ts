@@ -12,6 +12,7 @@ import { Guard } from '../entities/Guard';
 import { AudioManager } from '../systems/AudioManager';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 import { RealitySwapSystem, RiftNodeDef } from '../systems/RealitySwapSystem';
+import { DeviceInfo } from '../utils/DeviceDetector';
 
 export type TutorialEntrySource = 'settings' | 'story';
 
@@ -1060,7 +1061,7 @@ export class TutorialScene extends Phaser.Scene {
     // Status text
     this.statusText = this.add
       .text(panelW / 2 - 14, panelH / 2 - 12, '[ IN PROGRESS ]', {
-        fontFamily:  GAME_FONTS.heading,
+        fontFamily: GAME_FONTS.heading,
         fontSize: '10px',
         fontStyle: 'bold',
         color: '#ffd166'
@@ -1119,9 +1120,25 @@ export class TutorialScene extends Phaser.Scene {
     );
 
     this.sectionTitleText.setText(sec.title);
-    this.objectiveText.setText(sec.objective);
-    this.keycapText.setText(sec.keycap);
-    this.hintText.setText(sec.hint);
+    const mobileObjectives: Record<number, string> = {
+      1: 'Move left/right, jump across gaps, then freeze the water into an ice bridge.',
+      2: 'Move near the dormant volcanic vent to ignite it, then ride the updraft.',
+      3: 'Activate your optical cloak and deploy a decoy to bypass the royal sentry.',
+      4: 'Freeze the oscillating chrono-platform in place and jump across the chasm.',
+      5: 'Switch between Reality Phase A and B, climb the platforms, and enter the extraction portal.'
+    };
+
+    if (DeviceInfo.isMobile) {
+      this.objectiveText.setText(
+        mobileObjectives[this.currentSectionIndex] ?? sec.objective
+      );
+
+      this.keycapBox.setVisible(false);
+    } else {
+      this.objectiveText.setText(sec.objective);
+      this.keycapText.setText(sec.keycap);
+      this.keycapBox.setVisible(true);
+    } this.hintText.setText(sec.hint);
 
     this.statusText.setText('[ IN PROGRESS ]').setColor('#ffd166');
 

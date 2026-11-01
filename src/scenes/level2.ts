@@ -13,6 +13,7 @@ import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { ThermalVentAbility } from '../abilities/ThermalVentAbility';
 import { HUD } from '../ui/HUD'
+import { DeviceInfo } from '../utils/DeviceDetector';
 
 /**
  * Sector2Scene — Heat Age (Bug-fixed version)
@@ -515,7 +516,7 @@ export class Sector2Scene extends Phaser.Scene {
       color: '#a08866',
       stroke: '#040711',
       strokeThickness: 2
-    });
+    }).setVisible(!DeviceInfo.isMobile);
 
     // Heat conduit #1
     conduits.push(this.spawnHeatConduit(230, 268));
@@ -584,7 +585,7 @@ export class Sector2Scene extends Phaser.Scene {
       color: '#ff6600',
       backgroundColor: '#0a0402',
       padding: { x: 4, y: 2 }
-    });
+    }).setVisible(!DeviceInfo.isMobile);
 
     // ── Segment 4: Mid Ember Vault (x=1060-1380) ─────────────────────
     for (let x = 1060; x <= 1408; x += 32) {
@@ -693,7 +694,7 @@ export class Sector2Scene extends Phaser.Scene {
       color: '#ffaa00',
       backgroundColor: '#0a0402cc',
       padding: { x: 4, y: 2 }
-    });
+    }).setVisible(!DeviceInfo.isMobile);
 
     // ── Z1: Vent Foyer (x=2080-2420) ─────────────────────────────────
     // Approach floor
@@ -1331,7 +1332,7 @@ export class Sector2Scene extends Phaser.Scene {
 
   private setupWorldIndicators(): void {
     // Starting platform & Segment 2
-    this.createWorldIndicator('ind_hint_staff', 100, 210, '[E] / [J] THERMAL STAFF IGNITION', 0xff8800, '🔥');
+    this.createWorldIndicator('ind_hint_staff', 100, 210, 'THERMAL STAFF IGNITION', 0xff8800, '🔥');
     this.createWorldIndicator('ind_conduit1', 230, 210, 'HEAT CONDUIT', 0x00f0ff, '⚡');
     this.createWorldIndicator('ind_raft1', 440, 210, 'STAY IN BLUE CENTER OF RAFT', 0x00f0ff, '▲');
 
@@ -1343,7 +1344,7 @@ export class Sector2Scene extends Phaser.Scene {
 
     // Segment 5 & Tutorial vent
     this.createWorldIndicator('ind_raft2', 1720, 210, 'STAY IN BLUE CENTER OF RAFT', 0x00f0ff, '▲');
-    this.createWorldIndicator('ind_tut_vent', 1940, 190, '[E/J] IGNITE VENT TO RIDE UPDRAFT', 0xffaa00, '🔥');
+    this.createWorldIndicator('ind_tut_vent', 1940, 190, 'IGNITE VENT TO RIDE UPDRAFT', 0xffaa00, '🔥');
 
     // Z1 Vent Foyer
     this.createWorldIndicator('ind_conduit3', 2120, 200, 'HEAT CONDUIT', 0x00f0ff, '⚡');

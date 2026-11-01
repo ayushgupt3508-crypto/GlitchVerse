@@ -10,6 +10,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
+import { DeviceInfo } from '../utils/DeviceDetector';
 
 /**
  * LEVEL 1 DATA SPECIFICATION — FROZEN AGE
@@ -860,7 +861,7 @@ export class GameScene extends Phaser.Scene {
       color: '#00f0ff',
       backgroundColor: '#070b14',
       padding: { x: 4, y: 2 }
-    });
+    }).setVisible(!DeviceInfo.isMobile);
 
     // Segment 3: Water Chasm — deep dark water with floor spikes
     for (let x = 520; x <= 720; x += 32) {
@@ -1415,7 +1416,7 @@ export class GameScene extends Phaser.Scene {
       color: '#00f0ff',
       backgroundColor: '#070b14',
       padding: { x: 3, y: 2 }
-    });
+    }).setVisible(!DeviceInfo.isMobile);
 
     // ── Cryo-Barrier 1 (Impenetrable floor-to-ceiling pillar, 24x130) ──
     this.iceBarrier1Sprite = this.physics.add.sprite(z3.iceBarrier1.x, z3.iceBarrier1.y, 'ice_barrier');
@@ -1483,7 +1484,7 @@ export class GameScene extends Phaser.Scene {
       color: '#ff6b35',
       backgroundColor: '#070b14',
       padding: { x: 3, y: 2 }
-    });
+    }).setVisible(!DeviceInfo.isMobile);
   }
 
   // ── Zone 4: Buried Facility Approach Builder ───────────────────────────
@@ -1562,7 +1563,7 @@ export class GameScene extends Phaser.Scene {
       color: '#ffd166',
       backgroundColor: '#070b14',
       padding: { x: 3, y: 2 }
-    });
+    }).setVisible(!DeviceInfo.isMobile);
 
     // Final Exit Platform
     for (let x = z4.exitPlatform.startX; x <= z4.exitPlatform.endX; x += 32) {
@@ -2095,7 +2096,7 @@ export class GameScene extends Phaser.Scene {
 
   private setupWorldIndicators(): void {
     // Zone 1
-    this.createWorldIndicator('ind_hint_freeze', 100, 220, '[E] / [J] FREEZE WATER', 0x00f0ff, '❄');
+    this.createWorldIndicator('ind_hint_freeze', 100, 220, 'FREEZE WATER', 0x00f0ff, '❄');
     this.createWorldIndicator('ind_conduit1', 200, 240, 'ENERGY CONDUIT', 0x00f0ff, '⚡');
     this.createWorldIndicator('ind_chasm', 380, 230, 'FREEZE WATER TO CROSS', 0x48cae4, '❄');
     this.createWorldIndicator('ind_movplat', 680, 225, 'CRYO MOVING PLATFORM', 0x00f0ff, '▲');
@@ -2112,7 +2113,7 @@ export class GameScene extends Phaser.Scene {
     this.createWorldIndicator('ind_barrier1', 2000, 150, 'FROZEN BARRIER 1', 0xff4444, '🔒');
     this.createWorldIndicator('ind_icicles', 2140, 110, 'CAUTION: FALLING ICICLES', 0xffaa00, '⚠');
     this.createWorldIndicator('ind_conduit3', 2180, 210, 'ENERGY CONDUIT', 0x00f0ff, '⚡');
-    this.createWorldIndicator('ind_barrier2', 2320, 150, '[E/J] MELT BARRIER 2', 0x00f0ff, '❄');
+    this.createWorldIndicator('ind_barrier2', 2320, 150, 'MELT BARRIER 2', 0x00f0ff, '❄');
 
     // Zone 4
     this.createWorldIndicator('ind_door', 2660, 140, 'TIMED SECURITY DOOR (4.5s)', 0xffaa00, '⏳');

@@ -5,6 +5,8 @@ import { Player } from '../entities/Player';
 import { StaffController } from '../systems/staff/StaffController';
 import { TimeAbility } from '../abilities/TimeAbility';
 import { SaveSystem } from '../systems/SaveSystem';
+import { DeviceInfo } from '../utils/DeviceDetector';
+
 import {
   ITimeStateObject,
   BrokenBridgeSection,
@@ -1555,12 +1557,12 @@ export class Level4Scene extends Phaser.Scene {
 
   private setupWorldIndicators(): void {
     // Zone 1
-    this.createWorldIndicator('ind_hint_time', 100, 260, '[T/E] CHRONO CONDUIT & GROWTH PULSE', 0x00f0ff, '⏳');
+    this.createWorldIndicator('ind_hint_time', 100, 260, 'CHRONO CONDUIT & GROWTH PULSE', 0x00f0ff, '⏳');
     this.createWorldIndicator('ind_sapling1', 480, 310, 'AGE SAPLING TO STEP', 0x52b788, '🌱');
     this.createWorldIndicator('ind_briar1', 800, 330, 'WITHER BRIAR THORNS', 0x40916c, '🍂');
 
     // Zone 2
-    this.createWorldIndicator('ind_ravine', 1360, 220, 'RESTORE BROKEN BRIDGES [T/E]', 0xd4af37, '▲');
+    this.createWorldIndicator('ind_ravine', 1360, 220, 'RESTORE BROKEN BRIDGES', 0xd4af37, '▲');
     this.createWorldIndicator('ind_pendulum', 1560, 150, 'TIME DASH PAST SPIKED LOG', 0xff4444, '⚠');
 
     // Zone 3
@@ -1589,6 +1591,12 @@ export class Level4Scene extends Phaser.Scene {
   private createWorldIndicator(id: string, x: number, y: number, text: string, color: number, icon = '▲'): void {
     const container = this.add.container(x, y).setDepth(22);
 
+    const isKeyboardHint = /\[(?:T\/E|T, E, OR R)\]/i.test(text);
+
+    if (DeviceInfo.isMobile && isKeyboardHint) {
+      container.setVisible(false);
+    }
+    
     const txt = this.add.text(0, 0, `${icon} ${text}`, {
       fontFamily: GAME_FONTS.primary,
       fontSize: '9px',

@@ -14,7 +14,6 @@ import { RealitySwapSystem, RiftNodeDef } from '../systems/RealitySwapSystem';
 import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 
-
 /**
  * LEVEL 5 DATA SPECIFICATION — FUTURISTIC CORE & FINAL ESCAPE (EXTENDED)
  * ─────────────────────────────────────────────────────────────
