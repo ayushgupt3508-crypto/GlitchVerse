@@ -170,7 +170,6 @@ export class GauntletWorldBuilder {
     const lookAhead = 140;
     for (const pw of this.phaseWalls) {
       if (pw.isPassed) continue;
-      const wallMid = pw.x + pw.width / 2;
       if (facingRight && playerX < pw.x && pw.x - playerX < lookAhead) {
         pw.isPassed = true;
         this._dissolvePhaseWall(pw);
