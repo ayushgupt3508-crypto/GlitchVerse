@@ -470,13 +470,6 @@ export class GameScene extends Phaser.Scene {
 
     // Pause key & HUD Home Button
     this.hud.onPauseClicked(() => this.togglePause());
-    if (this.input.keyboard) {
-      const esc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-      esc.on('down', () => {
-        if (FullscreenManager.shouldBlockEsc()) return;
-        this.togglePause();
-      });
-    }
 
     this.createScanlineOverlay();
 

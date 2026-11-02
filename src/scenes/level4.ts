@@ -136,6 +136,7 @@ export class Level4Scene extends Phaser.Scene {
   private worldIndicators: Array<{ id: string; container: Phaser.GameObjects.Container }> = [];
   private discoveredZones = new Set<number>();
   private staffRangeGfx!: Phaser.GameObjects.Graphics;
+  private escKey!: Phaser.Input.Keyboard.Key;
 
   // Scene-owned state flags
   private isRespawning = false;
@@ -202,6 +203,7 @@ export class Level4Scene extends Phaser.Scene {
       this.growthObjects.forEach(g => g.destroy());
       this.growthObjects = [];
       this.staffRangeGfx?.destroy();
+      this.input.keyboard?.off('keydown-ESC', this.togglePause, this);
     });
 
     this.physics.world.setBounds(0, 0, LEVEL4_DATA.dimensions.width, 800);
@@ -253,6 +255,7 @@ export class Level4Scene extends Phaser.Scene {
     this.hud.updateIntegrity(this.player.integrity);
     this.hud.updateCharges(this.player.staffCharges);
     this.staffController.connectHud(this.hud);
+    this.hud.onPauseClicked(() => this.togglePause());
 
     this.setupObjectiveHUD();
     this.setObjective('RESTORE THE COLLAPSED RAVINE BRIDGES [T/E]');
@@ -274,8 +277,12 @@ export class Level4Scene extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 10, 28, 20);
 
     // 12. Connect Pause & Keyboard
-    // StaffController exclusively handles ability keyboard input.
 
+    if (this.input.keyboard) {
+      this.escKey = this.input.keyboard.addKey(
+        Phaser.Input.Keyboard.KeyCodes.ESC
+      );
+    }
     this.time.delayedCall(1200, () => {
       this.hud.showBanner('SECTOR 4: ANCIENT FOREST — USE [T/E] TO PULSE SAPLINGS & RESTORE BRIDGES');
     });
@@ -1596,7 +1603,7 @@ export class Level4Scene extends Phaser.Scene {
     if (DeviceInfo.isMobile && isKeyboardHint) {
       container.setVisible(false);
     }
-    
+
     const txt = this.add.text(0, 0, `${icon} ${text}`, {
       fontFamily: GAME_FONTS.primary,
       fontSize: '9px',

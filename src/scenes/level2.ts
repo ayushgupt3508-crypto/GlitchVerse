@@ -287,12 +287,6 @@ export class Sector2Scene extends Phaser.Scene {
 
     // Pause key & HUD Home Button
     this.hud.onPauseClicked(() => this.togglePause());
-    if (this.input.keyboard) {
-      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => {
-        if (FullscreenManager.shouldBlockEsc()) return;
-        this.togglePause();
-      });
-    }
 
     this.addScanlines();
     this.levelStartTime = Date.now();

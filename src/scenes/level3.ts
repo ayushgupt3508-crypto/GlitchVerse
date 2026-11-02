@@ -845,15 +845,10 @@ export class Level3Scene extends Phaser.Scene {
     // Setup Camera Tracking
     this.setupCamera();
 
-    // Pause Key listener (ESC / P) & HUD Home Button
+    // Pause Key listener (P) & HUD Home Button
     this.hud.onPauseClicked(() => this.togglePause());
     if (this.input.keyboard) {
-      const esc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
       const keyP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
-      esc.on('down', () => {
-        if (FullscreenManager.shouldBlockEsc()) return;
-        this.togglePause();
-      });
       keyP.on('down', () => this.togglePause());
 
       // Dev debug overlay toggle key (F2 or O)
@@ -861,1413 +856,1413 @@ export class Level3Scene extends Phaser.Scene {
       const keyO = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.O);
       keyF2.on('down', () => this.toggleDebugOverlay());
       keyO.on('down', () => this.toggleDebugOverlay());
-    }
+  }
 
     // Debug overlay graphics layer
     this.debugGfx = this.add.graphics().setDepth(200);
 
-    // Scanlines
-    this.addScanlines();
+// Scanlines
+this.addScanlines();
 
-    // Setup Objective HUD Pill (screen-space, persistent at top center)
-    this.setupObjectiveHUD();
-    this.setObjective('INFILTRATE PALACE & RETRIEVE GILDED KEY');
+// Setup Objective HUD Pill (screen-space, persistent at top center)
+this.setupObjectiveHUD();
+this.setObjective('INFILTRATE PALACE & RETRIEVE GILDED KEY');
 
-    // Spawn World Guidance Indicators
-    this.setupWorldIndicators();
+// Spawn World Guidance Indicators
+this.setupWorldIndicators();
 
-    // Welcome banner & tutorial hint
-    this.time.delayedCall(600, () => {
-      this.hud.showBanner('VAULT INFILTRATION: PRESS [E] OR [J] FOR TEMPORAL ILLUSION');
-    });
+// Welcome banner & tutorial hint
+this.time.delayedCall(600, () => {
+  this.hud.showBanner('VAULT INFILTRATION: PRESS [E] OR [J] FOR TEMPORAL ILLUSION');
+});
 
-    // Shutdown cleanup listener
-    this.events.once('shutdown', () => {
-      this.camouflage.destroy();
-      this.guards.forEach(g => g.destroy());
-      this.torchLightGfx?.destroy();
-      this.debugGfx?.destroy();
-      this.blades.forEach(b => { b.chainGfx.destroy(); b.sprite.destroy(); });
-      this.chandeliers.forEach(c => { c.chainGfx.destroy(); c.sprite.destroy(); c.warningText?.destroy(); });
-      this.timedGates.forEach(g => { g.glowGfx.destroy(); g.sprite.destroy(); });
-      this.worldIndicators.forEach(w => w.container.destroy());
-      this.objectiveContainer?.destroy();
-      this.baitChestSprite?.destroy();
-    });
+// Shutdown cleanup listener
+this.events.once('shutdown', () => {
+  this.camouflage.destroy();
+  this.guards.forEach(g => g.destroy());
+  this.torchLightGfx?.destroy();
+  this.debugGfx?.destroy();
+  this.blades.forEach(b => { b.chainGfx.destroy(); b.sprite.destroy(); });
+  this.chandeliers.forEach(c => { c.chainGfx.destroy(); c.sprite.destroy(); c.warningText?.destroy(); });
+  this.timedGates.forEach(g => { g.glowGfx.destroy(); g.sprite.destroy(); });
+  this.worldIndicators.forEach(w => w.container.destroy());
+  this.objectiveContainer?.destroy();
+  this.baitChestSprite?.destroy();
+});
 
-    // Fade in
-    this.cameras.main.fadeIn(500, 0, 0, 0);
+// Fade in
+this.cameras.main.fadeIn(500, 0, 0, 0);
 
-    // Mobile Controls
-    this.mobileHandle = setupMobileForScene({
-      scene: this,
-      player: this.player,
-      onAbilityPressed: () => this.camouflage.activate(),
-      getAbilityState: () => ({
-        label: 'CLOAK',
-        available: this.camouflage.isReady,
-        tint: LEVEL3_DATA.palette.mutedGold,
-        cooldownProgress: this.camouflage.cloaked ? 1 : 0
-      })
-    });
+// Mobile Controls
+this.mobileHandle = setupMobileForScene({
+  scene: this,
+  player: this.player,
+  onAbilityPressed: () => this.camouflage.activate(),
+  getAbilityState: () => ({
+    label: 'CLOAK',
+    available: this.camouflage.isReady,
+    tint: LEVEL3_DATA.palette.mutedGold,
+    cooldownProgress: this.camouflage.cloaked ? 1 : 0
+  })
+});
   }
 
-  update(time: number, delta: number): void {
-    if (this.isPaused || this.isLeavingScene) return;
+update(time: number, delta: number): void {
+  if(this.isPaused || this.isLeavingScene) return;
 
-    // Safety net: if player is dead but death sequence hasn't started, trigger it
-    if (this.player.isDead && !this.isRespawning) {
-      this.handleDeath('SYSTEM RECOVERY');
-      return;
-    }
-    if (this.isRespawning) return;
+  // Safety net: if player is dead but death sequence hasn't started, trigger it
+  if(this.player.isDead && !this.isRespawning) {
+  this.handleDeath('SYSTEM RECOVERY');
+  return;
+}
+if (this.isRespawning) return;
 
-    // Update Player
-    this.mobileHandle?.update();
-    this.player.update(time, delta);
+// Update Player
+this.mobileHandle?.update();
+this.player.update(time, delta);
 
-    // Fall death check
-    if (this.player.y > 440 && !this.player.isDead && !this.isRespawning) {
-      this.handleDeath('PITFALL INTO MOAT ABYSS');
-      return;
-    }
+// Fall death check
+if (this.player.y > 440 && !this.player.isDead && !this.isRespawning) {
+  this.handleDeath('PITFALL INTO MOAT ABYSS');
+  return;
+}
 
-    // Update Staff Controller and Camouflage
-    this.staffController.update(delta, this.player.x, this.player.y);
-    this.camouflage.update(time, delta);
+// Update Staff Controller and Camouflage
+this.staffController.update(delta, this.player.x, this.player.y);
+this.camouflage.update(time, delta);
 
-    // Update Guards with stealth information
-    const isPlayerCloaked = this.camouflage.cloaked;
-    const decoyPos = this.camouflage.decoy;
+// Update Guards with stealth information
+const isPlayerCloaked = this.camouflage.cloaked;
+const decoyPos = this.camouflage.decoy;
 
-    this.guards.forEach(guard => {
-      guard.update(time, delta, this.player.x, this.player.y, decoyPos, isPlayerCloaked);
-    });
+this.guards.forEach(guard => {
+  guard.update(time, delta, this.player.x, this.player.y, decoyPos, isPlayerCloaked);
+});
 
-    // Update Dynamic Obstacles (Pendulum chains, falling chandeliers, timed gates)
-    this.updateObstacles(time, delta);
+// Update Dynamic Obstacles (Pendulum chains, falling chandeliers, timed gates)
+this.updateObstacles(time, delta);
 
-    // Animate warm torch light halos
-    this.updateTorchLighting(time);
+// Animate warm torch light halos
+this.updateTorchLighting(time);
 
-    // Track zone discovery and display atmospheric title banners
-    this.checkZoneDiscovery();
+// Track zone discovery and display atmospheric title banners
+this.checkZoneDiscovery();
 
-    // Render debug overlay if toggled
-    if (this.debugOverlay) {
-      this.renderDebugOverlay();
-    }
+// Render debug overlay if toggled
+if (this.debugOverlay) {
+  this.renderDebugOverlay();
+}
   }
 
   // ── Palace Background & Aesthetics ────────────────────────────────────────
 
   private createPalaceBackground(): void {
-    const W = LEVEL3_DATA.dimensions.width;
-    const H = LEVEL3_DATA.dimensions.height;
+  const W = LEVEL3_DATA.dimensions.width;
+  const H = LEVEL3_DATA.dimensions.height;
 
-    // 1. Dusk/night sky gradient
-    const sky = this.add.graphics().setScrollFactor(0);
-    sky.fillGradientStyle(
-      LEVEL3_DATA.palette.nightSkyTop,
-      LEVEL3_DATA.palette.nightSkyTop,
-      LEVEL3_DATA.palette.nightSkyBottom,
-      LEVEL3_DATA.palette.nightSkyBottom,
-      1
-    );
-    sky.fillRect(0, 0, this.cameras.main.width, H);
+  // 1. Dusk/night sky gradient
+  const sky = this.add.graphics().setScrollFactor(0);
+  sky.fillGradientStyle(
+    LEVEL3_DATA.palette.nightSkyTop,
+    LEVEL3_DATA.palette.nightSkyTop,
+    LEVEL3_DATA.palette.nightSkyBottom,
+    LEVEL3_DATA.palette.nightSkyBottom,
+    1
+  );
+  sky.fillRect(0, 0, this.cameras.main.width, H);
 
-    // 2. Star field
-    const stars = this.add.graphics().setScrollFactor(0.05);
-    stars.fillStyle(0xffffff, 0.7);
-    for (let x = 0; x < W; x += 45) {
-      const sy = 20 + ((x * 37) % 180);
-      const size = (x % 3 === 0) ? 1.5 : 1;
-      stars.fillRect(x, sy, size, size);
-    }
+  // 2. Star field
+  const stars = this.add.graphics().setScrollFactor(0.05);
+  stars.fillStyle(0xffffff, 0.7);
+  for(let x = 0; x <W; x += 45) {
+    const sy = 20 + ((x * 37) % 180);
+    const size = (x % 3 === 0) ? 1.5 : 1;
+    stars.fillRect(x, sy, size, size);
+  }
 
     // 3. Distant Castle Silhouette & Towers (Parallax factor 0.15)
     const distantTowers = this.add.graphics().setScrollFactor(0.15);
-    distantTowers.fillStyle(0x131620, 1);
-    for (let x = -100; x < W + 400; x += 180) {
-      const th = 160 + ((x * 17) % 90);
-      const tw = 40 + ((x * 23) % 30);
-      distantTowers.fillRect(x, H - th, tw, th);
-      for (let c = 0; c < tw; c += 8) {
-        distantTowers.fillRect(x + c, H - th - 8, 4, 8);
-      }
-      if (x % 360 === 0) {
-        distantTowers.fillTriangle(x - 4, H - th, x + tw + 4, H - th, x + tw / 2, H - th - 36);
-      }
-    }
+  distantTowers.fillStyle(0x131620, 1);
+  for(let x = -100; x <W + 400; x += 180) {
+  const th = 160 + ((x * 17) % 90);
+  const tw = 40 + ((x * 23) % 30);
+  distantTowers.fillRect(x, H - th, tw, th);
+  for (let c = 0; c < tw; c += 8) {
+    distantTowers.fillRect(x + c, H - th - 8, 4, 8);
+  }
+  if (x % 360 === 0) {
+    distantTowers.fillTriangle(x - 4, H - th, x + tw + 4, H - th, x + tw / 2, H - th - 36);
+  }
+}
 
-    // 4. Midground Castle Masonry Wall (Parallax factor 0.35)
-    const midWall = this.add.graphics().setScrollFactor(0.35);
-    midWall.fillStyle(0x1a1e28, 0.95);
-    midWall.fillRect(0, 120, W, H - 120);
+// 4. Midground Castle Masonry Wall (Parallax factor 0.35)
+const midWall = this.add.graphics().setScrollFactor(0.35);
+midWall.fillStyle(0x1a1e28, 0.95);
+midWall.fillRect(0, 120, W, H - 120);
 
-    // Gothic arched windows with warm stained amber/crimson light
-    for (let x = 120; x < W; x += 220) {
-      midWall.fillStyle(0x0e1118, 1);
-      midWall.fillRect(x - 2, 160, 28, 54);
-      midWall.fillCircle(x + 12, 160, 14);
+// Gothic arched windows with warm stained amber/crimson light
+for (let x = 120; x < W; x += 220) {
+  midWall.fillStyle(0x0e1118, 1);
+  midWall.fillRect(x - 2, 160, 28, 54);
+  midWall.fillCircle(x + 12, 160, 14);
 
-      const isAmber = (x / 220) % 2 === 0;
-      const glassCol = isAmber ? 0xd4af37 : 0x75161c;
-      midWall.fillStyle(glassCol, 0.45);
-      midWall.fillRect(x + 1, 162, 22, 50);
-      midWall.fillCircle(x + 12, 162, 11);
+  const isAmber = (x / 220) % 2 === 0;
+  const glassCol = isAmber ? 0xd4af37 : 0x75161c;
+  midWall.fillStyle(glassCol, 0.45);
+  midWall.fillRect(x + 1, 162, 22, 50);
+  midWall.fillCircle(x + 12, 162, 11);
 
-      midWall.lineStyle(1, 0x11131a, 0.9);
-      midWall.lineBetween(x + 12, 150, x + 12, 212);
-      midWall.lineBetween(x + 1, 185, x + 23, 185);
-    }
+  midWall.lineStyle(1, 0x11131a, 0.9);
+  midWall.lineBetween(x + 12, 150, x + 12, 212);
+  midWall.lineBetween(x + 1, 185, x + 23, 185);
+}
   }
 
   // ── Palace Architecture Spawned From Layout Table ─────────────────────────
 
   private buildPalaceArchitecture(): void {
-    const floorY = LEVEL3_DATA.dimensions.floorY;
+  const floorY = LEVEL3_DATA.dimensions.floorY;
 
-    // Build all platforms from LEVEL3_LAYOUT_DATA
-    LEVEL3_LAYOUT_DATA.zones.forEach(zone => {
-      zone.platforms.forEach(plat => {
-        const tileKey = plat.tileKey ?? (plat.type === 'ground' ? 'tile_stone' : 'tile_stone_top');
+  // Build all platforms from LEVEL3_LAYOUT_DATA
+  LEVEL3_LAYOUT_DATA.zones.forEach(zone => {
+    zone.platforms.forEach(plat => {
+      const tileKey = plat.tileKey ?? (plat.type === 'ground' ? 'tile_stone' : 'tile_stone_top');
 
-        if (plat.type === 'ground') {
-          // Ground platform extends to the bottom of the map
-          for (let x = plat.x; x < plat.x + plat.w; x += 32) {
-            const top = this.platforms.create(x, plat.y, 'tile_stone_top') as Phaser.Physics.Arcade.Sprite;
-            top.setOrigin(0, 0).refreshBody();
+      if (plat.type === 'ground') {
+        // Ground platform extends to the bottom of the map
+        for (let x = plat.x; x < plat.x + plat.w; x += 32) {
+          const top = this.platforms.create(x, plat.y, 'tile_stone_top') as Phaser.Physics.Arcade.Sprite;
+          top.setOrigin(0, 0).refreshBody();
 
-            for (let subY = plat.y + 32; subY <= 440; subY += 32) {
-              const block = this.platforms.create(x, subY, 'tile_stone') as Phaser.Physics.Arcade.Sprite;
-              block.setOrigin(0, 0).refreshBody();
-            }
-          }
-        } else if (plat.type === 'drawbridge') {
-          for (let x = plat.x; x < plat.x + plat.w; x += 32) {
-            const bridge = this.platforms.create(x, plat.y, 'tile_wood_drawbridge') as Phaser.Physics.Arcade.Sprite;
-            bridge.setOrigin(0, 0).refreshBody();
-          }
-          // Drawbridge hanging chains
-          const chainsGfx = this.add.graphics().setDepth(6);
-          chainsGfx.lineStyle(2, 0x444955, 0.85);
-          chainsGfx.lineBetween(plat.x, plat.y, plat.x - 46, plat.y - 90);
-          chainsGfx.lineBetween(plat.x + plat.w, plat.y, plat.x + plat.w + 42, plat.y - 90);
-        } else if (plat.type === 'step') {
-          for (let x = plat.x; x < plat.x + plat.w; x += 32) {
-            const stepSp = this.platforms.create(x, plat.y, 'tile_stone_top') as Phaser.Physics.Arcade.Sprite;
-            stepSp.setOrigin(0, 0).refreshBody();
-            for (let subY = plat.y + 32; subY < floorY; subY += 32) {
-              const blk = this.platforms.create(x, subY, 'tile_stone') as Phaser.Physics.Arcade.Sprite;
-              blk.setOrigin(0, 0).refreshBody();
-            }
-          }
-        } else if (plat.type === 'arch') {
-          for (let x = plat.x; x < plat.x + plat.w; x += 32) {
-            const archSp = this.platforms.create(x, plat.y, 'tile_stone') as Phaser.Physics.Arcade.Sprite;
-            archSp.setOrigin(0, 0).refreshBody();
-          }
-        } else if (plat.type === 'battlement' || plat.type === 'platform') {
-          for (let x = plat.x; x < plat.x + plat.w; x += 32) {
-            const p = this.platforms.create(x, plat.y, tileKey) as Phaser.Physics.Arcade.Sprite;
-            p.setOrigin(0, 0).refreshBody();
-          }
-        } else if (plat.type === 'wall') {
-          // Solid vertical wall structure (seals overhead air from ceiling down to floor/door)
-          for (let x = plat.x; x < plat.x + plat.w; x += 32) {
-            for (let subY = plat.y; subY < plat.y + plat.h; subY += 32) {
-              const wallBlock = this.platforms.create(x, subY, 'tile_stone') as Phaser.Physics.Arcade.Sprite;
-              wallBlock.setOrigin(0, 0).refreshBody();
-            }
+          for (let subY = plat.y + 32; subY <= 440; subY += 32) {
+            const block = this.platforms.create(x, subY, 'tile_stone') as Phaser.Physics.Arcade.Sprite;
+            block.setOrigin(0, 0).refreshBody();
           }
         }
-      });
-    });
-
-    // Decorative Royal Carpets & Gold Pillars
-    // Zone 2 & 4 Carpets
-    for (let x = 1180; x <= 1680; x += 32) {
-      this.add.image(x, floorY - 4, 'tile_red_carpet').setOrigin(0, 0).setDepth(4);
-    }
-    for (let x = 3168; x <= 3872; x += 32) {
-      this.add.image(x, floorY - 4, 'tile_red_carpet').setOrigin(0, 0).setDepth(4);
-    }
-
-    // Cover Obstacles / Pillars (solid sight blockers)
-    LEVEL3_COVER_OBSTACLES.forEach(obs => {
-      for (let y = obs.y; y < obs.y + obs.height; y += 32) {
-        this.add.image(obs.x, y, 'tile_gold_pillar').setOrigin(0, 0).setDepth(3);
+      } else if (plat.type === 'drawbridge') {
+        for (let x = plat.x; x < plat.x + plat.w; x += 32) {
+          const bridge = this.platforms.create(x, plat.y, 'tile_wood_drawbridge') as Phaser.Physics.Arcade.Sprite;
+          bridge.setOrigin(0, 0).refreshBody();
+        }
+        // Drawbridge hanging chains
+        const chainsGfx = this.add.graphics().setDepth(6);
+        chainsGfx.lineStyle(2, 0x444955, 0.85);
+        chainsGfx.lineBetween(plat.x, plat.y, plat.x - 46, plat.y - 90);
+        chainsGfx.lineBetween(plat.x + plat.w, plat.y, plat.x + plat.w + 42, plat.y - 90);
+      } else if (plat.type === 'step') {
+        for (let x = plat.x; x < plat.x + plat.w; x += 32) {
+          const stepSp = this.platforms.create(x, plat.y, 'tile_stone_top') as Phaser.Physics.Arcade.Sprite;
+          stepSp.setOrigin(0, 0).refreshBody();
+          for (let subY = plat.y + 32; subY < floorY; subY += 32) {
+            const blk = this.platforms.create(x, subY, 'tile_stone') as Phaser.Physics.Arcade.Sprite;
+            blk.setOrigin(0, 0).refreshBody();
+          }
+        }
+      } else if (plat.type === 'arch') {
+        for (let x = plat.x; x < plat.x + plat.w; x += 32) {
+          const archSp = this.platforms.create(x, plat.y, 'tile_stone') as Phaser.Physics.Arcade.Sprite;
+          archSp.setOrigin(0, 0).refreshBody();
+        }
+      } else if (plat.type === 'battlement' || plat.type === 'platform') {
+        for (let x = plat.x; x < plat.x + plat.w; x += 32) {
+          const p = this.platforms.create(x, plat.y, tileKey) as Phaser.Physics.Arcade.Sprite;
+          p.setOrigin(0, 0).refreshBody();
+        }
+      } else if (plat.type === 'wall') {
+        // Solid vertical wall structure (seals overhead air from ceiling down to floor/door)
+        for (let x = plat.x; x < plat.x + plat.w; x += 32) {
+          for (let subY = plat.y; subY < plat.y + plat.h; subY += 32) {
+            const wallBlock = this.platforms.create(x, subY, 'tile_stone') as Phaser.Physics.Arcade.Sprite;
+            wallBlock.setOrigin(0, 0).refreshBody();
+          }
+        }
       }
     });
+  });
 
-    // Hanging Banners
-    this.add.image(620, floorY - 60, 'banner_royal').setDepth(4);
-    this.add.image(960, floorY - 60, 'banner_royal').setDepth(4);
-    this.add.image(1260, floorY - 90, 'banner_royal').setDepth(4);
-    this.add.image(1540, floorY - 90, 'banner_royal').setDepth(4);
-    this.add.image(3520, floorY - 80, 'banner_royal').setDepth(4);
-    this.add.image(3840, floorY - 80, 'banner_royal').setDepth(4);
+  // Decorative Royal Carpets & Gold Pillars
+  // Zone 2 & 4 Carpets
+  for(let x = 1180; x <= 1680; x += 32) {
+  this.add.image(x, floorY - 4, 'tile_red_carpet').setOrigin(0, 0).setDepth(4);
+}
+for (let x = 3168; x <= 3872; x += 32) {
+  this.add.image(x, floorY - 4, 'tile_red_carpet').setOrigin(0, 0).setDepth(4);
+}
 
-    // Wall Torch Sconces throughout all 5 zones
-    const torchPositions = [
-      { x: 120, y: floorY - 50 },
-      { x: 480, y: floorY - 50 },
-      { x: 740, y: floorY - 50 },
-      { x: 1040, y: floorY - 50 },
-      { x: 1360, y: floorY - 80 },
-      { x: 1640, y: floorY - 80 },
-      { x: 1940, y: floorY - 50 },
-      { x: 2120, y: floorY - 50 },
-      { x: 2480, y: floorY - 50 },
-      { x: 2600, y: floorY - 50 },
-      { x: 2880, y: floorY - 50 },
-      { x: 3100, y: floorY - 50 },
-      { x: 3260, y: floorY - 50 },
-      { x: 3460, y: floorY - 50 },
-      { x: 3820, y: floorY - 50 },
-      { x: 4100, y: floorY - 50 },
-      { x: 4340, y: floorY - 50 },
-      { x: 4620, y: floorY - 50 },
-      { x: 4800, y: floorY - 50 },
-      { x: 5040, y: floorY - 50 },
-      { x: 5380, y: floorY - 200 }
-    ];
+// Cover Obstacles / Pillars (solid sight blockers)
+LEVEL3_COVER_OBSTACLES.forEach(obs => {
+  for (let y = obs.y; y < obs.y + obs.height; y += 32) {
+    this.add.image(obs.x, y, 'tile_gold_pillar').setOrigin(0, 0).setDepth(3);
+  }
+});
 
-    torchPositions.forEach(pos => {
-      this.add.image(pos.x, pos.y, 'torch_sconce').setOrigin(0.5).setDepth(6);
-      this.torchHalos.push({ x: pos.x, y: pos.y - 6, baseRadius: 42 });
-    });
+// Hanging Banners
+this.add.image(620, floorY - 60, 'banner_royal').setDepth(4);
+this.add.image(960, floorY - 60, 'banner_royal').setDepth(4);
+this.add.image(1260, floorY - 90, 'banner_royal').setDepth(4);
+this.add.image(1540, floorY - 90, 'banner_royal').setDepth(4);
+this.add.image(3520, floorY - 80, 'banner_royal').setDepth(4);
+this.add.image(3840, floorY - 80, 'banner_royal').setDepth(4);
+
+// Wall Torch Sconces throughout all 5 zones
+const torchPositions = [
+  { x: 120, y: floorY - 50 },
+  { x: 480, y: floorY - 50 },
+  { x: 740, y: floorY - 50 },
+  { x: 1040, y: floorY - 50 },
+  { x: 1360, y: floorY - 80 },
+  { x: 1640, y: floorY - 80 },
+  { x: 1940, y: floorY - 50 },
+  { x: 2120, y: floorY - 50 },
+  { x: 2480, y: floorY - 50 },
+  { x: 2600, y: floorY - 50 },
+  { x: 2880, y: floorY - 50 },
+  { x: 3100, y: floorY - 50 },
+  { x: 3260, y: floorY - 50 },
+  { x: 3460, y: floorY - 50 },
+  { x: 3820, y: floorY - 50 },
+  { x: 4100, y: floorY - 50 },
+  { x: 4340, y: floorY - 50 },
+  { x: 4620, y: floorY - 50 },
+  { x: 4800, y: floorY - 50 },
+  { x: 5040, y: floorY - 50 },
+  { x: 5380, y: floorY - 200 }
+];
+
+torchPositions.forEach(pos => {
+  this.add.image(pos.x, pos.y, 'torch_sconce').setOrigin(0.5).setDepth(6);
+  this.torchHalos.push({ x: pos.x, y: pos.y - 6, baseRadius: 42 });
+});
   }
 
   // ── Guards Setup (with Wall-Clipped Sight & Alert Propagation) ─────────────
 
   private spawnGuards(): void {
-    LEVEL3_DATA.guards.forEach(cfg => {
-      const guard = new Guard(
-        this,
-        cfg.x,
-        cfg.y,
-        cfg.patrolLeft,
-        cfg.patrolRight,
-        {
-          name: cfg.name,
-          visionRange: cfg.visionRange,
-          visionAngle: cfg.visionAngle,
-          patrolSpeed: cfg.patrolSpeed,
-          alertSpeed: cfg.patrolSpeed * 3, // Speed increases to threefold (3x) after light turns red
-          alertRadius: cfg.alertRadius,
-          facingRight: cfg.facingRight,
-          suspiciousDuration: 300, // Soldier gets suspicious quickly (300ms) in light range
-          obstacles: LEVEL3_COVER_OBSTACLES
-        }
-      );
+  LEVEL3_DATA.guards.forEach(cfg => {
+    const guard = new Guard(
+      this,
+      cfg.x,
+      cfg.y,
+      cfg.patrolLeft,
+      cfg.patrolRight,
+      {
+        name: cfg.name,
+        visionRange: cfg.visionRange,
+        visionAngle: cfg.visionAngle,
+        patrolSpeed: cfg.patrolSpeed,
+        alertSpeed: cfg.patrolSpeed * 3, // Speed increases to threefold (3x) after light turns red
+        alertRadius: cfg.alertRadius,
+        facingRight: cfg.facingRight,
+        suspiciousDuration: 300, // Soldier gets suspicious quickly (300ms) in light range
+        obstacles: LEVEL3_COVER_OBSTACLES
+      }
+    );
 
-      // Track alert count for stealth ranking
-      guard.on('guard_alert', (name: string) => {
-        this.alertCount++;
-        this.cameras.main.shake(120, 0.008);
-        this.hud.showBanner(`ALERT! ${name.toUpperCase()} SPOTTED MOVEMENT!`);
-      });
-
-      this.guards.push(guard);
+    // Track alert count for stealth ranking
+    guard.on('guard_alert', (name: string) => {
+      this.alertCount++;
+      this.cameras.main.shake(120, 0.008);
+      this.hud.showBanner(`ALERT! ${name.toUpperCase()} SPOTTED MOVEMENT!`);
     });
 
-    // Connect alert propagation across peer guards
-    this.guards.forEach(g => g.registerPeers(this.guards));
-  }
+    this.guards.push(guard);
+  });
+
+  // Connect alert propagation across peer guards
+  this.guards.forEach(g => g.registerPeers(this.guards));
+}
 
   // ── Puzzle Elements Setup ─────────────────────────────────────────────────
 
   private setupPuzzleElements(): void {
-    const pz = LEVEL3_DATA.puzzle;
+  const pz = LEVEL3_DATA.puzzle;
 
-    // 1. The Gilded Chamber Key (atop high armory balcony)
-    this.chamberKeySprite = this.physics.add.sprite(pz.chamberKey.x, pz.chamberKey.y, 'chamber_key')
-      .setDepth(10);
+  // 1. The Gilded Chamber Key (atop high armory balcony)
+  this.chamberKeySprite = this.physics.add.sprite(pz.chamberKey.x, pz.chamberKey.y, 'chamber_key')
+    .setDepth(10);
     (this.chamberKeySprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
 
-    this.tweens.add({
-      targets: this.chamberKeySprite,
-      y: pz.chamberKey.y - 6,
-      duration: 1000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+this.tweens.add({
+  targets: this.chamberKeySprite,
+  y: pz.chamberKey.y - 6,
+  duration: 1000,
+  yoyo: true,
+  repeat: -1,
+  ease: 'Sine.easeInOut'
+});
 
-    // 2. The Locked Chamber Door (portcullis in front of vault in Zone 5)
-    // Sized 32x64 at (5088, 276) spanning y: 276 to 340, seamlessly connecting to wall y: 0..276
-    this.chamberDoorSprite = this.physics.add.sprite(pz.chamberDoor.x, pz.chamberDoor.y, 'chamber_door')
-      .setOrigin(0, 0)
-      .setDepth(10)
-      .setImmovable(true);
-    (this.chamberDoorSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-    this.chamberDoorSprite.refreshBody();
+// 2. The Locked Chamber Door (portcullis in front of vault in Zone 5)
+// Sized 32x64 at (5088, 276) spanning y: 276 to 340, seamlessly connecting to wall y: 0..276
+this.chamberDoorSprite = this.physics.add.sprite(pz.chamberDoor.x, pz.chamberDoor.y, 'chamber_door')
+  .setOrigin(0, 0)
+  .setDepth(10)
+  .setImmovable(true);
+(this.chamberDoorSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+this.chamberDoorSprite.refreshBody();
 
-    // 3. Failsafe Component 3: The Chrono-Prism (in the Royal Vault)
-    this.component3Sprite = this.physics.add.sprite(pz.component3.x, pz.component3.y, 'relic_component3')
-      .setDepth(10);
-    (this.component3Sprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+// 3. Failsafe Component 3: The Chrono-Prism (in the Royal Vault)
+this.component3Sprite = this.physics.add.sprite(pz.component3.x, pz.component3.y, 'relic_component3')
+  .setDepth(10);
+(this.component3Sprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
 
-    this.tweens.add({
-      targets: this.component3Sprite,
-      y: pz.component3.y - 8,
-      duration: 1200,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+this.tweens.add({
+  targets: this.component3Sprite,
+  y: pz.component3.y - 8,
+  duration: 1200,
+  yoyo: true,
+  repeat: -1,
+  ease: 'Sine.easeInOut'
+});
 
-    // 4. High Tower Extraction Portal (Exit at summit of Zone 5)
-    this.exitPortalSprite = this.add.sprite(pz.exitPortal.x, pz.exitPortal.y, 'failsafe_component')
-      .setScale(1.8)
-      .setDepth(10);
+// 4. High Tower Extraction Portal (Exit at summit of Zone 5)
+this.exitPortalSprite = this.add.sprite(pz.exitPortal.x, pz.exitPortal.y, 'failsafe_component')
+  .setScale(1.8)
+  .setDepth(10);
 
-    this.tweens.add({
-      targets: this.exitPortalSprite,
-      scale: 2.2,
-      alpha: 0.7,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+this.tweens.add({
+  targets: this.exitPortalSprite,
+  scale: 2.2,
+  alpha: 0.7,
+  duration: 800,
+  yoyo: true,
+  repeat: -1,
+  ease: 'Sine.easeInOut'
+});
   }
 
   // ── Extended Obstacles & Hazards Setup ────────────────────────────────────
 
   private setupObstacles(): void {
-    // 1. Water Pits (Hazards)
-    LEVEL3_LAYOUT_DATA.zones.forEach(z => {
-      z.hazards.filter(h => h.type === 'water').forEach(w => {
-        const sp = this.hazards.create(w.x!, w.y!, 'tile_water') as Phaser.Physics.Arcade.Sprite;
-        sp.setDisplaySize(w.w!, w.h!).setOrigin(0, 0).refreshBody();
-      });
+  // 1. Water Pits (Hazards)
+  LEVEL3_LAYOUT_DATA.zones.forEach(z => {
+    z.hazards.filter(h => h.type === 'water').forEach(w => {
+      const sp = this.hazards.create(w.x!, w.y!, 'tile_water') as Phaser.Physics.Arcade.Sprite;
+      sp.setDisplaySize(w.w!, w.h!).setOrigin(0, 0).refreshBody();
     });
+  });
 
-    // 2. Staff Energy Conduits (3 refills: Armory, Battlements, Bait ledge)
-    LEVEL3_LAYOUT_DATA.zones.forEach(z => {
-      z.pickups.filter(p => p.type === 'conduit').forEach(pos => {
-        const sp = this.physics.add.sprite(pos.x, pos.y, 'energy_conduit').setDepth(7);
-        sp.setImmovable(true);
-        (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-        this.tweens.add({ targets: sp, y: pos.y - 4, yoyo: true, repeat: -1, duration: 800, ease: 'Sine.easeInOut' });
-        this.conduits.push({ sprite: sp, x: pos.x, y: pos.y, depleted: false });
-      });
-    });
-
-    // 3. Checkpoint Crystals
-    LEVEL3_DATA.checkpoints.forEach(cp => {
-      const sp = this.physics.add.sprite(cp.x, cp.y, 'checkpoint_crystal').setDepth(7);
+  // 2. Staff Energy Conduits (3 refills: Armory, Battlements, Bait ledge)
+  LEVEL3_LAYOUT_DATA.zones.forEach(z => {
+    z.pickups.filter(p => p.type === 'conduit').forEach(pos => {
+      const sp = this.physics.add.sprite(pos.x, pos.y, 'energy_conduit').setDepth(7);
       sp.setImmovable(true);
       (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-      if (cp.id === 'cp_spawn') {
-        sp.setTexture('checkpoint_active');
-      }
-      this.tweens.add({ targets: sp, y: cp.y - 4, yoyo: true, repeat: -1, duration: 900, ease: 'Sine.easeInOut' });
-      this.checkpointCrystals.push({ sprite: sp, id: cp.id, x: cp.x, y: cp.y - 10, label: cp.label, active: cp.id === 'cp_spawn' });
+      this.tweens.add({ targets: sp, y: pos.y - 4, yoyo: true, repeat: -1, duration: 800, ease: 'Sine.easeInOut' });
+      this.conduits.push({ sprite: sp, x: pos.x, y: pos.y, depleted: false });
     });
+  });
 
-    // 4. Swinging Pendulum Blades (Zone 3 and Zone 5)
-    LEVEL3_LAYOUT_DATA.zones.forEach(z => {
-      z.hazards.filter(h => h.type === 'blade').forEach(cfg => {
-        const chainGfx = this.add.graphics().setDepth(7);
-        const bladeSp = this.physics.add.sprite(cfg.x!, cfg.minY!, 'hazard_icicle');
-        bladeSp.setDepth(8).setTint(0x9aa0b0).setFlipY(true);
-        (bladeSp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-        (bladeSp.body as Phaser.Physics.Arcade.Body).setImmovable(true);
-        (bladeSp.body as Phaser.Physics.Arcade.Body).setSize(18, 26);
+  // 3. Checkpoint Crystals
+  LEVEL3_DATA.checkpoints.forEach(cp => {
+    const sp = this.physics.add.sprite(cp.x, cp.y, 'checkpoint_crystal').setDepth(7);
+    sp.setImmovable(true);
+    (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    if (cp.id === 'cp_spawn') {
+      sp.setTexture('checkpoint_active');
+    }
+    this.tweens.add({ targets: sp, y: cp.y - 4, yoyo: true, repeat: -1, duration: 900, ease: 'Sine.easeInOut' });
+    this.checkpointCrystals.push({ sprite: sp, id: cp.id, x: cp.x, y: cp.y - 10, label: cp.label, active: cp.id === 'cp_spawn' });
+  });
 
-        this.tweens.add({
-          targets: bladeSp,
-          y: cfg.maxY,
-          duration: cfg.dur ?? 1100,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
+  // 4. Swinging Pendulum Blades (Zone 3 and Zone 5)
+  LEVEL3_LAYOUT_DATA.zones.forEach(z => {
+    z.hazards.filter(h => h.type === 'blade').forEach(cfg => {
+      const chainGfx = this.add.graphics().setDepth(7);
+      const bladeSp = this.physics.add.sprite(cfg.x!, cfg.minY!, 'hazard_icicle');
+      bladeSp.setDepth(8).setTint(0x9aa0b0).setFlipY(true);
+      (bladeSp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+      (bladeSp.body as Phaser.Physics.Arcade.Body).setImmovable(true);
+      (bladeSp.body as Phaser.Physics.Arcade.Body).setSize(18, 26);
 
-        this.blades.push({ sprite: bladeSp, chainGfx, anchorX: cfg.x!, anchorY: cfg.anchorY! });
+      this.tweens.add({
+        targets: bladeSp,
+        y: cfg.maxY,
+        duration: cfg.dur ?? 1100,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+
+      this.blades.push({ sprite: bladeSp, chainGfx, anchorX: cfg.x!, anchorY: cfg.anchorY! });
+    });
+  });
+
+  // 5. Crumbling Stone Platforms
+  LEVEL3_LAYOUT_DATA.zones.forEach(z => {
+    z.platforms.filter(p => p.type === 'crumble').forEach(cfg => {
+      const sp = this.physics.add.sprite(cfg.x, cfg.y, 'tile_crumble');
+      sp.setOrigin(0, 0).setDepth(6).setImmovable(true);
+      (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+      this.crumblingStones.push({ sprite: sp, x: cfg.x, y: cfg.y, isCrumbling: false });
+    });
+  });
+
+  // 6. Falling Chandeliers with visible warning (Zone 4)
+  LEVEL3_LAYOUT_DATA.zones.forEach(z => {
+    z.hazards.filter(h => h.type === 'chandelier').forEach(cfg => {
+      const chainGfx = this.add.graphics().setDepth(6);
+      const sp = this.physics.add.sprite(cfg.originX!, cfg.originY!, 'torch_sconce');
+      sp.setScale(2).setDepth(8);
+      (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+      (sp.body as Phaser.Physics.Arcade.Body).setImmovable(true);
+      this.chandeliers.push({
+        sprite: sp,
+        chainGfx,
+        originX: cfg.originX!,
+        originY: cfg.originY!,
+        state: 'hanging'
       });
     });
+  });
 
-    // 5. Crumbling Stone Platforms
-    LEVEL3_LAYOUT_DATA.zones.forEach(z => {
-      z.platforms.filter(p => p.type === 'crumble').forEach(cfg => {
-        const sp = this.physics.add.sprite(cfg.x, cfg.y, 'tile_crumble');
-        sp.setOrigin(0, 0).setDepth(6).setImmovable(true);
-        (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-        this.crumblingStones.push({ sprite: sp, x: cfg.x, y: cfg.y, isCrumbling: false });
+  // 7. Timed Flame Gate Hazards (Zone 5)
+  LEVEL3_LAYOUT_DATA.zones.forEach(z => {
+    z.hazards.filter(h => h.type === 'timedGate').forEach(cfg => {
+      const glowGfx = this.add.graphics().setDepth(7);
+      const sp = this.physics.add.sprite(cfg.x!, cfg.y!, 'chamber_door');
+      sp.setScale(0.8, 1).setDepth(8);
+      (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+      (sp.body as Phaser.Physics.Arcade.Body).setImmovable(true);
+      this.timedGates.push({
+        sprite: sp,
+        glowGfx,
+        x: cfg.x!,
+        y: cfg.y!,
+        isActive: true,
+        timer: 0
       });
     });
+  });
 
-    // 6. Falling Chandeliers with visible warning (Zone 4)
-    LEVEL3_LAYOUT_DATA.zones.forEach(z => {
-      z.hazards.filter(h => h.type === 'chandelier').forEach(cfg => {
-        const chainGfx = this.add.graphics().setDepth(6);
-        const sp = this.physics.add.sprite(cfg.originX!, cfg.originY!, 'torch_sconce');
-        sp.setScale(2).setDepth(8);
-        (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-        (sp.body as Phaser.Physics.Arcade.Body).setImmovable(true);
-        this.chandeliers.push({
-          sprite: sp,
-          chainGfx,
-          originX: cfg.originX!,
-          originY: cfg.originY!,
-          state: 'hanging'
-        });
-      });
-    });
-
-    // 7. Timed Flame Gate Hazards (Zone 5)
-    LEVEL3_LAYOUT_DATA.zones.forEach(z => {
-      z.hazards.filter(h => h.type === 'timedGate').forEach(cfg => {
-        const glowGfx = this.add.graphics().setDepth(7);
-        const sp = this.physics.add.sprite(cfg.x!, cfg.y!, 'chamber_door');
-        sp.setScale(0.8, 1).setDepth(8);
-        (sp.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-        (sp.body as Phaser.Physics.Arcade.Body).setImmovable(true);
-        this.timedGates.push({
-          sprite: sp,
-          glowGfx,
-          x: cfg.x!,
-          y: cfg.y!,
-          isActive: true,
-          timer: 0
-        });
-      });
-    });
-
-    // 8. Dead-End Bait Route Chest (Zone 4 upper gallery ledge)
-    this.baitChestSprite = this.physics.add.sprite(4224, 196, 'vault_chest').setDepth(7);
+  // 8. Dead-End Bait Route Chest (Zone 4 upper gallery ledge)
+  this.baitChestSprite = this.physics.add.sprite(4224, 196, 'vault_chest').setDepth(7);
     (this.baitChestSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-    (this.baitChestSprite.body as Phaser.Physics.Arcade.Body).setImmovable(true);
+(this.baitChestSprite.body as Phaser.Physics.Arcade.Body).setImmovable(true);
   }
 
   // ── Physics Colliders & Interactions ──────────────────────────────────────
 
   private setupColliders(): void {
-    // Player vs Platforms
-    this.physics.add.collider(this.player, this.platforms);
+  // Player vs Platforms
+  this.physics.add.collider(this.player, this.platforms);
 
-    // Guards vs Platforms
-    this.guards.forEach(guard => {
-      this.physics.add.collider(guard, this.platforms);
-    });
+  // Guards vs Platforms
+  this.guards.forEach(guard => {
+    this.physics.add.collider(guard, this.platforms);
+  });
 
-    // Player vs Locked Chamber Door (solid until unlocked)
-    if (this.chamberDoorSprite) {
-      this.physics.add.collider(this.player, this.chamberDoorSprite, () => {
-        if (!this.isChamberDoorUnlocked) {
-          if (this.hasChamberKey) {
-            this.unlockChamberDoor();
-          } else {
-            const now = this.time.now;
-            if (now - this.lastBannerTime > 1500) {
-              this.lastBannerTime = now;
-              this.hud.showBanner('LOCKED VAULT DOOR — RETRIEVE THE GILDED KEY');
-            }
-          }
-        }
-      });
-    }
-
-    // Player vs Chamber Key overlap
-    if (this.chamberKeySprite) {
-      this.physics.add.overlap(this.player, this.chamberKeySprite, () => {
-        this.collectChamberKey();
-      });
-    }
-
-    // Player vs Component 3 overlap
-    if (this.component3Sprite) {
-      this.physics.add.overlap(this.player, this.component3Sprite, () => {
-        this.collectComponent3();
-      });
-    }
-
-    // Player vs Exit Portal overlap
-    if (this.exitPortalSprite) {
-      const exitZone = this.add.zone(
-        LEVEL3_DATA.puzzle.exitPortal.x,
-        LEVEL3_DATA.puzzle.exitPortal.y,
-        64, 80
-      );
-      this.physics.add.existing(exitZone, true);
-      this.physics.add.overlap(this.player, exitZone, () => {
-        this.handleLevelComplete();
-      });
-    }
-
-    // Player vs Bait Chest (Zone 4 upper ledge reward)
-    if (this.baitChestSprite) {
-      this.physics.add.overlap(this.player, this.baitChestSprite, () => {
-        if (!this.hasOpenedBaitChest && this.baitChestSprite) {
-          this.hasOpenedBaitChest = true;
-          this.baitChestSprite.setTint(0xffd166);
-          AudioManager.playKeyCollect();
-
-          // Full integrity restoration & staff charges
-          this.player.restoreIntegrity();
-          this.player.restoreStaffCharges(this.player.maxStaffCharges);
-          this.hud.updateIntegrity(this.player.integrity);
-          this.hud.updateCharges(this.player.staffCharges);
-
-          this.cameras.main.flash(220, 255, 215, 0);
-          this.hud.showBanner('ROYAL TREASURE SECURED! INTEGRITY & CHARGES RESTORED!');
-
-          const emitter = this.add.particles(4224, 196, 'proto_tile', {
-            speed: { min: 40, max: 120 },
-            scale: { start: 0.45, end: 0 },
-            tint: [0xffd166, 0xd4af37, 0x00f0ff],
-            lifespan: 600,
-            quantity: 20
-          });
-          this.time.delayedCall(650, () => emitter.destroy());
-        }
-      });
-    }
-
-    // Player vs Guards overlap (contact damage when uncloaked and alert)
-    this.guards.forEach(guard => {
-      this.physics.add.overlap(this.player, guard, () => {
-        if (this.isRespawning || this.isLeavingScene) return;
-
-        // Cloaked player slips past unseen
-        if (this.camouflage.cloaked) return;
-
-        if (guard.isLethal) {
-          const now = this.time.now;
-          if (now - this.lastDamageTime < 700) return;
-          this.lastDamageTime = now;
-
-          const lethal = this.player.takeDamage();
-          if (lethal || this.player.integrity <= 0 || this.player.isDead) {
-            this.handleDeath(`APPREHENDED BY ${guard.guardName.toUpperCase()}`);
-          } else {
-            AudioManager.playDeath();
-            this.cameras.main.shake(160, 0.012);
-            this.cameras.main.flash(90, 200, 40, 20);
-            this.hud.showBanner(`INTEGRITY COMPROMISED: ${this.player.integrity} HP REMAINING`);
-          }
-        }
-      });
-    });
-
-    // Player vs Hazards (Moat water pits)
-    this.physics.add.overlap(this.player, this.hazards, () => {
-      if (!this.player.isDead && !this.isRespawning) {
-        this.handleDeath('DROWNED IN CASTLE MOAT');
-      }
-    });
-
-    // Player vs Energy Conduits (Staff charge refills)
-    this.conduits.forEach(c => {
-      this.physics.add.overlap(this.player, c.sprite, () => {
-        if (!c.depleted && this.player.staffCharges < this.player.maxStaffCharges) {
-          c.depleted = true;
-          c.sprite.setAlpha(0.25).setTint(0x444444);
-          const restored = this.player.maxStaffCharges - this.player.staffCharges;
-          this.player.restoreStaffCharges(restored);
-          this.hud.updateCharges(this.player.staffCharges);
-          this.hud.showBanner('STAFF ENERGY FULLY RECHARGED!');
-          AudioManager.playConduitRecharge();
-          this.cameras.main.flash(140, 0, 240, 160);
-          const emitter = this.add.particles(c.x, c.y, 'proto_tile', {
-            speed: { min: 40, max: 110 },
-            scale: { start: 0.45, end: 0 },
-            tint: [0x00f0ff, 0x70e000, 0xffffff],
-            lifespan: 600,
-            quantity: 18
-          }).setDepth(20);
-          this.time.delayedCall(650, () => emitter.destroy());
-          // Recharge back after 12s just like previous levels
-          this.time.delayedCall(12000, () => {
-            c.depleted = false;
-            c.sprite.clearTint().setAlpha(1);
-          });
-        }
-      });
-    });
-
-    // Player vs Checkpoint Crystals
-    this.checkpointCrystals.forEach(cp => {
-      this.physics.add.overlap(this.player, cp.sprite, () => {
-        if (!cp.active) {
-          cp.active = true;
-          cp.sprite.setTexture('checkpoint_active');
-          this.checkpointX = cp.x;
-          this.checkpointY = cp.y;
-          AudioManager.playCheckpoint();
-          this.cameras.main.flash(200, 0, 240, 255);
-          this.hud.showBanner(`CHECKPOINT ACTIVATED — ${cp.label}`);
-          this.tweens.add({
-            targets: cp.sprite,
-            scale: 1.35,
-            duration: 200,
-            yoyo: true,
-            repeat: 2
-          });
-          const emitter = this.add.particles(cp.x, cp.y, 'proto_tile', {
-            speed: { min: 40, max: 120 },
-            scale: { start: 0.5, end: 0 },
-            tint: [0x00f0ff, 0xd4af37, 0xffffff],
-            lifespan: 700,
-            quantity: 22
-          }).setDepth(20);
-          this.time.delayedCall(750, () => emitter.destroy());
-        }
-      });
-    });
-
-    // Player vs Swinging Pendulum Blades
-    this.blades.forEach(blade => {
-      this.physics.add.overlap(this.player, blade.sprite, () => {
-        if (this.isRespawning || this.isLeavingScene) return;
+  // Player vs Locked Chamber Door (solid until unlocked)
+  if(this.chamberDoorSprite) {
+  this.physics.add.collider(this.player, this.chamberDoorSprite, () => {
+    if (!this.isChamberDoorUnlocked) {
+      if (this.hasChamberKey) {
+        this.unlockChamberDoor();
+      } else {
         const now = this.time.now;
-        if (now - this.lastDamageTime < 750) return;
-        this.lastDamageTime = now;
-        const lethal = this.player.takeDamage();
-        if (lethal || this.player.integrity <= 0 || this.player.isDead) {
-          this.handleDeath('STRUCK BY PALACE PENDULUM BLADE');
-        } else {
-          AudioManager.playWoodCreak();
-          this.cameras.main.shake(140, 0.01);
-          this.hud.showBanner(`INTEGRITY COMPROMISED: ${this.player.integrity} HP REMAINING`);
+        if (now - this.lastBannerTime > 1500) {
+          this.lastBannerTime = now;
+          this.hud.showBanner('LOCKED VAULT DOOR — RETRIEVE THE GILDED KEY');
         }
-      });
-    });
+      }
+    }
+  });
+}
 
-    // Player vs Falling Chandeliers
-    this.chandeliers.forEach(ch => {
-      this.physics.add.overlap(this.player, ch.sprite, () => {
-        if (this.isRespawning || this.isLeavingScene) return;
-        if (ch.state === 'falling') {
-          const lethal = this.player.takeDamage();
-          if (lethal || this.player.integrity <= 0 || this.player.isDead) {
-            this.handleDeath('CRUSHED BY FALLING CHANDELIER');
-          } else {
-            AudioManager.playStoneRumble();
-            this.cameras.main.shake(180, 0.015);
-            this.hud.showBanner(`INTEGRITY COMPROMISED: ${this.player.integrity} HP REMAINING`);
-          }
-        }
-      });
-    });
+// Player vs Chamber Key overlap
+if (this.chamberKeySprite) {
+  this.physics.add.overlap(this.player, this.chamberKeySprite, () => {
+    this.collectChamberKey();
+  });
+}
 
-    // Player vs Timed Flame Gates
-    this.timedGates.forEach(gate => {
-      this.physics.add.overlap(this.player, gate.sprite, () => {
-        if (this.isRespawning || this.isLeavingScene) return;
-        if (gate.isActive) {
-          const now = this.time.now;
-          if (now - this.lastDamageTime < 750) return;
-          this.lastDamageTime = now;
-          const lethal = this.player.takeDamage();
-          if (lethal || this.player.integrity <= 0 || this.player.isDead) {
-            this.handleDeath('SCORCHED BY ROYAL SANCTUM FLAME GATE');
-          } else {
-            AudioManager.playStoneRumble();
-            this.cameras.main.shake(140, 0.01);
-            this.hud.showBanner(`INTEGRITY COMPROMISED: ${this.player.integrity} HP REMAINING`);
-          }
-        }
-      });
-    });
+// Player vs Component 3 overlap
+if (this.component3Sprite) {
+  this.physics.add.overlap(this.player, this.component3Sprite, () => {
+    this.collectComponent3();
+  });
+}
 
-    // Player vs Crumbling Stone Platforms
-    this.crumblingStones.forEach(stone => {
-      this.physics.add.collider(this.player, stone.sprite, () => {
-        if (!stone.isCrumbling && (this.player.body as Phaser.Physics.Arcade.Body).touching.down) {
-          stone.isCrumbling = true;
-          AudioManager.playStoneRumble();
-          this.tweens.add({
-            targets: stone.sprite,
-            x: stone.x + 3,
-            duration: 40,
-            yoyo: true,
-            repeat: 8,
-            onComplete: () => {
-              (stone.sprite.body as Phaser.Physics.Arcade.Body).enable = false;
-              stone.sprite.setAlpha(0);
-              this.time.delayedCall(3200, () => {
-                stone.sprite.setPosition(stone.x, stone.y);
-                stone.sprite.setAlpha(1);
-                (stone.sprite.body as Phaser.Physics.Arcade.Body).enable = true;
-                stone.isCrumbling = false;
-              });
-            }
+// Player vs Exit Portal overlap
+if (this.exitPortalSprite) {
+  const exitZone = this.add.zone(
+    LEVEL3_DATA.puzzle.exitPortal.x,
+    LEVEL3_DATA.puzzle.exitPortal.y,
+    64, 80
+  );
+  this.physics.add.existing(exitZone, true);
+  this.physics.add.overlap(this.player, exitZone, () => {
+    this.handleLevelComplete();
+  });
+}
+
+// Player vs Bait Chest (Zone 4 upper ledge reward)
+if (this.baitChestSprite) {
+  this.physics.add.overlap(this.player, this.baitChestSprite, () => {
+    if (!this.hasOpenedBaitChest && this.baitChestSprite) {
+      this.hasOpenedBaitChest = true;
+      this.baitChestSprite.setTint(0xffd166);
+      AudioManager.playKeyCollect();
+
+      // Full integrity restoration & staff charges
+      this.player.restoreIntegrity();
+      this.player.restoreStaffCharges(this.player.maxStaffCharges);
+      this.hud.updateIntegrity(this.player.integrity);
+      this.hud.updateCharges(this.player.staffCharges);
+
+      this.cameras.main.flash(220, 255, 215, 0);
+      this.hud.showBanner('ROYAL TREASURE SECURED! INTEGRITY & CHARGES RESTORED!');
+
+      const emitter = this.add.particles(4224, 196, 'proto_tile', {
+        speed: { min: 40, max: 120 },
+        scale: { start: 0.45, end: 0 },
+        tint: [0xffd166, 0xd4af37, 0x00f0ff],
+        lifespan: 600,
+        quantity: 20
+      });
+      this.time.delayedCall(650, () => emitter.destroy());
+    }
+  });
+}
+
+// Player vs Guards overlap (contact damage when uncloaked and alert)
+this.guards.forEach(guard => {
+  this.physics.add.overlap(this.player, guard, () => {
+    if (this.isRespawning || this.isLeavingScene) return;
+
+    // Cloaked player slips past unseen
+    if (this.camouflage.cloaked) return;
+
+    if (guard.isLethal) {
+      const now = this.time.now;
+      if (now - this.lastDamageTime < 700) return;
+      this.lastDamageTime = now;
+
+      const lethal = this.player.takeDamage();
+      if (lethal || this.player.integrity <= 0 || this.player.isDead) {
+        this.handleDeath(`APPREHENDED BY ${guard.guardName.toUpperCase()}`);
+      } else {
+        AudioManager.playDeath();
+        this.cameras.main.shake(160, 0.012);
+        this.cameras.main.flash(90, 200, 40, 20);
+        this.hud.showBanner(`INTEGRITY COMPROMISED: ${this.player.integrity} HP REMAINING`);
+      }
+    }
+  });
+});
+
+// Player vs Hazards (Moat water pits)
+this.physics.add.overlap(this.player, this.hazards, () => {
+  if (!this.player.isDead && !this.isRespawning) {
+    this.handleDeath('DROWNED IN CASTLE MOAT');
+  }
+});
+
+// Player vs Energy Conduits (Staff charge refills)
+this.conduits.forEach(c => {
+  this.physics.add.overlap(this.player, c.sprite, () => {
+    if (!c.depleted && this.player.staffCharges < this.player.maxStaffCharges) {
+      c.depleted = true;
+      c.sprite.setAlpha(0.25).setTint(0x444444);
+      const restored = this.player.maxStaffCharges - this.player.staffCharges;
+      this.player.restoreStaffCharges(restored);
+      this.hud.updateCharges(this.player.staffCharges);
+      this.hud.showBanner('STAFF ENERGY FULLY RECHARGED!');
+      AudioManager.playConduitRecharge();
+      this.cameras.main.flash(140, 0, 240, 160);
+      const emitter = this.add.particles(c.x, c.y, 'proto_tile', {
+        speed: { min: 40, max: 110 },
+        scale: { start: 0.45, end: 0 },
+        tint: [0x00f0ff, 0x70e000, 0xffffff],
+        lifespan: 600,
+        quantity: 18
+      }).setDepth(20);
+      this.time.delayedCall(650, () => emitter.destroy());
+      // Recharge back after 12s just like previous levels
+      this.time.delayedCall(12000, () => {
+        c.depleted = false;
+        c.sprite.clearTint().setAlpha(1);
+      });
+    }
+  });
+});
+
+// Player vs Checkpoint Crystals
+this.checkpointCrystals.forEach(cp => {
+  this.physics.add.overlap(this.player, cp.sprite, () => {
+    if (!cp.active) {
+      cp.active = true;
+      cp.sprite.setTexture('checkpoint_active');
+      this.checkpointX = cp.x;
+      this.checkpointY = cp.y;
+      AudioManager.playCheckpoint();
+      this.cameras.main.flash(200, 0, 240, 255);
+      this.hud.showBanner(`CHECKPOINT ACTIVATED — ${cp.label}`);
+      this.tweens.add({
+        targets: cp.sprite,
+        scale: 1.35,
+        duration: 200,
+        yoyo: true,
+        repeat: 2
+      });
+      const emitter = this.add.particles(cp.x, cp.y, 'proto_tile', {
+        speed: { min: 40, max: 120 },
+        scale: { start: 0.5, end: 0 },
+        tint: [0x00f0ff, 0xd4af37, 0xffffff],
+        lifespan: 700,
+        quantity: 22
+      }).setDepth(20);
+      this.time.delayedCall(750, () => emitter.destroy());
+    }
+  });
+});
+
+// Player vs Swinging Pendulum Blades
+this.blades.forEach(blade => {
+  this.physics.add.overlap(this.player, blade.sprite, () => {
+    if (this.isRespawning || this.isLeavingScene) return;
+    const now = this.time.now;
+    if (now - this.lastDamageTime < 750) return;
+    this.lastDamageTime = now;
+    const lethal = this.player.takeDamage();
+    if (lethal || this.player.integrity <= 0 || this.player.isDead) {
+      this.handleDeath('STRUCK BY PALACE PENDULUM BLADE');
+    } else {
+      AudioManager.playWoodCreak();
+      this.cameras.main.shake(140, 0.01);
+      this.hud.showBanner(`INTEGRITY COMPROMISED: ${this.player.integrity} HP REMAINING`);
+    }
+  });
+});
+
+// Player vs Falling Chandeliers
+this.chandeliers.forEach(ch => {
+  this.physics.add.overlap(this.player, ch.sprite, () => {
+    if (this.isRespawning || this.isLeavingScene) return;
+    if (ch.state === 'falling') {
+      const lethal = this.player.takeDamage();
+      if (lethal || this.player.integrity <= 0 || this.player.isDead) {
+        this.handleDeath('CRUSHED BY FALLING CHANDELIER');
+      } else {
+        AudioManager.playStoneRumble();
+        this.cameras.main.shake(180, 0.015);
+        this.hud.showBanner(`INTEGRITY COMPROMISED: ${this.player.integrity} HP REMAINING`);
+      }
+    }
+  });
+});
+
+// Player vs Timed Flame Gates
+this.timedGates.forEach(gate => {
+  this.physics.add.overlap(this.player, gate.sprite, () => {
+    if (this.isRespawning || this.isLeavingScene) return;
+    if (gate.isActive) {
+      const now = this.time.now;
+      if (now - this.lastDamageTime < 750) return;
+      this.lastDamageTime = now;
+      const lethal = this.player.takeDamage();
+      if (lethal || this.player.integrity <= 0 || this.player.isDead) {
+        this.handleDeath('SCORCHED BY ROYAL SANCTUM FLAME GATE');
+      } else {
+        AudioManager.playStoneRumble();
+        this.cameras.main.shake(140, 0.01);
+        this.hud.showBanner(`INTEGRITY COMPROMISED: ${this.player.integrity} HP REMAINING`);
+      }
+    }
+  });
+});
+
+// Player vs Crumbling Stone Platforms
+this.crumblingStones.forEach(stone => {
+  this.physics.add.collider(this.player, stone.sprite, () => {
+    if (!stone.isCrumbling && (this.player.body as Phaser.Physics.Arcade.Body).touching.down) {
+      stone.isCrumbling = true;
+      AudioManager.playStoneRumble();
+      this.tweens.add({
+        targets: stone.sprite,
+        x: stone.x + 3,
+        duration: 40,
+        yoyo: true,
+        repeat: 8,
+        onComplete: () => {
+          (stone.sprite.body as Phaser.Physics.Arcade.Body).enable = false;
+          stone.sprite.setAlpha(0);
+          this.time.delayedCall(3200, () => {
+            stone.sprite.setPosition(stone.x, stone.y);
+            stone.sprite.setAlpha(1);
+            (stone.sprite.body as Phaser.Physics.Arcade.Body).enable = true;
+            stone.isCrumbling = false;
           });
         }
       });
-    });
+    }
+  });
+});
   }
 
   // ── Dynamic Obstacle Update Routine ───────────────────────────────────────
 
   private updateObstacles(time: number, delta: number): void {
-    const floorY = LEVEL3_DATA.dimensions.floorY;
+  const floorY = LEVEL3_DATA.dimensions.floorY;
 
-    // 1. Update Swinging Blade Chains
-    this.blades.forEach(blade => {
-      blade.chainGfx.clear();
-      blade.chainGfx.lineStyle(2, 0x555c6d, 0.9);
-      blade.chainGfx.lineBetween(blade.anchorX, blade.anchorY, blade.sprite.x, blade.sprite.y);
-    });
+  // 1. Update Swinging Blade Chains
+  this.blades.forEach(blade => {
+    blade.chainGfx.clear();
+    blade.chainGfx.lineStyle(2, 0x555c6d, 0.9);
+    blade.chainGfx.lineBetween(blade.anchorX, blade.anchorY, blade.sprite.x, blade.sprite.y);
+  });
 
-    // 2. Update Falling Chandeliers
-    this.chandeliers.forEach(ch => {
-      ch.chainGfx.clear();
+  // 2. Update Falling Chandeliers
+  this.chandeliers.forEach(ch => {
+    ch.chainGfx.clear();
 
-      if (ch.state === 'hanging') {
-        ch.chainGfx.lineStyle(2, 0x8c6d2d, 0.85);
-        ch.chainGfx.lineBetween(ch.originX, 60, ch.sprite.x, ch.sprite.y);
+    if (ch.state === 'hanging') {
+      ch.chainGfx.lineStyle(2, 0x8c6d2d, 0.85);
+      ch.chainGfx.lineBetween(ch.originX, 60, ch.sprite.x, ch.sprite.y);
 
-        // Proximity detection to trigger warning
-        if (Math.abs(this.player.x - ch.originX) < 85 && this.player.y > ch.originY) {
-          ch.state = 'warning';
-          AudioManager.playWoodCreak();
+      // Proximity detection to trigger warning
+      if (Math.abs(this.player.x - ch.originX) < 85 && this.player.y > ch.originY) {
+        ch.state = 'warning';
+        AudioManager.playWoodCreak();
 
-          ch.warningText = this.add.text(ch.originX, ch.originY - 24, '⚠', {
-            fontSize: '18px',
-            color: '#ffaa00',
-            stroke: '#000000',
-            strokeThickness: 3
-          }).setOrigin(0.5).setDepth(25);
+        ch.warningText = this.add.text(ch.originX, ch.originY - 24, '⚠', {
+          fontSize: '18px',
+          color: '#ffaa00',
+          stroke: '#000000',
+          strokeThickness: 3
+        }).setOrigin(0.5).setDepth(25);
 
-          this.tweens.add({
-            targets: ch.sprite,
-            x: ch.originX + 4,
-            duration: 50,
-            yoyo: true,
-            repeat: 8,
-            onComplete: () => {
-              ch.warningText?.destroy();
-              ch.warningText = undefined;
-              ch.state = 'falling';
-              (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocityY(420);
-            }
-          });
-        }
-      } else if (ch.state === 'warning') {
-        ch.chainGfx.lineStyle(1.5, 0xffaa00, 0.9);
-        ch.chainGfx.lineBetween(ch.originX, 60, ch.sprite.x, ch.sprite.y);
-      } else if (ch.state === 'falling') {
-        if (ch.sprite.y >= floorY - 16) {
-          ch.state = 'broken';
-          ch.sprite.y = floorY - 16;
-          (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocityY(0);
-          AudioManager.playStoneRumble();
-          this.cameras.main.shake(150, 0.008);
-
-          const emitter = this.add.particles(ch.sprite.x, floorY - 10, 'proto_tile', {
-            speed: { min: 40, max: 120 },
-            scale: { start: 0.4, end: 0 },
-            tint: [0xffaa00, 0xff4400, 0xd4af37],
-            lifespan: 400,
-            quantity: 12
-          });
-          this.time.delayedCall(450, () => emitter.destroy());
-
-          // Reset chandelier after 4.5 seconds
-          this.time.delayedCall(4500, () => {
-            ch.state = 'hanging';
-            ch.sprite.setPosition(ch.originX, ch.originY);
-            (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
-          });
-        }
+        this.tweens.add({
+          targets: ch.sprite,
+          x: ch.originX + 4,
+          duration: 50,
+          yoyo: true,
+          repeat: 8,
+          onComplete: () => {
+            ch.warningText?.destroy();
+            ch.warningText = undefined;
+            ch.state = 'falling';
+            (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocityY(420);
+          }
+        });
       }
-    });
+    } else if (ch.state === 'warning') {
+      ch.chainGfx.lineStyle(1.5, 0xffaa00, 0.9);
+      ch.chainGfx.lineBetween(ch.originX, 60, ch.sprite.x, ch.sprite.y);
+    } else if (ch.state === 'falling') {
+      if (ch.sprite.y >= floorY - 16) {
+        ch.state = 'broken';
+        ch.sprite.y = floorY - 16;
+        (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocityY(0);
+        AudioManager.playStoneRumble();
+        this.cameras.main.shake(150, 0.008);
 
-    // 3. Update Timed Flame Gates
-    this.timedGates.forEach(gate => {
-      gate.timer += delta;
-      if (gate.timer > 2400) {
-        gate.timer = 0;
-        gate.isActive = !gate.isActive;
-        gate.sprite.setAlpha(gate.isActive ? 1 : 0.25);
-        if (gate.isActive) {
-          AudioManager.playStoneRumble();
-        }
+        const emitter = this.add.particles(ch.sprite.x, floorY - 10, 'proto_tile', {
+          speed: { min: 40, max: 120 },
+          scale: { start: 0.4, end: 0 },
+          tint: [0xffaa00, 0xff4400, 0xd4af37],
+          lifespan: 400,
+          quantity: 12
+        });
+        this.time.delayedCall(450, () => emitter.destroy());
+
+        // Reset chandelier after 4.5 seconds
+        this.time.delayedCall(4500, () => {
+          ch.state = 'hanging';
+          ch.sprite.setPosition(ch.originX, ch.originY);
+          (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+        });
       }
+    }
+  });
 
-      gate.glowGfx.clear();
+  // 3. Update Timed Flame Gates
+  this.timedGates.forEach(gate => {
+    gate.timer += delta;
+    if (gate.timer > 2400) {
+      gate.timer = 0;
+      gate.isActive = !gate.isActive;
+      gate.sprite.setAlpha(gate.isActive ? 1 : 0.25);
       if (gate.isActive) {
-        gate.glowGfx.fillStyle(0xff4400, 0.2 + Math.sin(time * 0.01) * 0.1);
-        gate.glowGfx.fillRect(gate.x - 16, gate.y - 32, 32, 64);
+        AudioManager.playStoneRumble();
       }
-    });
-  }
+    }
+
+    gate.glowGfx.clear();
+    if (gate.isActive) {
+      gate.glowGfx.fillStyle(0xff4400, 0.2 + Math.sin(time * 0.01) * 0.1);
+      gate.glowGfx.fillRect(gate.x - 16, gate.y - 32, 32, 64);
+    }
+  });
+}
 
   // ── Puzzle Logic: Key, Door, Component 3 ──────────────────────────────────
 
   private collectChamberKey(): void {
-    if (!this.chamberKeySprite || !this.chamberKeySprite.active || this.hasChamberKey) return;
+  if(!this.chamberKeySprite || !this.chamberKeySprite.active || this.hasChamberKey) return;
 
-    this.hasChamberKey = true;
-    AudioManager.playKeyCollect();
+  this.hasChamberKey = true;
+  AudioManager.playKeyCollect();
 
-    const emitter = this.add.particles(this.chamberKeySprite.x, this.chamberKeySprite.y, 'proto_tile', {
-      speed: { min: 30, max: 90 },
-      scale: { start: 0.35, end: 0 },
-      tint: [0xd4af37, 0xffe082, 0xffffff],
-      lifespan: 500,
-      quantity: 14
-    });
-    this.time.delayedCall(550, () => emitter.destroy());
+  const emitter = this.add.particles(this.chamberKeySprite.x, this.chamberKeySprite.y, 'proto_tile', {
+    speed: { min: 30, max: 90 },
+    scale: { start: 0.35, end: 0 },
+    tint: [0xd4af37, 0xffe082, 0xffffff],
+    lifespan: 500,
+    quantity: 14
+  });
+  this.time.delayedCall(550, () => emitter.destroy());
 
-    this.chamberKeySprite.destroy();
+  this.chamberKeySprite.destroy();
 
-    this.checkpointX = LEVEL3_DATA.checkpoints[1].x;
-    this.checkpointY = LEVEL3_DATA.checkpoints[1].y;
+  this.checkpointX = LEVEL3_DATA.checkpoints[1].x;
+  this.checkpointY = LEVEL3_DATA.checkpoints[1].y;
 
-    this.cameras.main.flash(140, 212, 175, 55);
-    this.hud.showBanner('GILDED KEY ACQUIRED — PROCEED THROUGH BATTLEMENTS TO THE VAULT');
+  this.cameras.main.flash(140, 212, 175, 55);
+  this.hud.showBanner('GILDED KEY ACQUIRED — PROCEED THROUGH BATTLEMENTS TO THE VAULT');
 
-    // Update Objectives & Indicators
-    this.removeWorldIndicator('ind_balcony');
-    this.removeWorldIndicator('ind_key');
-    this.removeWorldIndicator('ind_door');
-    this.createWorldIndicator('ind_door', LEVEL3_DATA.puzzle.chamberDoor.x, LEVEL3_DATA.puzzle.chamberDoor.y - 60, '🔓 UNLOCK VAULT [USE KEY]', 0x70e000, '🔓');
-    this.setObjective('CROSS BATTLEMENTS & UNLOCK ROYAL VAULT DOOR');
-  }
+  // Update Objectives & Indicators
+  this.removeWorldIndicator('ind_balcony');
+  this.removeWorldIndicator('ind_key');
+  this.removeWorldIndicator('ind_door');
+  this.createWorldIndicator('ind_door', LEVEL3_DATA.puzzle.chamberDoor.x, LEVEL3_DATA.puzzle.chamberDoor.y - 60, '🔓 UNLOCK VAULT [USE KEY]', 0x70e000, '🔓');
+  this.setObjective('CROSS BATTLEMENTS & UNLOCK ROYAL VAULT DOOR');
+}
 
   private unlockChamberDoor(): void {
-    if (this.isChamberDoorUnlocked || !this.chamberDoorSprite) return;
+  if(this.isChamberDoorUnlocked || !this.chamberDoorSprite) return;
 
-    this.isChamberDoorUnlocked = true;
-    AudioManager.playDoorUnlock();
+  this.isChamberDoorUnlocked = true;
+  AudioManager.playDoorUnlock();
 
-    this.cameras.main.shake(200, 0.01);
-    this.cameras.main.flash(120, 255, 215, 0);
+  this.cameras.main.shake(200, 0.01);
+  this.cameras.main.flash(120, 255, 215, 0);
 
     (this.chamberDoorSprite.body as Phaser.Physics.Arcade.Body).enable = false;
 
-    this.tweens.add({
-      targets: this.chamberDoorSprite,
-      y: this.chamberDoorSprite.y - 70,
-      alpha: 0.3,
-      duration: 1000,
-      ease: 'Power2',
-      onComplete: () => {
-        this.chamberDoorSprite?.destroy();
-      }
-    });
+this.tweens.add({
+  targets: this.chamberDoorSprite,
+  y: this.chamberDoorSprite.y - 70,
+  alpha: 0.3,
+  duration: 1000,
+  ease: 'Power2',
+  onComplete: () => {
+    this.chamberDoorSprite?.destroy();
+  }
+});
 
-    this.hud.showBanner('VAULT CHAMBER UNLOCKED — INFILTRATE AND SECURE COMPONENT 3');
+this.hud.showBanner('VAULT CHAMBER UNLOCKED — INFILTRATE AND SECURE COMPONENT 3');
 
-    // Update Objectives & Indicators
-    this.removeWorldIndicator('ind_door');
-    this.setObjective('SECURE COMPONENT 03 (CHRONO-PRISM) IN VAULT');
+// Update Objectives & Indicators
+this.removeWorldIndicator('ind_door');
+this.setObjective('SECURE COMPONENT 03 (CHRONO-PRISM) IN VAULT');
   }
 
   private collectComponent3(): void {
-    if (!this.component3Sprite || !this.component3Sprite.active || this.hasCollectedComponent3) return;
+  if(!this.component3Sprite || !this.component3Sprite.active || this.hasCollectedComponent3) return;
 
-    this.hasCollectedComponent3 = true;
-    AudioManager.playComponent3Collect();
+  this.hasCollectedComponent3 = true;
+  AudioManager.playComponent3Collect();
 
-    const emitter = this.add.particles(this.component3Sprite.x, this.component3Sprite.y, 'proto_tile', {
-      speed: { min: 60, max: 160 },
-      scale: { start: 0.5, end: 0 },
-      tint: [0xd4af37, 0xffd166, 0xff6600, 0x00f0ff],
-      lifespan: 800,
-      quantity: 28
-    });
-    this.time.delayedCall(850, () => emitter.destroy());
+  const emitter = this.add.particles(this.component3Sprite.x, this.component3Sprite.y, 'proto_tile', {
+    speed: { min: 60, max: 160 },
+    scale: { start: 0.5, end: 0 },
+    tint: [0xd4af37, 0xffd166, 0xff6600, 0x00f0ff],
+    lifespan: 800,
+    quantity: 28
+  });
+  this.time.delayedCall(850, () => emitter.destroy());
 
-    this.component3Sprite.destroy();
+  this.component3Sprite.destroy();
 
-    // Checkpoint 5 (Vault)
-    this.checkpointX = LEVEL3_DATA.checkpoints[4].x;
-    this.checkpointY = LEVEL3_DATA.checkpoints[4].y;
+  // Checkpoint 5 (Vault)
+  this.checkpointX = LEVEL3_DATA.checkpoints[4].x;
+  this.checkpointY = LEVEL3_DATA.checkpoints[4].y;
 
-    this.hud.setFailsafeFound(3, 5);
-    this.player.restoreStaffCharges(3);
-    this.hud.updateCharges(this.player.staffCharges);
+  this.hud.setFailsafeFound(3, 5);
+  this.player.restoreStaffCharges(3);
+  this.hud.updateCharges(this.player.staffCharges);
 
-    this.cameras.main.flash(350, 255, 200, 60);
-    this.hud.showBanner('COMPONENT 03 (CHRONO-PRISM) SECURED! ESCAPE TO HIGH EXTRACTION RIFT!');
+  this.cameras.main.flash(350, 255, 200, 60);
+  this.hud.showBanner('COMPONENT 03 (CHRONO-PRISM) SECURED! ESCAPE TO HIGH EXTRACTION RIFT!');
 
-    // Update Objectives & Guidance Waypoints
-    this.removeWorldIndicator('ind_vault');
-    this.setObjective('ASCEND SPIRE TO HIGH EXTRACTION RIFT [➡]');
-    this.spawnEscapeWaypoints();
+  // Update Objectives & Guidance Waypoints
+  this.removeWorldIndicator('ind_vault');
+  this.setObjective('ASCEND SPIRE TO HIGH EXTRACTION RIFT [➡]');
+  this.spawnEscapeWaypoints();
 
-    if (this.exitPortalSprite) {
-      this.tweens.add({
-        targets: this.exitPortalSprite,
-        scale: 2.8,
-        duration: 400,
-        yoyo: true,
-        repeat: 3
-      });
-    }
+  if(this.exitPortalSprite) {
+  this.tweens.add({
+    targets: this.exitPortalSprite,
+    scale: 2.8,
+    duration: 400,
+    yoyo: true,
+    repeat: 3
+  });
+}
   }
 
   // ── Level Completion & Exit ───────────────────────────────────────────────
 
   private handleLevelComplete(): void {
-    if (!this.hasCollectedComponent3) {
-      const now = this.time.now;
-      if (now - this.lastBannerTime > 1500) {
-        this.lastBannerTime = now;
-        this.hud.showBanner('CANNOT ESCAPE — COMPONENT 03 MUST BE SECURED FIRST!');
-      }
-      return;
-    }
+  if(!this.hasCollectedComponent3) {
+  const now = this.time.now;
+  if (now - this.lastBannerTime > 1500) {
+    this.lastBannerTime = now;
+    this.hud.showBanner('CANNOT ESCAPE — COMPONENT 03 MUST BE SECURED FIRST!');
+  }
+  return;
+}
 
-    if (this.isLeavingScene || this.physics.world.isPaused) return;
-    this.isLeavingScene = true;
-    SaveSystem.markLevelCompleted(3);
+if (this.isLeavingScene || this.physics.world.isPaused) return;
+this.isLeavingScene = true;
+SaveSystem.markLevelCompleted(3);
 
-    this.physics.pause();
+this.physics.pause();
 
-    this.hud.showBanner('SECTOR 3 INFILTRATION COMPLETE! EXTRACTION COMMENCED!');
-    AudioManager.playFailsafe();
+this.hud.showBanner('SECTOR 3 INFILTRATION COMPLETE! EXTRACTION COMMENCED!');
+AudioManager.playFailsafe();
 
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('LevelComplete', {
-        failsafeCollected: 3,
-        totalFailsafe: 5,
-        deathCount: this.deathCount,
-        timeMs: Date.now() - this.levelStartTime,
-        sectorNumber: 3,
-        alertCount: this.alertCount
-      });
-    });
-    this.cameras.main.fadeOut(800, 10, 14, 25);
+this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+  this.scene.start('LevelComplete', {
+    failsafeCollected: 3,
+    totalFailsafe: 5,
+    deathCount: this.deathCount,
+    timeMs: Date.now() - this.levelStartTime,
+    sectorNumber: 3,
+    alertCount: this.alertCount
+  });
+});
+this.cameras.main.fadeOut(800, 10, 14, 25);
   }
 
   // ── Death & Respawn ───────────────────────────────────────────────────────
 
   private handleDeath(reason = 'SECURITY SYSTEM BREACH'): void {
-    if (this.isRespawning || this.isLeavingScene) return;
-    this.isRespawning = true;
+  if(this.isRespawning || this.isLeavingScene) return;
+  this.isRespawning = true;
 
-    this.player.die();
-    this.hud.updateIntegrity(0);
-    this.deathCount++;
-    AudioManager.playDeath();
+  this.player.die();
+  this.hud.updateIntegrity(0);
+  this.deathCount++;
+  AudioManager.playDeath();
 
-    this.cameras.main.shake(260, 0.016);
-    this.cameras.main.flash(200, 160, 20, 20);
-    this.hud.showBanner(`CRITICAL INFILTRATION FAILURE: ${reason}`);
+  this.cameras.main.shake(260, 0.016);
+  this.cameras.main.flash(200, 160, 20, 20);
+  this.hud.showBanner(`CRITICAL INFILTRATION FAILURE: ${reason}`);
 
-    this.time.delayedCall(700, () => {
-      this.physics.pause();
+  this.time.delayedCall(700, () => {
+    this.physics.pause();
 
-      const callbacks: GameOverCallbacks = {
-        onRespawn: () => {
-          this.gameOverScreen?.destroy();
-          this.gameOverScreen = null;
-          this.physics.resume();
-          this.player.restoreIntegrity();
-          this.player.respawnAt(this.checkpointX, this.checkpointY);
-          this.player.restoreStaffCharges(this.player.maxStaffCharges);
-          this.hud.updateIntegrity(this.player.integrity);
-          this.hud.updateCharges(this.player.staffCharges);
-          this.cameras.main.fadeIn(400, 0, 0, 0);
-          this.isRespawning = false;
+    const callbacks: GameOverCallbacks = {
+      onRespawn: () => {
+        this.gameOverScreen?.destroy();
+        this.gameOverScreen = null;
+        this.physics.resume();
+        this.player.restoreIntegrity();
+        this.player.respawnAt(this.checkpointX, this.checkpointY);
+        this.player.restoreStaffCharges(this.player.maxStaffCharges);
+        this.hud.updateIntegrity(this.player.integrity);
+        this.hud.updateCharges(this.player.staffCharges);
+        this.cameras.main.fadeIn(400, 0, 0, 0);
+        this.isRespawning = false;
 
-          // Reset all per-life puzzle & obstacle states
-          this.conduits.forEach(c => {
-            c.depleted = false;
-            c.sprite.clearTint();
-          });
-          this.chandeliers.forEach(ch => {
-            ch.state = 'hanging';
-            ch.sprite.setPosition(ch.originX, ch.originY);
-            (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
-            ch.warningText?.destroy();
-            ch.warningText = undefined;
-          });
-          this.crumblingStones.forEach(st => {
-            (st.sprite.body as Phaser.Physics.Arcade.Body).enable = true;
-            st.sprite.setPosition(st.x, st.y).setAlpha(1);
-            st.isCrumbling = false;
-          });
+        // Reset all per-life puzzle & obstacle states
+        this.conduits.forEach(c => {
+          c.depleted = false;
+          c.sprite.clearTint();
+        });
+        this.chandeliers.forEach(ch => {
+          ch.state = 'hanging';
+          ch.sprite.setPosition(ch.originX, ch.originY);
+          (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+          ch.warningText?.destroy();
+          ch.warningText = undefined;
+        });
+        this.crumblingStones.forEach(st => {
+          (st.sprite.body as Phaser.Physics.Arcade.Body).enable = true;
+          st.sprite.setPosition(st.x, st.y).setAlpha(1);
+          st.isCrumbling = false;
+        });
 
-          // Reset all guards to patrol cleanly
-          this.guards.forEach((g, idx) => {
-            const cfg = LEVEL3_DATA.guards[idx];
-            g.resetToPatrol(cfg?.x, cfg?.facingRight);
-          });
+        // Reset all guards to patrol cleanly
+        this.guards.forEach((g, idx) => {
+          const cfg = LEVEL3_DATA.guards[idx];
+          g.resetToPatrol(cfg?.x, cfg?.facingRight);
+        });
 
-          // Reset bait chest if not collected before checkpoint
-          if (this.hasOpenedBaitChest && this.checkpointX < 4224) {
-            this.hasOpenedBaitChest = false;
-            this.baitChestSprite?.clearTint();
-          }
-
-          // Restore appropriate objective display on respawn
-          if (this.hasCollectedComponent3) {
-            this.setObjective('ASCEND SPIRE TO HIGH EXTRACTION RIFT [➡]');
-          } else if (this.isChamberDoorUnlocked) {
-            this.setObjective('SECURE COMPONENT 03 (CHRONO-PRISM) IN VAULT');
-          } else if (this.hasChamberKey) {
-            this.setObjective('CROSS BATTLEMENTS & UNLOCK ROYAL VAULT DOOR');
-          } else {
-            this.setObjective('INFILTRATE PALACE & RETRIEVE GILDED KEY');
-          }
-        },
-        onRestart: () => {
-          this.gameOverScreen?.destroy();
-          this.gameOverScreen = null;
-          this.isRespawning = false;
-          this.restartLevelFromBeginning();
-        },
-        onMainMenu: () => {
-          this.gameOverScreen?.destroy();
-          this.gameOverScreen = null;
-          this.isRespawning = false;
-          this.physics.resume();
-          this.cameras.main.fadeOut(300, 0, 0, 0, () => {
-            this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
-          });
+        // Reset bait chest if not collected before checkpoint
+        if (this.hasOpenedBaitChest && this.checkpointX < 4224) {
+          this.hasOpenedBaitChest = false;
+          this.baitChestSprite?.clearTint();
         }
-      };
 
-      this.gameOverScreen = new GameOverScreen(this, callbacks, reason);
-    });
-  }
+        // Restore appropriate objective display on respawn
+        if (this.hasCollectedComponent3) {
+          this.setObjective('ASCEND SPIRE TO HIGH EXTRACTION RIFT [➡]');
+        } else if (this.isChamberDoorUnlocked) {
+          this.setObjective('SECURE COMPONENT 03 (CHRONO-PRISM) IN VAULT');
+        } else if (this.hasChamberKey) {
+          this.setObjective('CROSS BATTLEMENTS & UNLOCK ROYAL VAULT DOOR');
+        } else {
+          this.setObjective('INFILTRATE PALACE & RETRIEVE GILDED KEY');
+        }
+      },
+      onRestart: () => {
+        this.gameOverScreen?.destroy();
+        this.gameOverScreen = null;
+        this.isRespawning = false;
+        this.restartLevelFromBeginning();
+      },
+      onMainMenu: () => {
+        this.gameOverScreen?.destroy();
+        this.gameOverScreen = null;
+        this.isRespawning = false;
+        this.physics.resume();
+        this.cameras.main.fadeOut(300, 0, 0, 0, () => {
+          this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
+        });
+      }
+    };
+
+    this.gameOverScreen = new GameOverScreen(this, callbacks, reason);
+  });
+}
 
   // ── Torch Lighting System ─────────────────────────────────────────────────
 
   private updateTorchLighting(time: number): void {
-    if (!this.torchLightGfx) return;
+  if(!this.torchLightGfx) return;
 
-    this.torchLightGfx.clear();
+  this.torchLightGfx.clear();
 
-    const cam = this.cameras.main;
-    const viewLeft = cam.scrollX - 50;
-    const viewRight = cam.scrollX + cam.width + 50;
+  const cam = this.cameras.main;
+  const viewLeft = cam.scrollX - 50;
+  const viewRight = cam.scrollX + cam.width + 50;
 
-    this.torchHalos.forEach((halo, idx) => {
-      if (halo.x < viewLeft || halo.x > viewRight) return;
+  this.torchHalos.forEach((halo, idx) => {
+    if (halo.x < viewLeft || halo.x > viewRight) return;
 
-      const flicker = Math.sin((time * 0.008) + idx * 1.7) * 4 + Math.sin((time * 0.015) + idx * 2.3) * 2;
-      const radius = halo.baseRadius + flicker;
+    const flicker = Math.sin((time * 0.008) + idx * 1.7) * 4 + Math.sin((time * 0.015) + idx * 2.3) * 2;
+    const radius = halo.baseRadius + flicker;
 
-      this.torchLightGfx!.fillStyle(0xff8800, 0.08);
-      this.torchLightGfx!.fillCircle(halo.x, halo.y, radius);
+    this.torchLightGfx!.fillStyle(0xff8800, 0.08);
+    this.torchLightGfx!.fillCircle(halo.x, halo.y, radius);
 
-      this.torchLightGfx!.fillStyle(0xffaa33, 0.12);
-      this.torchLightGfx!.fillCircle(halo.x, halo.y, radius * 0.65);
+    this.torchLightGfx!.fillStyle(0xffaa33, 0.12);
+    this.torchLightGfx!.fillCircle(halo.x, halo.y, radius * 0.65);
 
-      this.torchLightGfx!.fillStyle(0xffdd66, 0.22);
-      this.torchLightGfx!.fillCircle(halo.x, halo.y, radius * 0.3);
-    });
-  }
+    this.torchLightGfx!.fillStyle(0xffdd66, 0.22);
+    this.torchLightGfx!.fillCircle(halo.x, halo.y, radius * 0.3);
+  });
+}
 
   // ── Dev Debug Overlay ─────────────────────────────────────────────────────
 
   private toggleDebugOverlay(): void {
-    this.debugOverlay = !this.debugOverlay;
-    if (!this.debugOverlay) {
-      this.debugGfx?.clear();
-    }
-    this.hud.showBanner(`DEBUG OVERLAY: ${this.debugOverlay ? 'ON (JUMP ARCS & BOUNDS)' : 'OFF'}`);
+  this.debugOverlay = !this.debugOverlay;
+  if(!this.debugOverlay) {
+  this.debugGfx?.clear();
+}
+this.hud.showBanner(`DEBUG OVERLAY: ${this.debugOverlay ? 'ON (JUMP ARCS & BOUNDS)' : 'OFF'}`);
   }
 
   private renderDebugOverlay(): void {
-    if (!this.debugGfx) return;
-    this.debugGfx.clear();
+  if(!this.debugGfx) return;
+  this.debugGfx.clear();
 
-    // 1. Draw platform bounds in bright green with grid coordinates
-    this.debugGfx.lineStyle(1.5, 0x00ff00, 0.8);
-    LEVEL3_LAYOUT_DATA.zones.forEach(z => {
-      z.platforms.forEach(p => {
-        this.debugGfx!.strokeRect(p.x, p.y, p.w, p.h);
-      });
+  // 1. Draw platform bounds in bright green with grid coordinates
+  this.debugGfx.lineStyle(1.5, 0x00ff00, 0.8);
+  LEVEL3_LAYOUT_DATA.zones.forEach(z => {
+    z.platforms.forEach(p => {
+      this.debugGfx!.strokeRect(p.x, p.y, p.w, p.h);
     });
+  });
 
-    // 2. Draw guard patrol boundaries in bright yellow & red end ticks
-    this.guards.forEach((g, idx) => {
-      const cfg = LEVEL3_DATA.guards[idx];
-      if (!cfg) return;
+  // 2. Draw guard patrol boundaries in bright yellow & red end ticks
+  this.guards.forEach((g, idx) => {
+    const cfg = LEVEL3_DATA.guards[idx];
+    if (!cfg) return;
 
-      this.debugGfx!.lineStyle(2, 0xffd166, 0.9);
-      this.debugGfx!.lineBetween(cfg.patrolLeft, g.y, cfg.patrolRight, g.y);
+    this.debugGfx!.lineStyle(2, 0xffd166, 0.9);
+    this.debugGfx!.lineBetween(cfg.patrolLeft, g.y, cfg.patrolRight, g.y);
 
-      this.debugGfx!.lineStyle(2, 0xff2200, 1);
-      this.debugGfx!.lineBetween(cfg.patrolLeft, g.y - 6, cfg.patrolLeft, g.y + 6);
-      this.debugGfx!.lineBetween(cfg.patrolRight, g.y - 6, cfg.patrolRight, g.y + 6);
-    });
+    this.debugGfx!.lineStyle(2, 0xff2200, 1);
+    this.debugGfx!.lineBetween(cfg.patrolLeft, g.y - 6, cfg.patrolLeft, g.y + 6);
+    this.debugGfx!.lineBetween(cfg.patrolRight, g.y - 6, cfg.patrolRight, g.y + 6);
+  });
 
-    // 3. Draw checkpoints and spawn in bright cyan
-    this.debugGfx.lineStyle(2, 0x00f0ff, 0.9);
-    LEVEL3_DATA.checkpoints.forEach(cp => {
-      this.debugGfx!.strokeCircle(cp.x, cp.y, 16);
-    });
+  // 3. Draw checkpoints and spawn in bright cyan
+  this.debugGfx.lineStyle(2, 0x00f0ff, 0.9);
+  LEVEL3_DATA.checkpoints.forEach(cp => {
+    this.debugGfx!.strokeCircle(cp.x, cp.y, 16);
+  });
 
-    // 4. Draw theoretical jump reach parabola from current player position
-    const px = this.player.x;
-    const py = this.player.y;
-    const facingDir = this.player.flipX ? -1 : 1;
-    this.debugGfx.lineStyle(1.5, 0xff00ff, 0.8);
-    this.debugGfx.beginPath();
-    this.debugGfx.moveTo(px, py);
+  // 4. Draw theoretical jump reach parabola from current player position
+  const px = this.player.x;
+  const py = this.player.y;
+  const facingDir = this.player.flipX ? -1 : 1;
+  this.debugGfx.lineStyle(1.5, 0xff00ff, 0.8);
+  this.debugGfx.beginPath();
+  this.debugGfx.moveTo(px, py);
 
-    const totalTime = 2 * Math.abs(PLAYER_PHYSICS.jumpVelocity) / PLAYER_PHYSICS.gravity; // 0.875 s
-    const steps = 16;
-    for (let i = 1; i <= steps; i++) {
-      const t = (i / steps) * totalTime;
-      const arcX = px + facingDir * PLAYER_PHYSICS.moveSpeed * t;
-      const arcY = py + (PLAYER_PHYSICS.jumpVelocity * t + 0.5 * PLAYER_PHYSICS.gravity * t * t);
-      this.debugGfx.lineTo(arcX, arcY);
-    }
-    this.debugGfx.strokePath();
+  const totalTime = 2 * Math.abs(PLAYER_PHYSICS.jumpVelocity) / PLAYER_PHYSICS.gravity; // 0.875 s
+  const steps = 16;
+  for(let i = 1; i <= steps; i++) {
+  const t = (i / steps) * totalTime;
+  const arcX = px + facingDir * PLAYER_PHYSICS.moveSpeed * t;
+  const arcY = py + (PLAYER_PHYSICS.jumpVelocity * t + 0.5 * PLAYER_PHYSICS.gravity * t * t);
+  this.debugGfx.lineTo(arcX, arcY);
+}
+this.debugGfx.strokePath();
   }
 
   // ── Camera Tracking ───────────────────────────────────────────────────────
 
   private setupCamera(): void {
-    this.cameras.main.setBounds(0, 0, LEVEL3_DATA.dimensions.width, LEVEL3_DATA.dimensions.height);
-    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setDeadzone(40, 20);
-  }
+  this.cameras.main.setBounds(0, 0, LEVEL3_DATA.dimensions.width, LEVEL3_DATA.dimensions.height);
+  this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+  this.cameras.main.setDeadzone(40, 20);
+}
 
   // ── Restart & Checkpoint Helpers ──────────────────────────────────────────
 
   private restartLevelFromBeginning(): void {
-    this.checkpointX = LEVEL3_DATA.spawn.x;
-    this.checkpointY = LEVEL3_DATA.spawn.y;
-    this.deathCount = 0;
-    this.alertCount = 0;
-    this.hasChamberKey = false;
-    this.isChamberDoorUnlocked = false;
-    this.hasCollectedComponent3 = false;
-    this.hasOpenedBaitChest = false;
-    this.isPaused = false;
-    this.physics.resume();
-    this.scene.restart();
-  }
+  this.checkpointX = LEVEL3_DATA.spawn.x;
+  this.checkpointY = LEVEL3_DATA.spawn.y;
+  this.deathCount = 0;
+  this.alertCount = 0;
+  this.hasChamberKey = false;
+  this.isChamberDoorUnlocked = false;
+  this.hasCollectedComponent3 = false;
+  this.hasOpenedBaitChest = false;
+  this.isPaused = false;
+  this.physics.resume();
+  this.scene.restart();
+}
 
   private restartAtCheckpoint(): void {
-    this.resumeGame();
-    this.player.restoreIntegrity();
-    this.player.respawnAt(this.checkpointX, this.checkpointY);
-    this.player.restoreStaffCharges(this.player.maxStaffCharges);
-    this.hud.updateIntegrity(this.player.integrity);
-    this.hud.updateCharges(this.player.staffCharges);
-    this.cameras.main.fadeIn(400, 0, 0, 0);
+  this.resumeGame();
+  this.player.restoreIntegrity();
+  this.player.respawnAt(this.checkpointX, this.checkpointY);
+  this.player.restoreStaffCharges(this.player.maxStaffCharges);
+  this.hud.updateIntegrity(this.player.integrity);
+  this.hud.updateCharges(this.player.staffCharges);
+  this.cameras.main.fadeIn(400, 0, 0, 0);
 
-    // Reset all per-life puzzle & obstacle states
-    this.conduits.forEach(c => {
-      c.depleted = false;
-      c.sprite.clearTint();
-    });
-    this.chandeliers.forEach(ch => {
-      ch.state = 'hanging';
-      ch.sprite.setPosition(ch.originX, ch.originY);
-      (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
-      ch.warningText?.destroy();
-      ch.warningText = undefined;
-    });
-    this.crumblingStones.forEach(st => {
-      (st.sprite.body as Phaser.Physics.Arcade.Body).enable = true;
-      st.sprite.setPosition(st.x, st.y).setAlpha(1);
-      st.isCrumbling = false;
-    });
+  // Reset all per-life puzzle & obstacle states
+  this.conduits.forEach(c => {
+    c.depleted = false;
+    c.sprite.clearTint();
+  });
+  this.chandeliers.forEach(ch => {
+    ch.state = 'hanging';
+    ch.sprite.setPosition(ch.originX, ch.originY);
+    (ch.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+    ch.warningText?.destroy();
+    ch.warningText = undefined;
+  });
+  this.crumblingStones.forEach(st => {
+    (st.sprite.body as Phaser.Physics.Arcade.Body).enable = true;
+    st.sprite.setPosition(st.x, st.y).setAlpha(1);
+    st.isCrumbling = false;
+  });
 
-    // Reset guards to clean patrol
-    this.guards.forEach((g, idx) => {
-      const cfg = LEVEL3_DATA.guards[idx];
-      g.resetToPatrol(cfg?.x, cfg?.facingRight);
-    });
+  // Reset guards to clean patrol
+  this.guards.forEach((g, idx) => {
+    const cfg = LEVEL3_DATA.guards[idx];
+    g.resetToPatrol(cfg?.x, cfg?.facingRight);
+  });
 
-    // Reset bait chest if not collected before checkpoint
-    if (this.hasOpenedBaitChest && this.checkpointX < 4224) {
-      this.hasOpenedBaitChest = false;
-      this.baitChestSprite?.clearTint();
-    }
+  // Reset bait chest if not collected before checkpoint
+  if(this.hasOpenedBaitChest && this.checkpointX < 4224) {
+  this.hasOpenedBaitChest = false;
+  this.baitChestSprite?.clearTint();
+}
 
-    // Restore appropriate objective display on checkpoint restart
-    if (this.hasCollectedComponent3) {
-      this.setObjective('ASCEND SPIRE TO HIGH EXTRACTION RIFT [➡]');
-    } else if (this.isChamberDoorUnlocked) {
-      this.setObjective('SECURE COMPONENT 03 (CHRONO-PRISM) IN VAULT');
-    } else if (this.hasChamberKey) {
-      this.setObjective('CROSS BATTLEMENTS & UNLOCK ROYAL VAULT DOOR');
-    } else {
-      this.setObjective('INFILTRATE PALACE & RETRIEVE GILDED KEY');
-    }
+// Restore appropriate objective display on checkpoint restart
+if (this.hasCollectedComponent3) {
+  this.setObjective('ASCEND SPIRE TO HIGH EXTRACTION RIFT [➡]');
+} else if (this.isChamberDoorUnlocked) {
+  this.setObjective('SECURE COMPONENT 03 (CHRONO-PRISM) IN VAULT');
+} else if (this.hasChamberKey) {
+  this.setObjective('CROSS BATTLEMENTS & UNLOCK ROYAL VAULT DOOR');
+} else {
+  this.setObjective('INFILTRATE PALACE & RETRIEVE GILDED KEY');
+}
 
-    this.hud.showBanner('WARPED TO ACTIVE CHECKPOINT');
+this.hud.showBanner('WARPED TO ACTIVE CHECKPOINT');
   }
 
   // ── Pause Menu ────────────────────────────────────────────────────────────
 
   private togglePause(): void {
-    if (this.isLeavingScene || this.isRespawning || this.player.isDead) return;
-    this.isPaused ? this.resumeGame() : this.pauseGame();
-  }
+  if(this.isLeavingScene || this.isRespawning || this.player.isDead) return;
+  this.isPaused ? this.resumeGame() : this.pauseGame();
+}
 
   private pauseGame(): void {
-    this.isPaused = true;
-    this.physics.pause();
-    const cb: PauseMenuCallbacks = {
-      onResume: () => this.resumeGame(),
-      onCheckpoint: () => this.restartAtCheckpoint(),
-      onRestart: () => {
-        this.resumeGame();
-        this.restartLevelFromBeginning();
-      },
-      onMainMenu: () => {
-        this.isPaused = false;
-        this.physics.resume();
-        this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
-      }
-    };
-    this.pauseMenu = new PauseMenu(this, cb);
-  }
+  this.isPaused = true;
+  this.physics.pause();
+  const cb: PauseMenuCallbacks = {
+    onResume: () => this.resumeGame(),
+    onCheckpoint: () => this.restartAtCheckpoint(),
+    onRestart: () => {
+      this.resumeGame();
+      this.restartLevelFromBeginning();
+    },
+    onMainMenu: () => {
+      this.isPaused = false;
+      this.physics.resume();
+      this.scene.start(GAME_CONFIG.sceneKeys.MainMenu);
+    }
+  };
+  this.pauseMenu = new PauseMenu(this, cb);
+}
 
   private resumeGame(): void {
-    this.pauseMenu?.destroy();
-    this.pauseMenu = null;
-    this.isPaused = false;
-    this.physics.resume();
-  }
+  this.pauseMenu?.destroy();
+  this.pauseMenu = null;
+  this.isPaused = false;
+  this.physics.resume();
+}
 
   // ── Scanlines Overlay ─────────────────────────────────────────────────────
 
   private addScanlines(): void {
-    const W = this.cameras.main.width;
-    const H = this.cameras.main.height;
-    const g = this.add.graphics().setScrollFactor(0).setAlpha(0.04).setDepth(100);
-    g.lineStyle(1, 0x000000, 1);
-    for (let y = 0; y < H; y += 3) {
-      g.lineBetween(0, y, W, y);
-    }
+  const W = this.cameras.main.width;
+  const H = this.cameras.main.height;
+  const g = this.add.graphics().setScrollFactor(0).setAlpha(0.04).setDepth(100);
+  g.lineStyle(1, 0x000000, 1);
+  for(let y = 0; y <H; y += 3) {
+    g.lineBetween(0, y, W, y);
   }
+}
 
   // ── Objective HUD Pill & Guidance Indicators ──────────────────────────────
 
   private setupObjectiveHUD(): void {
-    const W = this.cameras.main.width;
-    this.objectiveContainer = this.add.container(W / 2, 53).setScrollFactor(0).setDepth(55);
+  const W = this.cameras.main.width;
+  this.objectiveContainer = this.add.container(W / 2, 53).setScrollFactor(0).setDepth(55);
 
-    this.objectiveBg = this.add.graphics();
-    this.objectiveText = this.add.text(0, 0, '', {
-      fontFamily: '"Oxanium", monospace',
-      fontSize: '10px',
-      fontStyle: 'bold',
-      color: '#ffd166',
-      stroke: '#000000',
-      strokeThickness: 2
-    }).setOrigin(0.5);
+  this.objectiveBg = this.add.graphics();
+  this.objectiveText = this.add.text(0, 0, '', {
+    fontFamily: '"Oxanium", monospace',
+    fontSize: '10px',
+    fontStyle: 'bold',
+    color: '#ffd166',
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setOrigin(0.5);
 
-    this.objectiveContainer.add([this.objectiveBg, this.objectiveText]);
-  }
+  this.objectiveContainer.add([this.objectiveBg, this.objectiveText]);
+}
 
   public setObjective(text: string): void {
-    this.currentObjective = text;
-    this.objectiveText.setText(`🎯 ${text}`);
+  this.currentObjective = text;
+  this.objectiveText.setText(`🎯 ${text}`);
 
-    const textWidth = this.objectiveText.width + 24;
-    const pillWidth = Math.max(textWidth, 240);
-    const pillHeight = 18;
+  const textWidth = this.objectiveText.width + 24;
+  const pillWidth = Math.max(textWidth, 240);
+  const pillHeight = 18;
 
-    this.objectiveBg.clear();
-    this.objectiveBg.fillStyle(0x060810, 0.92);
-    this.objectiveBg.fillRoundedRect(-pillWidth / 2, -pillHeight / 2, pillWidth, pillHeight, 9);
-    this.objectiveBg.lineStyle(1.5, LEVEL3_DATA.palette.mutedGold, 0.85);
-    this.objectiveBg.strokeRoundedRect(-pillWidth / 2, -pillHeight / 2, pillWidth, pillHeight, 9);
+  this.objectiveBg.clear();
+  this.objectiveBg.fillStyle(0x060810, 0.92);
+  this.objectiveBg.fillRoundedRect(-pillWidth / 2, -pillHeight / 2, pillWidth, pillHeight, 9);
+  this.objectiveBg.lineStyle(1.5, LEVEL3_DATA.palette.mutedGold, 0.85);
+  this.objectiveBg.strokeRoundedRect(-pillWidth / 2, -pillHeight / 2, pillWidth, pillHeight, 9);
 
-    // Pulse animation on update
-    this.tweens.killTweensOf(this.objectiveContainer);
-    this.objectiveContainer.setScale(1.1);
-    this.tweens.add({
-      targets: this.objectiveContainer,
-      scale: 1,
-      duration: 250,
-      ease: 'Back.easeOut'
-    });
-  }
+  // Pulse animation on update
+  this.tweens.killTweensOf(this.objectiveContainer);
+  this.objectiveContainer.setScale(1.1);
+  this.tweens.add({
+    targets: this.objectiveContainer,
+    scale: 1,
+    duration: 250,
+    ease: 'Back.easeOut'
+  });
+}
 
   public get objective(): string {
-    return this.currentObjective;
-  }
+  return this.currentObjective;
+}
 
   private setupWorldIndicators(): void {
-    this.createWorldIndicator('ind_balcony', 1440, 240, '▲ GILDED KEY ON BALCONY', 0xffaa00, '▲');
-    this.createWorldIndicator('ind_key', 1760, 110, '★ GILDED KEY', 0xd4af37, '★');
-    this.createWorldIndicator('ind_door', 5088, 250, '🔒 LOCKED VAULT DOOR', 0xff4444, '🔒');
-    this.createWorldIndicator('ind_vault', 5224, 230, '★ CHRONO-PRISM PEDESTAL', 0x00f0ff, '★');
-    this.createWorldIndicator('ind_bait', 3904, 240, '▲ BAIT ROUTE [CHEST]', 0xffd166, '▲');
-  }
+  this.createWorldIndicator('ind_balcony', 1440, 240, '▲ GILDED KEY ON BALCONY', 0xffaa00, '▲');
+  this.createWorldIndicator('ind_key', 1760, 110, '★ GILDED KEY', 0xd4af37, '★');
+  this.createWorldIndicator('ind_door', 5088, 250, '🔒 LOCKED VAULT DOOR', 0xff4444, '🔒');
+  this.createWorldIndicator('ind_vault', 5224, 230, '★ CHRONO-PRISM PEDESTAL', 0x00f0ff, '★');
+  this.createWorldIndicator('ind_bait', 3904, 240, '▲ BAIT ROUTE [CHEST]', 0xffd166, '▲');
+}
 
   private createWorldIndicator(id: string, x: number, y: number, text: string, color: number, icon = '▲'): void {
-    const container = this.add.container(x, y).setDepth(22);
+  const container = this.add.container(x, y).setDepth(22);
 
-    const txt = this.add.text(0, 0, `${icon} ${text}`, {
-      fontFamily: '"Oxanium", monospace',
-      fontSize: '9px',
-      fontStyle: 'bold',
-      color: '#' + color.toString(16).padStart(6, '0'),
-      stroke: '#000000',
-      strokeThickness: 3
-    }).setOrigin(0.5);
+  const txt = this.add.text(0, 0, `${icon} ${text}`, {
+    fontFamily: '"Oxanium", monospace',
+    fontSize: '9px',
+    fontStyle: 'bold',
+    color: '#' + color.toString(16).padStart(6, '0'),
+    stroke: '#000000',
+    strokeThickness: 3
+  }).setOrigin(0.5);
 
-    const w = txt.width + 16;
-    const h = 18;
-    const bg = this.add.graphics();
-    bg.fillStyle(0x070912, 0.88);
-    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
-    bg.lineStyle(1.5, color, 0.85);
-    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
+  const w = txt.width + 16;
+  const h = 18;
+  const bg = this.add.graphics();
+  bg.fillStyle(0x070912, 0.88);
+  bg.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
+  bg.lineStyle(1.5, color, 0.85);
+  bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
 
-    container.add([bg, txt]);
+  container.add([bg, txt]);
 
-    // Smooth bobbing tween
-    this.tweens.add({
-      targets: container,
-      y: y - 8,
-      duration: 1000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+  // Smooth bobbing tween
+  this.tweens.add({
+    targets: container,
+    y: y - 8,
+    duration: 1000,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
 
-    this.worldIndicators.push({ id, container });
-  }
+  this.worldIndicators.push({ id, container });
+}
 
   private removeWorldIndicator(id: string): void {
-    const idx = this.worldIndicators.findIndex(w => w.id === id);
-    if (idx !== -1) {
-      const item = this.worldIndicators[idx];
-      this.worldIndicators.splice(idx, 1);
-      this.tweens.add({
-        targets: item.container,
-        alpha: 0,
-        scale: 0.5,
-        duration: 300,
-        onComplete: () => item.container.destroy()
-      });
-    }
+  const idx = this.worldIndicators.findIndex(w => w.id === id);
+  if(idx !== -1) {
+  const item = this.worldIndicators[idx];
+  this.worldIndicators.splice(idx, 1);
+  this.tweens.add({
+    targets: item.container,
+    alpha: 0,
+    scale: 0.5,
+    duration: 300,
+    onComplete: () => item.container.destroy()
+  });
+}
   }
 
   private spawnEscapeWaypoints(): void {
-    this.createWorldIndicator('esc_spire', 5312, 230, '▲ TO EXTRACTION SPIRE', 0xd4af37, '▲');
-    this.createWorldIndicator('esc_portal', 5472, 70, '✦ EXTRACTION RIFT ✦', 0x00f0ff, '✦');
-  }
+  this.createWorldIndicator('esc_spire', 5312, 230, '▲ TO EXTRACTION SPIRE', 0xd4af37, '▲');
+  this.createWorldIndicator('esc_portal', 5472, 70, '✦ EXTRACTION RIFT ✦', 0x00f0ff, '✦');
+}
 
   private checkZoneDiscovery(): void {
-    const px = this.player.x;
-    let zoneNum = 1;
-    let zoneName = '';
+  const px = this.player.x;
+  let zoneNum = 1;
+  let zoneName = '';
 
-    if (px >= 4288) { zoneNum = 5; zoneName = 'ZONE 5: VAULT APPROACH & EXTRACTION SPIRE'; }
+  if(px >= 4288) { zoneNum = 5; zoneName = 'ZONE 5: VAULT APPROACH & EXTRACTION SPIRE'; }
     else if (px >= 3136) { zoneNum = 4; zoneName = 'ZONE 4: THRONE ROOM & BAIT ROUTE'; }
-    else if (px >= 2048) { zoneNum = 3; zoneName = 'ZONE 3: DRAWBRIDGE & BATTLEMENTS'; }
-    else if (px >= 1024) { zoneNum = 2; zoneName = 'ZONE 2: CORRIDORS & ROYAL ARMORY'; }
-    else { zoneNum = 1; zoneName = 'ZONE 1: GATEHOUSE & COURTYARD'; }
+else if (px >= 2048) { zoneNum = 3; zoneName = 'ZONE 3: DRAWBRIDGE & BATTLEMENTS'; }
+else if (px >= 1024) { zoneNum = 2; zoneName = 'ZONE 2: CORRIDORS & ROYAL ARMORY'; }
+else { zoneNum = 1; zoneName = 'ZONE 1: GATEHOUSE & COURTYARD'; }
 
-    if (zoneNum > 1 && !this.discoveredZones.has(zoneNum)) {
-      this.discoveredZones.add(zoneNum);
-      this.hud.showBanner(zoneName);
-    }
+if (zoneNum > 1 && !this.discoveredZones.has(zoneNum)) {
+  this.discoveredZones.add(zoneNum);
+  this.hud.showBanner(zoneName);
+}
   }
 }

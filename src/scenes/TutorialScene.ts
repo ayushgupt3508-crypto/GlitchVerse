@@ -1081,20 +1081,11 @@ export class TutorialScene extends Phaser.Scene {
     this.overlayPanel.add(this.statusText);
 
     // Skip tutorial button
-    const skipBtn = this.add.container(panelW / 2 - 42, -panelH / 2 - 12);
-
-    const sBg = this.add.graphics();
-
-    sBg.fillStyle(0x0c1524, 0.9);
-    sBg.fillRect(-38, -8, 76, 16);
-
-    sBg.lineStyle(1, 0x3d5a80, 0.8);
-    sBg.strokeRect(-38, -8, 76, 16);
-
+    const skipBtn = this.add.container(panelW / 2 - 575, -panelH / 2 + 100);
     const sTxt = this.add
-      .text(0, 0, 'SKIP TUTORIAL >>', {
+      .text(0, 0, 'SKIP TUTORIAL', {
         fontFamily: GAME_FONTS.primary,
-        fontSize: '7px',
+        fontSize: '15px',
         color: '#8b9bb4'
       })
       .setOrigin(0.5);
@@ -1105,7 +1096,7 @@ export class TutorialScene extends Phaser.Scene {
     sHit.on('pointerout', () => sTxt.setColor('#8b9bb4'));
     sHit.on('pointerdown', () => this.finishTutorial());
 
-    skipBtn.add([sBg, sTxt, sHit]);
+    skipBtn.add([sTxt, sHit]);
     this.overlayPanel.add(skipBtn);
 
     // Pin all children to screen
