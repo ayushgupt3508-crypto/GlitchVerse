@@ -1,4 +1,4 @@
-﻿import Phaser from 'phaser';
+import Phaser from 'phaser';
 import { GAME_CONFIG } from './config';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
@@ -18,6 +18,7 @@ import { EndingScene } from './scenes/EndingScene';
 import { OrientationManager } from './utils/OrientationManager';
 import { FullscreenManager } from './systems/FullscreenManager';
 import { LevelSelectScene } from './scenes/LevelSelectScene';
+import { SpecialLevelScene } from './scenes/SpecialLevelScene';
 
 class MainMenuAliasScene extends Phaser.Scene {
   constructor() {
@@ -73,7 +74,8 @@ const config: Phaser.Types.Core.GameConfig = {
     GameEndingScene,
     FinalScoreScene,
     CreditsScene,
-    EndingScene
+    EndingScene,
+    SpecialLevelScene
   ]
 };
 

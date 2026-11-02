@@ -1,4 +1,4 @@
-﻿export const GAME_CONFIG = {
+export const GAME_CONFIG = {
   width: 640,
   height: 360,
   gravity: 800,
@@ -20,7 +20,8 @@
     GameEnding: 'GameEnding',
     FinalScore: 'FinalScore',
     Credits: 'Credits',
-    Ending: 'EndingScene'
+    Ending: 'EndingScene',
+    SpecialLevel: 'SpecialLevelScene'
   }
 } as const;
 

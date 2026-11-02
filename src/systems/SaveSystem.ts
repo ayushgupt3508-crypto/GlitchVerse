@@ -154,4 +154,32 @@ public static isAllLevelsCompleted(): boolean {
     }
     this.saveProgress(progress);
   }
+
+  public static isConvergenceUnlocked(): boolean {
+    return this.isAllLevelsCompleted();
+  }
+
+  public static getConvergenceBestScore(): number | undefined {
+    try {
+      const raw = localStorage.getItem('glitchverse_convergence_best');
+      if (raw !== null) {
+        const val = Number(raw);
+        return isNaN(val) ? undefined : val;
+      }
+    } catch {
+      // Storage unavailable fallback
+    }
+    return undefined;
+  }
+
+  public static saveConvergenceScore(score: number): void {
+    try {
+      const current = this.getConvergenceBestScore() ?? 0;
+      if (score > current) {
+        localStorage.setItem('glitchverse_convergence_best', String(score));
+      }
+    } catch {
+      // Storage unavailable fallback
+    }
+  }
 }

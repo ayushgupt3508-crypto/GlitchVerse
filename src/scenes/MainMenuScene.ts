@@ -1,8 +1,12 @@
-﻿import Phaser from 'phaser';
+import Phaser from 'phaser';
 import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { SettingsModal } from '../ui/SettingsModal';
 import { ExitModal } from '../ui/ExitModal';
 import { AudioManager } from '../systems/AudioManager';
+import { SaveSystem } from '../systems/SaveSystem';
+
+/** Developer unlock key constant to quickly test The Convergence bonus level. Set to null for release. */
+export const DEV_UNLOCK_KEY: number | null = Phaser.Input.Keyboard.KeyCodes.SIX;
 
 export class MainMenuScene extends Phaser.Scene {
   private activeModal: Phaser.GameObjects.Container | null = null;
@@ -104,17 +108,19 @@ export class MainMenuScene extends Phaser.Scene {
       color: '#70e000'
     }).setOrigin(1, 0.5).setVisible(false);
 
-    // 4. Four Menu Buttons matching reference image
+    // 4. Menu Buttons matching reference image (with bonus level unlocked when all 5 levels cleared)
+    const isConvergenceUnlocked = SaveSystem.isAllLevelsCompleted();
     const buttonConfigs = [
       { label: 'PLAY', icon: '▶', action: () => this.handlePlay() },
+      ...(isConvergenceUnlocked ? [{ label: 'CONVERGENCE', icon: '★', action: () => this.startSpecialLevel() }] : []),
       { label: 'SETTINGS', icon: '⚙', action: () => this.openSettings() },
       { label: 'CREDITS', icon: '≡', action: () => this.openCredits() },
       { label: 'EXIT', icon: '➔', action: () => this.openExit() }
     ];
 
     const startX = 120;
-    const startY = 125;
-    const spacingY = 36;
+    const startY = isConvergenceUnlocked ? 110 : 125;
+    const spacingY = isConvergenceUnlocked ? 31 : 36;
 
     this.buttons = [];
     buttonConfigs.forEach((cfg, idx) => {
@@ -132,8 +138,16 @@ export class MainMenuScene extends Phaser.Scene {
     // Default pointer position to the first button (PLAY)
     this.setPointerToButton(this.buttons[0]);
 
-    // Keyboard shortcuts for level testing: [1] S1, [2] S2, [3] S3, [4] S4 (Ancient Forest), [5] S5 (Futuristic Core)
+    // Keyboard shortcuts for level testing: [1] S1, [2] S2, [3] S3, [4] S4 (Ancient Forest), [5] S5 (Futuristic Core), [6] Convergence
     if (this.input.keyboard) {
+      if (DEV_UNLOCK_KEY !== null) {
+        const key6 = this.input.keyboard.addKey(DEV_UNLOCK_KEY);
+        const onKey6 = () => this.startSpecialLevel();
+        key6.on('down', onKey6);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+          key6.off('down', onKey6);
+        });
+      }
       const key5 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.FIVE);
       key5.on('down', () => this.startLevel5());
       const key4 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.FOUR);
@@ -263,6 +277,15 @@ export class MainMenuScene extends Phaser.Scene {
     this.cameras.main.fade(300, 4, 8, 16, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
       if (progress === 1) {
         this.scene.start('Level5Scene');
+      }
+    });
+  }
+
+  private startSpecialLevel(): void {
+    if (this.activeModal) return;
+    this.cameras.main.fade(300, 12, 6, 28, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
+      if (progress === 1) {
+        this.scene.start('SpecialLevelScene');
       }
     });
   }
