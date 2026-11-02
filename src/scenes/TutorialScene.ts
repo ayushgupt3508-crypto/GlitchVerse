@@ -310,7 +310,7 @@ export class TutorialScene extends Phaser.Scene {
             this.useTimeFreeze();
             break;
           case 5:
-            this.growAncientPlant();
+            this.useStaffAction();
             break;
           case 6:
             this.usePhase();
@@ -490,8 +490,18 @@ export class TutorialScene extends Phaser.Scene {
 
   private growAncientPlant(): void {
     if (this.currentSectionIndex !== 5 || this.hasGrownAncientPlant) return;
-    if (Math.abs(this.player.x - this.FUNGUS_X) > 95) return;
 
+    const distance = Phaser.Math.Distance.Between(
+      this.player.x,
+      this.player.y,
+      this.FUNGUS_X,
+      this.scale.height - 55
+    );
+
+    if (distance > 120) {
+      AudioManager.playInsufficientCharge();
+      return;
+    }
     this.hasGrownAncientPlant = true;
 
     AudioManager.playFailsafe();
