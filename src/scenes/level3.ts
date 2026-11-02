@@ -8,7 +8,6 @@ import { PauseMenu, PauseMenuCallbacks } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
-import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 import { StaffController } from '../systems/staff/StaffController';

@@ -11,7 +11,6 @@ import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 import { RealitySwapSystem, RiftNodeDef } from '../systems/RealitySwapSystem';
-import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 
 /**
