@@ -7,7 +7,6 @@ import { PauseMenu } from '../ui/PauseMenu';
 import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
-import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 import { DeviceInfo } from '../utils/DeviceDetector';
@@ -470,13 +469,6 @@ export class GameScene extends Phaser.Scene {
 
     // Pause key & HUD Home Button
     this.hud.onPauseClicked(() => this.togglePause());
-    if (this.input.keyboard) {
-      const esc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-      esc.on('down', () => {
-        if (FullscreenManager.shouldBlockEsc()) return;
-        this.togglePause();
-      });
-    }
 
     this.createScanlineOverlay();
 

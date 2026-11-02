@@ -11,7 +11,6 @@ import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
 import { RealitySwapSystem, RiftNodeDef } from '../systems/RealitySwapSystem';
-import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 
 /**
@@ -344,19 +343,12 @@ export class Level5Scene extends Phaser.Scene {
 
     // Setup Camera Tracking
     this.setupCamera();
-
-    // Pause Key listener (ESC / P) & HUD Home Button
+    // Pause Key listener (P) & HUD Home Button
     this.hud.onPauseClicked(() => this.togglePause());
     if (this.input.keyboard) {
-      const esc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
       const keyP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
-      esc.on('down', () => {
-        if (FullscreenManager.shouldBlockEsc()) return;
-        this.togglePause();
-      });
       keyP.on('down', () => this.togglePause());
     }
-
     // Scanlines
     this.addScanlines();
 
