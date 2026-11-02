@@ -3,7 +3,6 @@ import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { SettingsModal } from '../ui/SettingsModal';
 import { ExitModal } from '../ui/ExitModal';
 import { AudioManager } from '../systems/AudioManager';
-import { SaveSystem } from '../systems/SaveSystem';
 
 /** Developer unlock key constant to quickly test The Convergence bonus level. Set to null for release. */
 export const DEV_UNLOCK_KEY: number | null = Phaser.Input.Keyboard.KeyCodes.SIX;
@@ -109,7 +108,6 @@ export class MainMenuScene extends Phaser.Scene {
     }).setOrigin(1, 0.5).setVisible(false);
 
     // 4. Menu Buttons matching reference image (with Level 6 unlocked when Level 5 cleared)
-    const isLevel6Unlocked = SaveSystem.isLevel6Unlocked();
     const buttonConfigs = [
       { label: 'PLAY', icon: '▶', action: () => this.handlePlay() },
       { label: 'SETTINGS', icon: '⚙', action: () => this.openSettings() },
