@@ -112,6 +112,7 @@ export class MainMenuScene extends Phaser.Scene {
     const isLevel6Unlocked = SaveSystem.isLevel6Unlocked();
     const buttonConfigs = [
       { label: 'PLAY', icon: '▶', action: () => this.handlePlay() },
+      ...(isLevel6Unlocked ? [{ label: 'GAUNTLET', icon: '★', action: () => this.startLevel6() }] : []),
       { label: 'SETTINGS', icon: '⚙', action: () => this.openSettings() },
       { label: 'CREDITS', icon: '≡', action: () => this.openCredits() },
       { label: 'EXIT', icon: '➔', action: () => this.openExit() }

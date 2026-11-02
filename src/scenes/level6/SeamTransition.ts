@@ -30,7 +30,7 @@ export class SeamTransition {
 
   private graphics: Phaser.GameObjects.Graphics;
   private seamLedges: Phaser.GameObjects.Sprite[] = [];
-  public gateSprite?: Phaser.Physics.Arcade.Sprite;
+  public gateSprite?: Phaser.GameObjects.Sprite;
   public isGateOpen = false;
   public hasCrossed = false;
 
@@ -142,11 +142,11 @@ export class SeamTransition {
     const gateX = this.def.x1 - 20;
     const gateY = this.def.y1;
 
-    this.gateSprite = this.scene.physics.add.sprite(gateX, gateY - 24, 'electronic_door')
-      .setDepth(18)
-      .setImmovable(true);
-    (this.gateSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-    staticGroup.add(this.gateSprite);
+    const gate = this.scene.add.sprite(gateX, gateY - 24, 'electronic_door')
+      .setDepth(18);
+    this.gateSprite = gate;
+    this.scene.physics.add.existing(gate, true);
+    staticGroup.add(gate);
 
     // Indicator light beacon on top of the gate
     const beacon = this.scene.add.circle(gateX, gateY - 58, 4, 0xff0055, 1).setDepth(19);
@@ -159,6 +159,7 @@ export class SeamTransition {
     });
 
     (this.gateSprite as any).beacon = beacon;
+    (this.gateSprite as any).staticGroup = staticGroup;
   }
 
   /**
@@ -175,6 +176,14 @@ export class SeamTransition {
       beacon.setFillStyle(0x70e000);
     }
 
+    const staticGroup = (this.gateSprite as any).staticGroup as Phaser.Physics.Arcade.StaticGroup;
+    if (this.gateSprite.body) {
+      (this.gateSprite.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+    }
+    if (staticGroup) {
+      staticGroup.remove(this.gateSprite);
+    }
+
     this.scene.tweens.add({
       targets: this.gateSprite,
       scaleY: 0,
@@ -182,9 +191,7 @@ export class SeamTransition {
       duration: 600,
       ease: 'Power2',
       onComplete: () => {
-        if (this.gateSprite && this.gateSprite.body) {
-          (this.gateSprite.body as Phaser.Physics.Arcade.Body).enable = false;
-        }
+        this.gateSprite?.destroy();
       }
     });
   }

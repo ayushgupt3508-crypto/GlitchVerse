@@ -12,14 +12,14 @@ export interface WaterHazardTile {
 }
 
 export interface ChronalBarrier {
-  sprite: Phaser.Physics.Arcade.Sprite;
+  sprites: Phaser.GameObjects.Sprite[]; // stacked static tile sprites — all solid, all must be removed on open
   x: number;
   isOpen: boolean;
   index: number;
 }
 
 export interface PhaseWall {
-  sprites: Phaser.Physics.Arcade.Sprite[];
+  sprites: Phaser.GameObjects.Sprite[];
   x: number;
   width: number;
   isPassed: boolean;
@@ -125,9 +125,10 @@ export class GauntletWorldBuilder {
 
   /**
    * Opens the chronal barrier nearest to playerX within `range` px.
+   * Disables ALL stacked tile bodies so the gap is immediately passable.
    * Returns the barrier index opened, or -1 if none found.
    */
-  public openNearestChronalBarrier(playerX: number, range = 250): number {
+  public openNearestChronalBarrier(playerX: number, range = 280): number {
     let nearest = -1;
     let nearestDist = range;
     this.chronalBarriers.forEach((b, i) => {
@@ -136,28 +137,38 @@ export class GauntletWorldBuilder {
       if (dist < nearestDist) { nearestDist = dist; nearest = i; }
     });
     if (nearest === -1) return -1;
+
     const barrier = this.chronalBarriers[nearest];
     barrier.isOpen = true;
 
-    this.scene.tweens.add({
-      targets: barrier.sprite,
-      alpha: 0, scaleX: 0,
-      duration: 500, ease: 'Power2',
-      onComplete: () => {
-        if (barrier.sprite.body) {
-          (barrier.sprite.body as Phaser.Physics.Arcade.StaticBody).enable = false;
-        }
-        this.staticGroup.remove(barrier.sprite);
-        barrier.sprite.destroy();
-      }
+    // Immediately disable all physics bodies so player can walk through
+    barrier.sprites.forEach(s => {
+      this.staticGroup.remove(s);
+      if (s.body) (s.body as Phaser.Physics.Arcade.StaticBody).enable = false;
     });
 
-    this.scene.add.particles(barrier.x, 160, 'proto_tile', {
-      speedY: { min: -80, max: 80 }, speedX: { min: -60, max: 60 },
-      scale: { start: 0.6, end: 0 },
-      tint: [0x52b788, 0x70e000, 0xffd166, 0xffffff],
-      lifespan: 700, quantity: 24
-    }).setDepth(20);
+    // Animate the visual tiles out (staggered)
+    barrier.sprites.forEach((s, tileIdx) => {
+      this.scene.tweens.add({
+        targets: s,
+        alpha: 0,
+        scaleX: 0,
+        x: barrier.x + (tileIdx % 2 === 0 ? -24 : 24),
+        duration: 450 + tileIdx * 20,
+        ease: 'Power2',
+        onComplete: () => s.destroy()
+      });
+    });
+
+    // Particle column at barrier x
+    for (let py = 20; py <= 320; py += 48) {
+      this.scene.add.particles(barrier.x, py, 'proto_tile', {
+        speedY: { min: -60, max: 60 }, speedX: { min: -80, max: 80 },
+        scale: { start: 0.5, end: 0 },
+        tint: [0x52b788, 0x70e000, 0xffd166, 0xffffff],
+        lifespan: 600, quantity: 5
+      }).setDepth(20);
+    }
 
     return nearest;
   }
@@ -199,6 +210,73 @@ export class GauntletWorldBuilder {
       tint: [0xff007f, 0x00f0ff, 0xffffff],
       lifespan: 600, quantity: 20
     }).setDepth(20);
+  }
+
+  /**
+   * Builds an ornate relic altar at the end of each section.
+   * The section's collectible key floats above this altar.
+   * Player must approach and collect it, then bring it to S6.
+   */
+  private buildSectionRelicAltar(
+    x: number,
+    relicName: string,
+    color: number,
+    floorTile: string
+  ): void {
+    const floorY = LEVEL6_CONFIG.dimensions.floorY;
+
+    // 3-tier altar base
+    // Tier 3 (widest, floor level): 5 tiles wide at floorY
+    for (let tx = x - 64; tx <= x + 64; tx += 32) {
+      const t = this.scene.add.sprite(tx, floorY - 32, floorTile).setTint(color).setDepth(11);
+      this.scene.physics.add.existing(t, true); this.staticGroup.add(t);
+    }
+    // Tier 2: 3 tiles wide at floorY-64
+    for (let tx = x - 32; tx <= x + 32; tx += 32) {
+      const t = this.scene.add.sprite(tx, floorY - 64, floorTile).setTint(color).setDepth(11);
+      this.scene.physics.add.existing(t, true); this.staticGroup.add(t);
+    }
+    // Tier 1 (top, narrowest): 1 tile at floorY-96
+    const topTile = this.scene.add.sprite(x, floorY - 96, floorTile).setTint(color).setDepth(11);
+    this.scene.physics.add.existing(topTile, true); this.staticGroup.add(topTile);
+
+    // Glowing altar light beam (decorative graphics)
+    const gfx = this.scene.add.graphics().setDepth(10);
+    gfx.fillStyle(color, 0.12);
+    gfx.fillRect(x - 4, 0, 8, floorY - 96);
+
+    // Color-coded outline
+    gfx.lineStyle(1, color, 0.5);
+    gfx.strokeRect(x - 6, floorY - 100, 12, 100);
+
+    // Ambient particles rising from altar
+    this.scene.add.particles(x, floorY - 100, 'proto_tile', {
+      speedY: { min: -60, max: -20 },
+      speedX: { min: -12, max: 12 },
+      scale: { start: 0.3, end: 0 },
+      tint: [color, 0xffffff],
+      alpha: { start: 0.8, end: 0 },
+      lifespan: 1200,
+      quantity: 1,
+      frequency: 180
+    }).setDepth(13);
+
+    // Relic label
+    this.scene.add.text(x, floorY - 175, `★ ${relicName}\n  RELIC ALTAR  `, {
+      fontFamily: '"Share Tech Mono", monospace',
+      fontSize: '8px', fontStyle: 'bold',
+      color: '#' + color.toString(16).padStart(6, '0'),
+      backgroundColor: '#070b14',
+      padding: { x: 4, y: 3 }
+    }).setOrigin(0.5).setDepth(13);
+
+    this.scene.add.text(x, floorY - 148, '⬆ COLLECT RELIC\nTHEN PLACE AT S6 ALTAR', {
+      fontFamily: '"Share Tech Mono", monospace',
+      fontSize: '7px',
+      color: '#ffd166',
+      backgroundColor: '#070b14',
+      padding: { x: 3, y: 2 }
+    }).setOrigin(0.5).setDepth(13);
   }
 
   // ── S0: Start Pad ───────────────────────────────────────────────────────────
@@ -305,7 +383,6 @@ export class GauntletWorldBuilder {
       { x: 1380, y: 285, w: 64 },  // Approach ledge before channel 2
       { x: 1760, y: 285, w: 64 },  // Landing ledge after channel 2
       { x: 1900, y: 265, w: 96 },  // Bonus cache ledge
-      { x: 2080, y: 265, w: 128 }, // Key vault tier
     ].forEach(p => {
       for (let px = p.x - p.w / 2; px <= p.x + p.w / 2; px += 32) {
         const tile = this.scene.add.sprite(px, p.y, 'tile_ice').setDepth(10);
@@ -313,9 +390,8 @@ export class GauntletWorldBuilder {
       }
     });
 
-    // Cryo vault architectural detail at key end
-    const vault = this.scene.add.sprite(2080, floorY - 32, 'tile_ice').setDepth(11);
-    this.scene.physics.add.existing(vault, true); this.staticGroup.add(vault);
+    // Ornate Relic Altar at Section 1 end — holds the Frost Relic
+    this.buildSectionRelicAltar(2080, 'FROST RELIC', 0x00f0ff, 'tile_ice_top');
 
     // Hint signs
     this.scene.add.text(640, 240, '⚠ LIQUID NITROGEN CHASM\n[E/J] FREEZE TO CROSS', {
@@ -412,17 +488,19 @@ export class GauntletWorldBuilder {
       color: '#ffd166', backgroundColor: '#1a0604', padding: { x: 3, y: 1 }
     }).setDepth(12);
 
-    // Approach platforms and key vault
+    // Approach platforms
     [
       { x: 3870, y: 280, w: 80 },
-      { x: 3990, y: 255, w: 96 },
-      { x: 4090, y: 255, w: 128 }  // blast furnace altar — key location
+      { x: 3990, y: 255, w: 96 }
     ].forEach(p => {
       for (let px = p.x - p.w / 2; px <= p.x + p.w / 2; px += 32) {
         const tile = this.scene.add.sprite(px, p.y, 'tile_stone').setTint(0xff6b35).setDepth(10);
         this.scene.physics.add.existing(tile, true); this.staticGroup.add(tile);
       }
     });
+
+    // Ornate Relic Altar at Section 2 end — holds the Ember Relic
+    this.buildSectionRelicAltar(4090, 'EMBER RELIC', 0xff6b35, 'tile_stone');
 
     this.scene.add.text(s.startX + 60, 240, 'S2: HEAT AGE — [E/J] THERMAL VENT TO BOOST ACROSS LAVA', {
       fontFamily: '"Share Tech Mono", monospace', fontSize: '8px',
@@ -492,13 +570,8 @@ export class GauntletWorldBuilder {
       { x: 6020, y: 258, patrolLeft: 5860, patrolRight: 6180 },
     ];
 
-    // Key vault platform (after all sentinels)
-    [{ x: 6150, y: 270, w: 128 }].forEach(p => {
-      for (let px = p.x - p.w / 2; px <= p.x + p.w / 2; px += 32) {
-        const tile = this.scene.add.sprite(px, p.y, 'tile_castle_brick').setDepth(10);
-        this.scene.physics.add.existing(tile, true); this.staticGroup.add(tile);
-      }
-    });
+    // Ornate Relic Altar at Section 3 end — holds the Royal Sigil
+    this.buildSectionRelicAltar(6150, 'ROYAL SIGIL', 0xd4af37, 'tile_castle_brick');
 
     // Guard zone warning signs
     this.scene.add.text(s.startX + 60, 220, 'S3: PALACE — ROYAL GUARDS BLOCK THE WAY\n[E/J] CAMOUFLAGE TO SLIP PAST UNSEEN', {
@@ -559,53 +632,53 @@ export class GauntletWorldBuilder {
       vineGfx.lineBetween(vx, 0, vx + 10, 80);
     }
 
-    // CHRONAL BARRIERS — 3 full-height (300px) solid walls
-    // Player CANNOT jump over (walls are 300px tall, jump max = 76px)
+    // CHRONAL PILLARS / BARRIERS — 3 full-height, double-column SOLID WALLS (64px thick)
+    // Stacked from y=-32 to y=360 using true static physics bodies.
+    // Player cannot jump over or bypass without using [E/J] Chronal Pulse.
     const BARRIER_XS = [6960, 7300, 7800];
     BARRIER_XS.forEach((bx, idx) => {
-      // Generate barrier texture (green chronal rune wall)
-      if (!this.scene.textures.exists(`cb_${idx}`)) {
-        const g = this.scene.make.graphics({ x: 0, y: 0 });
-        g.fillStyle(0x0a3020, 1);
-        g.fillRect(0, 0, 28, 300);
-        g.fillStyle(0x52b788, 0.85);
-        g.fillRect(3, 0, 22, 300);
-        g.lineStyle(2, 0x70e000, 1);
-        g.strokeRect(3, 0, 22, 300);
-        // Rune marks
-        g.fillStyle(0xffd166, 0.6);
-        for (let ry = 16; ry < 290; ry += 36) {
-          g.fillRect(9, ry, 10, 3);
+      const barrierSprites: Phaser.GameObjects.Sprite[] = [];
+
+      // Double-column solid static tiles (64px wide wall, -32px to 360px high)
+      for (let by = -32; by <= 360; by += 32) {
+        for (const colX of [bx - 16, bx + 16]) {
+          const tile = this.scene.add.sprite(colX, by, 'tile_stone')
+            .setTint(0x52b788)
+            .setDepth(14);
+          this.scene.physics.add.existing(tile, true);
+          this.staticGroup.add(tile);
+          barrierSprites.push(tile);
         }
-        g.fillStyle(0xffffff, 0.4);
-        g.fillCircle(14, 150, 8);
-        g.generateTexture(`cb_${idx}`, 28, 300);
-        g.destroy();
+
+        // Alternating glowing chronal runes on the pillar
+        if (by >= 32 && by <= 280 && by % 64 === 0) {
+          const rune = this.scene.add.text(bx, by, '⧖', {
+            fontSize: '12px', color: '#70e000', fontStyle: 'bold'
+          }).setOrigin(0.5).setDepth(15).setAlpha(0.85);
+          this.scene.tweens.add({
+            targets: rune, alpha: 0.35, yoyo: true, repeat: -1,
+            duration: 650 + idx * 80
+          });
+        }
       }
 
-      const bs = this.scene.physics.add.sprite(bx + 14, 170, `cb_${idx}`)
-        .setDepth(14).setImmovable(true);
-      (bs.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-      (bs.body as Phaser.Physics.Arcade.Body).setSize(28, 300);
-      this.staticGroup.add(bs);
+      // Pulsing energy field on the barrier tiles
+      this.scene.tweens.add({
+        targets: barrierSprites,
+        alpha: 0.7,
+        yoyo: true, repeat: -1, duration: 750 + idx * 100
+      });
 
-      this.chronalBarriers.push({ sprite: bs, x: bx, isOpen: false, index: idx });
+      this.chronalBarriers.push({ sprites: barrierSprites, x: bx, isOpen: false, index: idx });
 
-      this.scene.tweens.add({ targets: bs, alpha: 0.75, yoyo: true, repeat: -1, duration: 700 });
-
-      this.scene.add.text(bx - 4, 28, `⧖ LOCK\n${idx + 1}/3`, {
-        fontFamily: '"Share Tech Mono", monospace', fontSize: '7px',
-        color: '#70e000', backgroundColor: '#04160e', padding: { x: 2, y: 1 }
-      }).setDepth(15);
+      this.scene.add.text(bx, 28, `⧖ CHRONAL PILLAR ${idx + 1}/3\n[E/J] PULSE TO DISSOLVE`, {
+        fontFamily: '"Share Tech Mono", monospace', fontSize: '7px', fontStyle: 'bold',
+        color: '#70e000', backgroundColor: '#04160e', padding: { x: 4, y: 2 }
+      }).setOrigin(0.5).setDepth(15);
     });
 
-    // Key vault platform
-    [{ x: 8150, y: 270, w: 128 }].forEach(p => {
-      for (let px = p.x - p.w / 2; px <= p.x + p.w / 2; px += 32) {
-        const tile = this.scene.add.sprite(px, p.y, 'tile_stone').setTint(0x52b788).setDepth(10);
-        this.scene.physics.add.existing(tile, true); this.staticGroup.add(tile);
-      }
-    });
+    // Ornate Relic Altar at Section 4 end — holds the Chrono Seed
+    this.buildSectionRelicAltar(8150, 'CHRONO SEED', 0x52b788, 'tile_stone_top');
 
     this.scene.add.text(s.startX + 60, 230, 'S4: FOREST — [E/J] CHRONAL PULSE\nTO DISSOLVE EACH ANCIENT LOCK', {
       fontFamily: '"Share Tech Mono", monospace', fontSize: '8px',
@@ -661,58 +734,40 @@ export class GauntletWorldBuilder {
       this.scene.physics.add.existing(tile, true); this.staticGroup.add(tile);
     });
 
-    // PHASE WALLS — 3 full-height (360px) opaque walls
-    // width = 48px, going from y=0 to y=360
+    // PHASE WALLS — 3 full-height, double-column SOLID WALLS (64px thick)
+    // Spans from y=-32 to y=360. Player MUST use [E/J] Phase Shift to teleport through.
     const PHASE_WALL_XS = [8790, 9200, 9780];
 
     PHASE_WALL_XS.forEach((wx, idx) => {
-      if (!this.scene.textures.exists(`pw_${idx}`)) {
-        const g = this.scene.make.graphics({ x: 0, y: 0 });
-        g.fillStyle(0x1a0030, 1);
-        g.fillRect(0, 0, 48, 360);
-        g.fillStyle(0xff007f, 0.8);
-        g.fillRect(4, 0, 40, 360);
-        g.lineStyle(2, 0x00f0ff, 0.7);
-        g.strokeRect(4, 0, 40, 360);
-        // Scanlines
-        g.lineStyle(1, 0xff007f, 0.3);
-        for (let wy = 0; wy < 360; wy += 12) g.lineBetween(4, wy, 44, wy);
-        // "PHASE BARRIER" glyph center
-        g.fillStyle(0xffffff, 0.5);
-        g.fillCircle(24, 180, 12);
-        g.fillStyle(0xff007f, 1);
-        g.fillCircle(24, 180, 6);
-        g.generateTexture(`pw_${idx}`, 48, 360);
-        g.destroy();
+      const wallSprites: Phaser.GameObjects.Sprite[] = [];
+
+      for (let wy = -32; wy <= 360; wy += 32) {
+        for (const colX of [wx, wx + 32]) {
+          const tile = this.scene.add.sprite(colX, wy, 'tile_phase_b')
+            .setTint(0xff007f)
+            .setDepth(14);
+          this.scene.physics.add.existing(tile, true);
+          this.staticGroup.add(tile);
+          wallSprites.push(tile);
+        }
       }
 
-      const wallSprites: Phaser.Physics.Arcade.Sprite[] = [];
+      this.phaseWalls.push({ sprites: wallSprites, x: wx, width: 64, isPassed: false });
 
-      // One tall sprite covers the full wall
-      const ws = this.scene.physics.add.sprite(wx + 24, 180, `pw_${idx}`)
-        .setDepth(14).setImmovable(true);
-      (ws.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-      (ws.body as Phaser.Physics.Arcade.Body).setSize(48, 360);
-      this.staticGroup.add(ws);
-      wallSprites.push(ws);
+      this.scene.tweens.add({
+        targets: wallSprites,
+        alpha: 0.65,
+        yoyo: true, repeat: -1, duration: 400 + idx * 80
+      });
 
-      this.phaseWalls.push({ sprites: wallSprites, x: wx, width: 48, isPassed: false });
-
-      this.scene.tweens.add({ targets: ws, alpha: 0.7, yoyo: true, repeat: -1, duration: 350 });
-
-      this.scene.add.text(wx + 2, 24, `⌀ PHASE\nWALL ${idx + 1}/3`, {
-        fontFamily: '"Share Tech Mono", monospace', fontSize: '7px',
-        color: '#ff007f', backgroundColor: '#070b14', padding: { x: 2, y: 1 }
-      }).setDepth(15);
+      this.scene.add.text(wx + 16, 24, `⌀ PHASE WALL ${idx + 1}/3\n[E/J] PHASE SHIFT`, {
+        fontFamily: '"Share Tech Mono", monospace', fontSize: '7px', fontStyle: 'bold',
+        color: '#ff007f', backgroundColor: '#070b14', padding: { x: 3, y: 2 }
+      }).setOrigin(0.5).setDepth(15);
     });
 
-    // Key vault platform
-    [{ x: 10170, y: 270, w: 128 }].forEach(p => {
-      for (let px = p.x - p.w / 2; px <= p.x + p.w / 2; px += 32) {
-        const tile = this.scene.add.sprite(px, p.y, 'tile_phase_b').setDepth(10);
-        this.scene.physics.add.existing(tile, true); this.staticGroup.add(tile);
-      }
-    });
+    // Ornate Relic Altar at Section 5 end — holds the Void Shard
+    this.buildSectionRelicAltar(10170, 'VOID SHARD', 0xff007f, 'tile_phase_a');
 
     this.scene.add.text(s.startX + 60, 230, 'S5: REALITY SWAP — [E/J] PHASE SHIFT\nTO TELEPORT THROUGH PHASE WALLS', {
       fontFamily: '"Share Tech Mono", monospace', fontSize: '8px',
@@ -745,33 +800,60 @@ export class GauntletWorldBuilder {
       }
     }
 
-    // 5 Socket Shrines at comfortable heights (pedestals at y=280, 40px rise)
+    // 5 Majestic Convergence Altars (pedestals at y=256-288, receptacle at y=224)
     const SOCKET_XS = [10900, 11230, 11550, 11870, 12190];
     const socketThemes = [
-      { name: 'FROST SOCKET', color: 0x00f0ff, icon: '❄' },
-      { name: 'EMBER SOCKET', color: 0xff6b35, icon: '▲' },
-      { name: 'PALACE SOCKET', color: 0xd4af37, icon: '♜' },
-      { name: 'FOREST SOCKET', color: 0x52b788, icon: '✦' },
-      { name: 'RIFT SOCKET', color: 0xff007f, icon: '⌘' }
+      { name: 'FROST ALTAR', color: 0x00f0ff, icon: '❄', relic: 'FROST RELIC' },
+      { name: 'EMBER ALTAR', color: 0xff6b35, icon: '▲', relic: 'EMBER RELIC' },
+      { name: 'ROYAL ALTAR', color: 0xd4af37, icon: '♜', relic: 'ROYAL SIGIL' },
+      { name: 'CHRONO ALTAR', color: 0x52b788, icon: '✦', relic: 'CHRONO SEED' },
+      { name: 'VOID ALTAR', color: 0xff007f, icon: '⌘', relic: 'VOID SHARD' }
     ];
 
     SOCKET_XS.forEach((sx, idx) => {
       const theme = socketThemes[idx];
-      for (let px = sx - 48; px <= sx + 48; px += 32) {
-        const pt = this.scene.add.sprite(px, 282, 'tile_metal').setTint(theme.color).setDepth(11);
+
+      // 3-tier Altar Pedestal
+      // Tier 3 (floor level, y=288, 5 tiles wide):
+      for (let px = sx - 64; px <= sx + 64; px += 32) {
+        const pt = this.scene.add.sprite(px, floorY - 32, 'tile_metal').setTint(theme.color).setDepth(11);
         this.scene.physics.add.existing(pt, true); this.staticGroup.add(pt);
       }
-      // Side access steps at y=300 (18px rise from floor — trivially jumpable)
-      const sl = this.scene.add.sprite(sx - 72, 300, 'tile_metal').setDisplaySize(32, 20).setTint(theme.color).setDepth(11);
-      this.scene.physics.add.existing(sl, true); this.staticGroup.add(sl);
-      const sr = this.scene.add.sprite(sx + 72, 300, 'tile_metal').setDisplaySize(32, 20).setTint(theme.color).setDepth(11);
-      this.scene.physics.add.existing(sr, true); this.staticGroup.add(sr);
+      // Tier 2 (mid level, y=256, 3 tiles wide):
+      for (let px = sx - 32; px <= sx + 32; px += 32) {
+        const pt = this.scene.add.sprite(px, floorY - 64, 'tile_metal').setTint(theme.color).setDepth(11);
+        this.scene.physics.add.existing(pt, true); this.staticGroup.add(pt);
+      }
+      // Tier 1 (top altar, y=224, 1 tile wide):
+      const topTile = this.scene.add.sprite(sx, floorY - 96, 'tile_metal').setTint(theme.color).setDepth(11);
+      this.scene.physics.add.existing(topTile, true); this.staticGroup.add(topTile);
 
-      this.scene.add.text(sx, 200, `${theme.icon} ${theme.name}`, {
-        fontFamily: '"Share Tech Mono", monospace', fontSize: '9px',
+      // Receptacle glow beacon
+      const gfx = this.scene.add.graphics().setDepth(10);
+      gfx.fillStyle(theme.color, 0.15);
+      gfx.fillRect(sx - 6, 0, 12, floorY - 96);
+      gfx.lineStyle(1.5, theme.color, 0.7);
+      gfx.strokeRect(sx - 10, floorY - 102, 20, 102);
+
+      // Ambient rising energy particles
+      this.scene.add.particles(sx, floorY - 100, 'proto_tile', {
+        speedY: { min: -50, max: -20 }, speedX: { min: -8, max: 8 },
+        scale: { start: 0.35, end: 0 },
+        tint: [theme.color, 0xffffff], alpha: { start: 0.9, end: 0 },
+        lifespan: 1100, quantity: 1, frequency: 160
+      }).setDepth(13);
+
+      // Altar Banner
+      this.scene.add.text(sx, floorY - 160, `${theme.icon} ALTAR ${idx + 1}: ${theme.name}`, {
+        fontFamily: '"Share Tech Mono", monospace', fontSize: '9px', fontStyle: 'bold',
         color: '#' + theme.color.toString(16).padStart(6, '0'),
-        backgroundColor: '#070b14', padding: { x: 4, y: 2 }
-      }).setOrigin(0.5).setDepth(12);
+        backgroundColor: '#070b14', padding: { x: 5, y: 3 }
+      }).setOrigin(0.5).setDepth(13);
+
+      this.scene.add.text(sx, floorY - 138, `[RECEPTACLE]\nPLACE ${theme.relic}`, {
+        fontFamily: '"Share Tech Mono", monospace', fontSize: '7px',
+        color: '#ffd166', backgroundColor: '#070b14', padding: { x: 3, y: 2 }
+      }).setOrigin(0.5).setDepth(13);
     });
 
     this.scene.add.text(10530, 230, 'S6: CONVERGENCE — FILL ALL 5 SOCKETS\n[E/J] FREEZE FLUME · THEN WALK TO EACH SOCKET', {

@@ -92,53 +92,69 @@ export class GauntletPuzzleManager {
     AudioManager.playComponent3Collect();
     this.hud.setFailsafeFound(this.keysCollected.size, 5);
 
-    // Apply Cross-Section Carry-Overs
+    // Apply Cross-Section Carry-Overs and clear guidance
     if (keyIndex === 1) {
       this.isS2HeatGateLowered = true;
-      this.hud.showBanner('FROST KEY OBTAINED: SEAM 1 UNLOCKED · S2 HEAT DOOR COOLED');
+      this.hud.showBanner('★ FROST RELIC (S1) SECURED! SEAM 1 UNLOCKED · PLACE AT S6 ALTAR 1');
     } else if (keyIndex === 2) {
       this.areS3BraziersIgnited = true;
-      this.hud.showBanner('EMBER CORE OBTAINED: SEAM 2 UNLOCKED · S3 PALACE BRAZIERS IGNITED');
+      this.hud.showBanner('★ EMBER RELIC (S2) SECURED! SEAM 2 UNLOCKED · PLACE AT S6 ALTAR 2');
     } else if (keyIndex === 3) {
-      this.hud.showBanner('VAULT SEAL OBTAINED: SEAM 3 UNLOCKED');
+      this.hud.showBanner('★ ROYAL SIGIL (S3) SECURED! SEAM 3 UNLOCKED · PLACE AT S6 ALTAR 3');
     } else if (keyIndex === 4) {
       this.isS5TransceiverEnergized = true;
-      this.hud.showBanner('ELDER SEED OBTAINED: SEAM 4 UNLOCKED · S5 RIFT CONDUIT ENERGIZED');
+      this.hud.showBanner('★ CHRONO SEED (S4) SECURED! SEAM 4 UNLOCKED · PLACE AT S6 ALTAR 4');
     } else if (keyIndex === 5) {
-      this.hud.showBanner('RIFT CORE OBTAINED: SEAM 5 UNLOCKED · CONVERGENCE CORE ACTIVE');
+      this.hud.showBanner('★ VOID SHARD (S5) SECURED! SEAM 5 UNLOCKED · PLACE AT S6 ALTAR 5');
     }
 
     this.onStateChange?.('key', keyIndex);
   }
 
   /**
-   * Sequential socket interaction in S6 Convergence Core.
-   * Enforces forced order: F1 -> F2 -> F3 -> F4 -> F5.
-   * If player attempts to interact with socket N before socket N-1 is locked:
-   * triggers visible reset and warning without soft-locking.
+   * Altar interaction in S6 Convergence Core.
+   * Requires that the player collected the relic from the corresponding section (S1-S5).
+   * Enforces forced sequential order: Altar 1 -> Altar 2 -> Altar 3 -> Altar 4 -> Altar 5.
    */
   public attemptFillSocket(socketNum: number): boolean {
     if (this.socketsFilled.has(socketNum)) return false;
+
+    const RELIC_NAMES = [
+      '',
+      'FROST RELIC',
+      'EMBER RELIC',
+      'ROYAL SIGIL',
+      'CHRONO SEED',
+      'VOID SHARD'
+    ];
+
+    // Check if player collected the corresponding section relic
+    if (!this.keysCollected.has(socketNum)) {
+      AudioManager.playDroneStun();
+      this.hud.showBanner(`ALTAR ${socketNum} EMPTY: YOU NEED THE ${RELIC_NAMES[socketNum]} FROM SECTION ${socketNum}!`);
+      this.scene.cameras.main.shake(120, 0.006);
+      return false;
+    }
 
     const expected = this.socketsFilled.size + 1;
     if (socketNum !== expected) {
       // Wrong order attempt: visual spark & audio warning
       AudioManager.playDroneStun();
-      this.hud.showBanner(`ANOMALY: SOCKET ${socketNum} OUT OF ORDER! SEQUENCE MUST BE F${expected}!`);
+      this.hud.showBanner(`ALTAR ORDER: ACTIVATE ALTAR ${expected} BEFORE ALTAR ${socketNum}!`);
       this.scene.cameras.main.shake(150, 0.008);
       return false;
     }
 
-    // Correct order: lock socket!
+    // Correct order & relic possessed: lock socket!
     this.socketsFilled.add(socketNum);
     const objId = `F${socketNum}`;
     this.completeObjective(objId);
 
     AudioManager.playAssembleFailsafe();
-    this.hud.showBanner(`SOCKET ${socketNum}/5 LOCKED IN SEQUENCE!`);
+    this.hud.showBanner(`★ ALTAR ${socketNum}/5 ACTIVATED: ${RELIC_NAMES[socketNum]} PLACED!`);
 
     if (this.socketsFilled.size === 5) {
-      this.hud.showBanner('ALL 5 CONVERGENCE SOCKETS LOCKED! EXTRACTION RIFT UNSEALED!');
+      this.hud.showBanner('🌟 ALL 5 RELICS PLACED! EXTRACTION RIFT UNSEALED — ENTER THE PORTAL!');
     }
 
     this.onStateChange?.('socket', socketNum);

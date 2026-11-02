@@ -113,6 +113,7 @@ export class Level6Scene extends Phaser.Scene {
     TextureGenerator.generateMedievalTextures(this);
     TextureGenerator.generateCityTextures(this);
     TextureGenerator.generateFuturisticTextures(this);
+    TextureGenerator.generateGauntletRelicTextures(this);
 
     // Physics static groups
     this.platforms = this.physics.add.staticGroup();
@@ -309,32 +310,39 @@ export class Level6Scene extends Phaser.Scene {
       });
     });
 
-    // 3. Primary Key Collectibles — positioned above the vault platforms built by world builder
+    // 3. Primary Sector Relic Collectibles — positioned above the ornate section altars
     const keyDefs = [
-      { id: 'O1.3', keyNum: 1, x: 2080, y: 240, texture: 'chamber_key',      color: 0x00f0ff }, // S1 vault tier y=265
-      { id: 'O2.4', keyNum: 2, x: 4090, y: 230, texture: 'chamber_key',      color: 0xff6b35 }, // S2 altar y=255
-      { id: 'O3.4', keyNum: 3, x: 6150, y: 248, texture: 'relic_component3', color: 0xd4af37 }, // S3 vault y=270
-      { id: 'O4.4', keyNum: 4, x: 8150, y: 248, texture: 'relic_component4', color: 0x52b788 }, // S4 vault y=270
-      { id: 'O5.4', keyNum: 5, x: 10170, y: 248, texture: 'relic_component5', color: 0xff007f } // S5 vault y=270
+      { id: 'O1.3', keyNum: 1, x: 2080, y: 194, texture: 'relic_s1_frost',  color: 0x00f0ff, name: 'FROST RELIC' }, // S1 altar
+      { id: 'O2.4', keyNum: 2, x: 4090, y: 194, texture: 'relic_s2_ember',  color: 0xff6b35, name: 'EMBER RELIC' }, // S2 altar
+      { id: 'O3.4', keyNum: 3, x: 6150, y: 194, texture: 'relic_s3_royal',  color: 0xd4af37, name: 'ROYAL SIGIL' }, // S3 altar
+      { id: 'O4.4', keyNum: 4, x: 8150, y: 194, texture: 'relic_s4_forest', color: 0x52b788, name: 'CHRONO SEED' }, // S4 altar
+      { id: 'O5.4', keyNum: 5, x: 10170, y: 194, texture: 'relic_s5_rift',   color: 0xff007f, name: 'VOID SHARD' }  // S5 altar
     ];
 
     keyDefs.forEach(kd => {
       const keySprite = this.physics.add.sprite(kd.x, kd.y, kd.texture)
-        .setTint(kd.color).setDepth(14);
+        .setDepth(14);
       (keySprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
       this.tweens.add({
-        targets: keySprite, y: kd.y - 10, scale: 1.15, duration: 850, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+        targets: keySprite, y: kd.y - 12, scale: 1.25, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
       });
+      this.tweens.add({
+        targets: keySprite, angle: 360, duration: 3500, repeat: -1, ease: 'Linear'
+      });
+
       this.physics.add.overlap(this.player, keySprite, () => {
         if (!keySprite.active) return;
         keySprite.setActive(false).setVisible(false);
         (keySprite.body as Phaser.Physics.Arcade.Body).enable = false;
+
         this.puzzleManager.completeObjective(kd.id);
+        this.puzzleManager.collectKey(kd.keyNum);
+
         const emitter = this.add.particles(kd.x, kd.y, 'proto_tile', {
-          speed: { min: 40, max: 120 }, scale: { start: 0.5, end: 0 },
-          tint: [kd.color, 0xffffff], lifespan: 600, quantity: 16
+          speed: { min: 50, max: 140 }, scale: { start: 0.6, end: 0 },
+          tint: [kd.color, 0xffffff], lifespan: 700, quantity: 24
         });
-        this.time.delayedCall(650, () => emitter.destroy());
+        this.time.delayedCall(750, () => emitter.destroy());
       });
       this.keyPickupSprites.push(keySprite);
     });
@@ -365,13 +373,12 @@ export class Level6Scene extends Phaser.Scene {
       });
     });
 
-    // 5. S6 Socket Interactive Triggers — aligned with socket pedestals (pedestal top y=282)
-    // Trigger zone at y=260 with 40px height to catch player walking on top of pedestal
+    // 5. S6 Altar Interactive Triggers — aligned with altar pedestals (altar top at y=224)
     const socketXS = [10900, 11230, 11550, 11870, 12190];
     socketXS.forEach((sx, idx) => {
       const socketNum = idx + 1;
-      const socketPad = this.physics.add.sprite(sx, 260, 'tile_holo_data')
-        .setDisplaySize(96, 40).setDepth(12).setAlpha(0.01); // nearly invisible trigger volume
+      const socketPad = this.physics.add.sprite(sx, 220, 'tile_holo_data')
+        .setDisplaySize(96, 70).setDepth(12).setAlpha(0.01);
       (socketPad.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
       this.physics.add.overlap(this.player, socketPad, () => {
         this.puzzleManager.attemptFillSocket(socketNum);
@@ -558,6 +565,9 @@ export class Level6Scene extends Phaser.Scene {
       if (this.seams[keyIndex - 1]) {
         this.seams[keyIndex - 1].openGate();
       }
+    } else if (type === 'socket') {
+      const socketNum = data as number;
+      this.activateS6AltarVisuals(socketNum);
     } else if (type === 'surge' && data === 'impact') {
       // If player is moving in the open during surge impact, deal minor non-lethal glitch hit
       if (!this.player.isDead && !this.isRespawning) {
@@ -566,6 +576,62 @@ export class Level6Scene extends Phaser.Scene {
         this.hud.showBanner('WARNING: GLITCH SURGE DISRUPTED SYSTEMS (-1 INTEGRITY)');
       }
     }
+  }
+
+  /**
+   * Activates radiant visual effects when a relic is placed on an S6 Convergence Altar.
+   */
+  private activateS6AltarVisuals(socketNum: number): void {
+    const socketXS = [10900, 11230, 11550, 11870, 12190];
+    const altarDefs = [
+      { texture: 'relic_s1_frost',  color: 0x00f0ff, name: 'FROST RELIC' },
+      { texture: 'relic_s2_ember',  color: 0xff6b35, name: 'EMBER RELIC' },
+      { texture: 'relic_s3_royal',  color: 0xd4af37, name: 'ROYAL SIGIL' },
+      { texture: 'relic_s4_forest', color: 0x52b788, name: 'CHRONO SEED' },
+      { texture: 'relic_s5_rift',   color: 0xff007f, name: 'VOID SHARD' }
+    ];
+    const def = altarDefs[socketNum - 1];
+    const sx = socketXS[socketNum - 1];
+    if (!def || !sx) return;
+
+    // Floating, illuminated relic placed into the altar
+    const placedRelic = this.add.sprite(sx, 190, def.texture).setDepth(16);
+    this.tweens.add({
+      targets: placedRelic, y: 180, scale: 1.3, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
+    });
+    this.tweens.add({
+      targets: placedRelic, angle: 360, duration: 3000, repeat: -1, ease: 'Linear'
+    });
+
+    // Intense vertical beam shining up from the activated altar
+    const beam = this.add.graphics().setDepth(15);
+    beam.fillStyle(def.color, 0.35);
+    beam.fillRect(sx - 8, 0, 16, 224);
+    beam.fillStyle(0xffffff, 0.6);
+    beam.fillRect(sx - 3, 0, 6, 224);
+
+    // Continuous rising particles from activated altar
+    this.add.particles(sx, 220, 'proto_tile', {
+      speedY: { min: -120, max: -40 },
+      speedX: { min: -15, max: 15 },
+      scale: { start: 0.5, end: 0 },
+      tint: [def.color, 0xffffff],
+      lifespan: 1000,
+      quantity: 2,
+      frequency: 100
+    }).setDepth(16);
+
+    // Celebration status text
+    this.add.text(sx, 140, `★ ACTIVATED\n${def.name}`, {
+      fontFamily: '"Share Tech Mono", monospace',
+      fontSize: '8px', fontStyle: 'bold',
+      color: '#' + def.color.toString(16).padStart(6, '0'),
+      backgroundColor: '#070b14',
+      padding: { x: 4, y: 2 }
+    }).setOrigin(0.5).setDepth(17);
+
+    // Shockwave burst
+    this.cameras.main.flash(180, 255, 255, 255);
   }
 
   // ── Main Update Loop ────────────────────────────────────────────────────────
@@ -614,6 +680,27 @@ export class Level6Scene extends Phaser.Scene {
     else if (px < 8500)  this.currentSection = 4;
     else if (px < 10500) this.currentSection = 5;
     else                 this.currentSection = 6;
+
+    // Strict Barrier & Wall Enforcements:
+    // S4 Chronal Pillars: player cannot pass through without using Chronal Pulse
+    for (const barrier of this.worldBuilder.chronalBarriers) {
+      if (!barrier.isOpen) {
+        if (this.player.x > barrier.x - 24 && this.player.x < barrier.x + 48) {
+          this.player.x = barrier.x - 24;
+          this.player.setVelocityX(0);
+        }
+      }
+    }
+
+    // S5 Phase Walls: player cannot pass through without using Phase Shift
+    for (const pw of this.worldBuilder.phaseWalls) {
+      if (!pw.isPassed) {
+        if (this.player.x > pw.x - 24 && this.player.x < pw.x + pw.width + 24) {
+          this.player.x = pw.x - 24;
+          this.player.setVelocityX(0);
+        }
+      }
+    }
 
     this.seams.forEach(seam => {
       if (px >= seam.def.x1 && !seam.hasCrossed) {

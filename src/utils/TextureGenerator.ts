@@ -1441,6 +1441,146 @@ export class TextureGenerator {
       // Fallback silently if canvas texture cannot be created
     }
   }
+
+  /**
+   * Generates unique high-fidelity 32x32 textures for the 5 Sector Relics in Level 6 (The Gauntlet).
+   */
+  public static generateGauntletRelicTextures(scene: Phaser.Scene): void {
+    // S1: Frost Relic — crystalline ice diamond
+    if (!scene.textures.exists('relic_s1_frost')) {
+      const gfx = scene.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x041c2c, 0.95);
+      gfx.beginPath();
+      gfx.moveTo(16, 2); gfx.lineTo(30, 16); gfx.lineTo(16, 30); gfx.lineTo(2, 16);
+      gfx.closePath(); gfx.fillPath();
+
+      gfx.lineStyle(2, 0x00f0ff, 1);
+      gfx.strokePath();
+
+      // Facets
+      gfx.lineStyle(1, 0xade8f4, 0.85);
+      gfx.lineBetween(16, 2, 16, 30);
+      gfx.lineBetween(2, 16, 30, 16);
+      gfx.lineBetween(9, 9, 23, 23);
+      gfx.lineBetween(23, 9, 9, 23);
+
+      // Core glow
+      gfx.fillStyle(0xffffff, 0.9);
+      gfx.fillCircle(16, 16, 4);
+      gfx.fillStyle(0x00f0ff, 0.6);
+      gfx.fillCircle(16, 16, 7);
+
+      gfx.generateTexture('relic_s1_frost', 32, 32);
+      gfx.destroy();
+    }
+
+    // S2: Ember Relic — magma flame core
+    if (!scene.textures.exists('relic_s2_ember')) {
+      const gfx = scene.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x2d0b00, 0.95);
+      gfx.fillCircle(16, 16, 13);
+
+      gfx.lineStyle(2, 0xff6b35, 1);
+      gfx.strokeCircle(16, 16, 13);
+
+      // Outer flame points
+      gfx.fillStyle(0xff4500, 0.8);
+      gfx.fillTriangle(16, 1, 11, 8, 21, 8);
+      gfx.fillTriangle(31, 16, 24, 11, 24, 21);
+      gfx.fillTriangle(16, 31, 11, 24, 21, 24);
+      gfx.fillTriangle(1, 16, 8, 11, 8, 21);
+
+      // Inner molten heart
+      gfx.fillStyle(0xffd166, 1);
+      gfx.fillCircle(16, 16, 6);
+      gfx.fillStyle(0xffffff, 0.9);
+      gfx.fillCircle(16, 16, 3);
+
+      gfx.generateTexture('relic_s2_ember', 32, 32);
+      gfx.destroy();
+    }
+
+    // S3: Royal Sigil — golden crown talisman
+    if (!scene.textures.exists('relic_s3_royal')) {
+      const gfx = scene.make.graphics({ x: 0, y: 0 });
+      // Shield base
+      gfx.fillStyle(0x221a00, 0.95);
+      gfx.beginPath();
+      gfx.moveTo(6, 4); gfx.lineTo(26, 4); gfx.lineTo(26, 20); gfx.lineTo(16, 29); gfx.lineTo(6, 20);
+      gfx.closePath(); gfx.fillPath();
+
+      gfx.lineStyle(2, 0xd4af37, 1);
+      gfx.strokePath();
+
+      // Crown points at top
+      gfx.fillStyle(0xffd700, 1);
+      gfx.fillTriangle(9, 10, 6, 4, 12, 6);
+      gfx.fillTriangle(16, 9, 13, 3, 19, 3);
+      gfx.fillTriangle(23, 10, 20, 6, 26, 4);
+
+      // Royal gem center
+      gfx.fillStyle(0x9b5de5, 1);
+      gfx.fillCircle(16, 18, 4);
+      gfx.fillStyle(0xffffff, 0.85);
+      gfx.fillCircle(15, 17, 1.5);
+
+      gfx.generateTexture('relic_s3_royal', 32, 32);
+      gfx.destroy();
+    }
+
+    // S4: Chrono Seed — ancient temporal acorn
+    if (!scene.textures.exists('relic_s4_forest')) {
+      const gfx = scene.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x072013, 0.95);
+      gfx.fillEllipse(16, 16, 24, 28);
+
+      gfx.lineStyle(2, 0x52b788, 1);
+      gfx.strokeEllipse(16, 16, 24, 28);
+
+      // Leaf / growth spiral
+      gfx.lineStyle(1.5, 0x70e000, 0.9);
+      gfx.beginPath();
+      gfx.arc(16, 16, 7, 0, Math.PI * 1.5, false);
+      gfx.strokePath();
+
+      // Seed core
+      gfx.fillStyle(0xa7c957, 1);
+      gfx.fillCircle(16, 16, 5);
+      gfx.fillStyle(0xffffff, 0.9);
+      gfx.fillCircle(16, 14, 2);
+
+      gfx.generateTexture('relic_s4_forest', 32, 32);
+      gfx.destroy();
+    }
+
+    // S5: Void Shard — prismatic dimensional crystal
+    if (!scene.textures.exists('relic_s5_rift')) {
+      const gfx = scene.make.graphics({ x: 0, y: 0 });
+      gfx.fillStyle(0x180028, 0.95);
+      gfx.beginPath();
+      gfx.moveTo(16, 2); gfx.lineTo(29, 10); gfx.lineTo(25, 28); gfx.lineTo(7, 28); gfx.lineTo(3, 10);
+      gfx.closePath(); gfx.fillPath();
+
+      gfx.lineStyle(2, 0xff007f, 1);
+      gfx.strokePath();
+
+      // Internal hyper-geometry
+      gfx.lineStyle(1, 0x00f0ff, 0.9);
+      gfx.lineBetween(16, 2, 25, 28);
+      gfx.lineBetween(16, 2, 7, 28);
+      gfx.lineBetween(3, 10, 29, 10);
+
+      // Singularity point
+      gfx.fillStyle(0xffffff, 1);
+      gfx.fillCircle(16, 16, 4);
+      gfx.fillStyle(0xff007f, 0.7);
+      gfx.fillCircle(16, 16, 6);
+
+      gfx.generateTexture('relic_s5_rift', 32, 32);
+      gfx.destroy();
+    }
+  }
 }
+
 
 
