@@ -320,7 +320,7 @@ export class MainMenuScene extends Phaser.Scene {
 
     drawButton(0x0b1320, 0x39a84a, 0.88);
 
-    const label = this.add.text(0, 0, '★ LEVEL 6', {
+    const label = this.add.text(0, 0, '★ CONVERGENCE', {
       fontFamily: GAME_FONTS.primary,
       fontSize: '10px',
       fontStyle: 'bold',
