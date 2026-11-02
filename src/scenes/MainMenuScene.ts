@@ -3,7 +3,6 @@ import { GAME_CONFIG, GAME_FONTS } from '../config';
 import { SettingsModal } from '../ui/SettingsModal';
 import { ExitModal } from '../ui/ExitModal';
 import { AudioManager } from '../systems/AudioManager';
-import { SaveSystem } from '../systems/SaveSystem';
 
 /** Developer unlock key constant to quickly test The Convergence bonus level. Set to null for release. */
 export const DEV_UNLOCK_KEY: number | null = Phaser.Input.Keyboard.KeyCodes.SIX;
@@ -109,7 +108,6 @@ export class MainMenuScene extends Phaser.Scene {
     }).setOrigin(1, 0.5).setVisible(false);
 
     // 4. Menu Buttons matching reference image (with Level 6 unlocked when Level 5 cleared)
-    const isLevel6Unlocked = SaveSystem.isLevel6Unlocked();
     const buttonConfigs = [
       { label: 'PLAY', icon: '▶', action: () => this.handlePlay() },
       ...(isLevel6Unlocked ? [{ label: 'GAUNTLET', icon: '★', action: () => this.startLevel6() }] : []),
@@ -161,6 +159,10 @@ export class MainMenuScene extends Phaser.Scene {
       const key1 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ONE);
       key1.on('down', () => this.handlePlay());
     }
+
+    // Small direct-access button for the Level 6 bonus stage.
+    // Kept separate from the main menu navigation buttons.
+    this.createLevel6Button(width - 58, height - 38);
 
     // Version label
     this.add.text(width - 12, height - 8, 'GlitchVerse v0.1.0', {
@@ -288,6 +290,66 @@ export class MainMenuScene extends Phaser.Scene {
         this.scene.start('Level6Scene');
       }
     });
+  }
+
+  private createLevel6Button(x: number, y: number): void {
+    const buttonWidth = 92;
+    const buttonHeight = 22;
+
+    const button = this.add.container(x, y).setDepth(20);
+    const background = this.add.graphics();
+
+    const drawButton = (fill: number, stroke: number, alpha: number): void => {
+      background.clear();
+      background.fillStyle(fill, alpha);
+      background.fillRoundedRect(
+        -buttonWidth / 2,
+        -buttonHeight / 2,
+        buttonWidth,
+        buttonHeight,
+        4
+      );
+      background.lineStyle(1, stroke, 1);
+      background.strokeRoundedRect(
+        -buttonWidth / 2,
+        -buttonHeight / 2,
+        buttonWidth,
+        buttonHeight,
+        4
+      );
+    };
+
+    drawButton(0x0b1320, 0x39a84a, 0.88);
+
+    const label = this.add.text(0, 0, '★ LEVEL 6', {
+      fontFamily: GAME_FONTS.primary,
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#70e000'
+    }).setOrigin(0.5);
+
+    const hitArea = this.add.zone(0, 0, buttonWidth, buttonHeight)
+      .setInteractive({ useHandCursor: true });
+
+    hitArea.on('pointerover', () => {
+      if (this.activeModal) return;
+      drawButton(0x164329, 0x70e000, 1);
+      label.setColor('#ffffff');
+      button.setScale(1.06);
+    });
+
+    hitArea.on('pointerout', () => {
+      drawButton(0x0b1320, 0x39a84a, 0.88);
+      label.setColor('#70e000');
+      button.setScale(1);
+    });
+
+    hitArea.on('pointerup', () => {
+      if (this.activeModal) return;
+      this.startLevel6();
+    });
+
+    button.add([background, label, hitArea]);
   }
 
   private createMenuButton(
