@@ -155,13 +155,14 @@ public static isAllLevelsCompleted(): boolean {
     this.saveProgress(progress);
   }
 
-  public static isConvergenceUnlocked(): boolean {
-    return this.isAllLevelsCompleted();
+  public static isLevel6Unlocked(): boolean {
+    const progress = this.getProgress();
+    return this.isAllLevelsCompleted() || progress.unlockedLevel >= 6 || progress.completedLevels.includes(5);
   }
 
-  public static getConvergenceBestScore(): number | undefined {
+  public static getLevel6BestScore(): number | undefined {
     try {
-      const raw = localStorage.getItem('glitchverse_convergence_best');
+      const raw = localStorage.getItem('glitchverse_level6_best');
       if (raw !== null) {
         const val = Number(raw);
         return isNaN(val) ? undefined : val;
@@ -172,14 +173,26 @@ public static isAllLevelsCompleted(): boolean {
     return undefined;
   }
 
-  public static saveConvergenceScore(score: number): void {
+  public static saveLevel6Score(score: number): void {
     try {
-      const current = this.getConvergenceBestScore() ?? 0;
+      const current = this.getLevel6BestScore() ?? 0;
       if (score > current) {
-        localStorage.setItem('glitchverse_convergence_best', String(score));
+        localStorage.setItem('glitchverse_level6_best', String(score));
       }
     } catch {
       // Storage unavailable fallback
     }
+  }
+
+  public static isConvergenceUnlocked(): boolean {
+    return this.isLevel6Unlocked();
+  }
+
+  public static getConvergenceBestScore(): number | undefined {
+    return this.getLevel6BestScore();
+  }
+
+  public static saveConvergenceScore(score: number): void {
+    this.saveLevel6Score(score);
   }
 }

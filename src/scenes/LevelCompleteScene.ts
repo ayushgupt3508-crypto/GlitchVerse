@@ -42,9 +42,9 @@ export class LevelCompleteScene extends Phaser.Scene {
     for (let y = 0; y < H; y += 20) bg.lineBetween(0, y, W, y);
 
     // Header color based on sector
-    const headerColor = sector === 3 ? 0xd4af37 : sector === 2 ? 0xff6b35 : 0x00f0ff;
-    const sectorTitle = sector === 3 ? 'SECTOR 3: INFILTRATED' : sector === 2 ? 'SECTOR 2: ESCAPED' : 'SECTOR 1: ESCAPED';
-    const sectorSubtitle = sector === 3 ? '// MEDIEVAL PALACE VAULT BREACHED //' : sector === 2 ? '// HEAT AGE SECTOR CLEARED //' : '// FROZEN AGE SECTOR CLEARED //';
+    const headerColor = sector === 6 ? 0x00f0ff : sector === 5 ? 0xff007f : sector === 4 ? 0x52b788 : sector === 3 ? 0xd4af37 : sector === 2 ? 0xff6b35 : 0x00f0ff;
+    const sectorTitle = sector === 6 ? 'SECTOR 6: GAUNTLET CLEARED' : sector === 5 ? 'SECTOR 5: CORE OVERRIDDEN' : sector === 4 ? 'SECTOR 4: FOREST CLEARED' : sector === 3 ? 'SECTOR 3: INFILTRATED' : sector === 2 ? 'SECTOR 2: ESCAPED' : 'SECTOR 1: ESCAPED';
+    const sectorSubtitle = sector === 6 ? '// ALL ANOMALIES SYNCHRONIZED //' : sector === 5 ? '// REALITY FRACTURE HEALED //' : sector === 4 ? '// ANCIENT CHRONAL MATRIX RESTORED //' : sector === 3 ? '// MEDIEVAL PALACE VAULT BREACHED //' : sector === 2 ? '// HEAT AGE SECTOR CLEARED //' : '// FROZEN AGE SECTOR CLEARED //';
 
     // Glowing header bar
     const headerBar = this.add.graphics();
@@ -70,7 +70,7 @@ export class LevelCompleteScene extends Phaser.Scene {
       fontFamily: GAME_FONTS.primary,
       fontSize: '11px',
       fontStyle: 'bold',
-      color: sector === 3 ? '#ffd166' : sector === 2 ? '#ff9e00' : '#48cae4',
+      color: sector === 6 ? '#00f0ff' : sector === 5 ? '#ff007f' : sector === 4 ? '#52b788' : sector === 3 ? '#ffd166' : sector === 2 ? '#ff9e00' : '#48cae4',
       stroke: '#001a33',
       strokeThickness: 2
     }).setOrigin(0.5).setAlpha(0.85);
@@ -170,9 +170,13 @@ export class LevelCompleteScene extends Phaser.Scene {
       nextTarget = 'Level5Scene';
       nextColor = '#ff007f';
     } else if (sector === 5) {
+      nextLabel = 'CONTINUE TO SECTOR 6: THE GAUNTLET ▶';
+      nextTarget = 'Level6Scene';
+      nextColor = '#00f0ff';
+    } else if (sector === 6) {
       nextLabel = 'PROCEED TO EXTRACTION EPILOGUE ▶';
       nextTarget = 'GameEnding';
-      nextColor = '#00f0ff';
+      nextColor = '#ffd166';
     }
 
     // Continue / Replay button

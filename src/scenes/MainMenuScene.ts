@@ -108,19 +108,19 @@ export class MainMenuScene extends Phaser.Scene {
       color: '#70e000'
     }).setOrigin(1, 0.5).setVisible(false);
 
-    // 4. Menu Buttons matching reference image (with bonus level unlocked when all 5 levels cleared)
-    const isConvergenceUnlocked = SaveSystem.isAllLevelsCompleted();
+    // 4. Menu Buttons matching reference image (with Level 6 unlocked when Level 5 cleared)
+    const isLevel6Unlocked = SaveSystem.isLevel6Unlocked();
     const buttonConfigs = [
       { label: 'PLAY', icon: '▶', action: () => this.handlePlay() },
-      ...(isConvergenceUnlocked ? [{ label: 'CONVERGENCE', icon: '★', action: () => this.startSpecialLevel() }] : []),
+      ...(isLevel6Unlocked ? [{ label: 'LEVEL 6', icon: '★', action: () => this.startLevel6() }] : []),
       { label: 'SETTINGS', icon: '⚙', action: () => this.openSettings() },
       { label: 'CREDITS', icon: '≡', action: () => this.openCredits() },
       { label: 'EXIT', icon: '➔', action: () => this.openExit() }
     ];
 
     const startX = 120;
-    const startY = isConvergenceUnlocked ? 110 : 125;
-    const spacingY = isConvergenceUnlocked ? 31 : 36;
+    const startY = isLevel6Unlocked ? 110 : 125;
+    const spacingY = isLevel6Unlocked ? 31 : 36;
 
     this.buttons = [];
     buttonConfigs.forEach((cfg, idx) => {
@@ -138,11 +138,11 @@ export class MainMenuScene extends Phaser.Scene {
     // Default pointer position to the first button (PLAY)
     this.setPointerToButton(this.buttons[0]);
 
-    // Keyboard shortcuts for level testing: [1] S1, [2] S2, [3] S3, [4] S4 (Ancient Forest), [5] S5 (Futuristic Core), [6] Convergence
+    // Keyboard shortcuts for level testing: [1] S1, [2] S2, [3] S3, [4] S4 (Ancient Forest), [5] S5 (Futuristic Core), [6] Level 6 Gauntlet
     if (this.input.keyboard) {
       if (DEV_UNLOCK_KEY !== null) {
         const key6 = this.input.keyboard.addKey(DEV_UNLOCK_KEY);
-        const onKey6 = () => this.startSpecialLevel();
+        const onKey6 = () => this.startLevel6();
         key6.on('down', onKey6);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
           key6.off('down', onKey6);
@@ -281,11 +281,11 @@ export class MainMenuScene extends Phaser.Scene {
     });
   }
 
-  private startSpecialLevel(): void {
+  private startLevel6(): void {
     if (this.activeModal) return;
     this.cameras.main.fade(300, 12, 6, 28, false, (_cam: Phaser.Cameras.Scene2D.Camera, progress: number) => {
       if (progress === 1) {
-        this.scene.start('SpecialLevelScene');
+        this.scene.start('Level6Scene');
       }
     });
   }

@@ -21,7 +21,8 @@ export const GAME_CONFIG = {
     FinalScore: 'FinalScore',
     Credits: 'Credits',
     Ending: 'EndingScene',
-    SpecialLevel: 'SpecialLevelScene'
+    Level6: 'Level6Scene',
+    SpecialLevel: 'Level6Scene'
   }
 } as const;
 
