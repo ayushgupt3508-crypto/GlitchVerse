@@ -136,7 +136,6 @@ export class Level4Scene extends Phaser.Scene {
   private worldIndicators: Array<{ id: string; container: Phaser.GameObjects.Container }> = [];
   private discoveredZones = new Set<number>();
   private staffRangeGfx!: Phaser.GameObjects.Graphics;
-  private escKey!: Phaser.Input.Keyboard.Key;
 
   // Scene-owned state flags
   private isRespawning = false;
@@ -277,12 +276,7 @@ export class Level4Scene extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 10, 28, 20);
 
     // 12. Connect Pause & Keyboard
-
-    if (this.input.keyboard) {
-      this.escKey = this.input.keyboard.addKey(
-        Phaser.Input.Keyboard.KeyCodes.ESC
-      );
-    }
+    
     this.time.delayedCall(1200, () => {
       this.hud.showBanner('SECTOR 4: ANCIENT FOREST — USE [T/E] TO PULSE SAPLINGS & RESTORE BRIDGES');
     });

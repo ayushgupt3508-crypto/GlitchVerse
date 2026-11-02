@@ -9,7 +9,6 @@ import { GameOverScreen, GameOverCallbacks } from '../ui/GameOverScreen';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { AudioManager } from '../systems/AudioManager';
 import { setupMobileForScene, MobileSetupHandle } from '../ui/MobileSetup';
-import { FullscreenManager } from '../systems/FullscreenManager';
 import { SaveSystem } from '../systems/SaveSystem';
 import { ThermalVentAbility } from '../abilities/ThermalVentAbility';
 import { HUD } from '../ui/HUD'
